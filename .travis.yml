@@ -3,7 +3,7 @@ dist: jammy
 language: go
 go:
   - 1.19.5
-go_import_path: github.com/harmony-one/harmony
+go_import_path: github.com/zennittians/intelchain
 cache:
   directories:
     - docker_images
@@ -23,18 +23,18 @@ addons:
 
 install:
   # default working directory with source code is automatically set to
-  #   /home/travis/gopath/src/github.com/harmony-one/harmony
+  #   /home/travis/gopath/src/github.com/zennittians/intelchain
   # https://docs.travis-ci.com/user/languages/go/#go-import-path
   - echo $TRAVIS_PULL_REQUEST_BRANCH
-  - git clone https://github.com/harmony-one/mcl.git $GOPATH/src/github.com/harmony-one/mcl
-  - git clone https://github.com/harmony-one/bls.git $GOPATH/src/github.com/harmony-one/bls
-  - git clone https://github.com/harmony-one/harmony-test.git $GOPATH/src/github.com/harmony-one/harmony-test
-  - (cd $GOPATH/src/github.com/harmony-one/mcl; make -j4)
-  - (cd $GOPATH/src/github.com/harmony-one/bls; make BLS_SWAP_G=1 -j4)
+  - git clone https://github.com/zennittians/mcl.git $GOPATH/src/github.com/zennittians/mcl
+  - git clone https://github.com/zennittians/bls.git $GOPATH/src/github.com/zennittians/bls
+  - git clone https://github.com/zennittians/intelchain-test.git $GOPATH/src/github.com/zennittians/intelchain-test
+  - (cd $GOPATH/src/github.com/zennittians/mcl; make -j4)
+  - (cd $GOPATH/src/github.com/zennittians/bls; make BLS_SWAP_G=1 -j4)
 #  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.41.1
   - make go-get
   - go install golang.org/x/tools/cmd/goimports@latest
-  - go install github.com/harmony-ek/gencodec@latest
+  - go install github.com/intelchain-ek/gencodec@latest
 script:
   - ${TEST}
 after_success:
