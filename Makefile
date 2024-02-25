@@ -5,7 +5,7 @@ export LD_LIBRARY_PATH:=$(TOP)/bls/lib:$(TOP)/mcl/lib:/opt/homebrew/opt/openssl@
 export LIBRARY_PATH:=$(LD_LIBRARY_PATH)
 export DYLD_FALLBACK_LIBRARY_PATH:=$(LD_LIBRARY_PATH)
 export GO111MODULE:=on
-PKGNAME=harmony
+PKGNAME=intelchain
 VERSION?=$(shell git tag -l --sort=-v:refname | head -n 1 | tr -d v)
 RELEASE?=$(shell git describe --long | cut -f2 -d-)
 RPMBUILD=$(HOME)/rpmbuild
@@ -18,11 +18,11 @@ all: libs
 	bash ./scripts/go_executable_build.sh -S
 
 help:
-	@echo "all - build the harmony binary & bootnode along with the MCL & BLS libs (if necessary)"
+	@echo "all - build the intelchain binary & bootnode along with the MCL & BLS libs (if necessary)"
 	@echo "libs - build only the MCL & BLS libs (if necessary) "
-	@echo "exe - build the harmony binary & bootnode"
-	@echo "race - build the harmony binary & bootnode with race condition checks"
-	@echo "trace-pointer - build the harmony binary & bootnode with pointer analysis"
+	@echo "exe - build the intelchain binary & bootnode"
+	@echo "race - build the intelchain binary & bootnode with race condition checks"
+	@echo "trace-pointer - build the intelchain binary & bootnode with pointer analysis"
 	@echo "debug - start a localnet with 2 shards (s0 rpc endpoint = localhost:9700; s1 rpc endpoint = localhost:9800)"
 	@echo "debug-kill - force kill the localnet"
 	@echo "debug-ext - start a localnet with 2 shards and external (s0 rpc endpoint = localhost:9598; s1 rpc endpoint = localhost:9596)"
@@ -34,13 +34,13 @@ help:
 	@echo "test-rpc-attach - attach onto the rpc testing docker container for inspection"
 	@echo "test-rosetta - run the rosetta tests"
 	@echo "test-rosetta-attach - attach onto the rosetta testing docker container for inspection"
-	@echo "linux_static - static build the harmony binary & bootnode along with the MCL & BLS libs (for linux)"
-	@echo "rpm - build a harmony RPM pacakge"
-	@echo "rpmpub_dev - publish harmony RPM package to development repo"
-	@echo "rpmpub_prod - publish harmony RPM package to production repo"
-	@echo "deb - build a harmony Debian pacakge"
-	@echo "debpub_dev - publish harmony Debian package to development repo"
-	@echo "debpub_prod - publish harmony Debian package to production repo"
+	@echo "linux_static - static build the intelchain binary & bootnode along with the MCL & BLS libs (for linux)"
+	@echo "rpm - build a intelchain RPM pacakge"
+	@echo "rpmpub_dev - publish intelchain RPM package to development repo"
+	@echo "rpmpub_prod - publish intelchain RPM package to production repo"
+	@echo "deb - build a intelchain Debian pacakge"
+	@echo "debpub_dev - publish intelchain Debian package to development repo"
+	@echo "debpub_prod - publish intelchain Debian package to production repo"
 
 libs:
 	make -C $(TOP)/mcl -j8
@@ -107,14 +107,14 @@ linux_static:
 
 deb_init:
 	rm -rf $(DEBBUILD)
-	mkdir -p $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/{etc/systemd/system,usr/sbin,etc/sysctl.d,etc/harmony}
-	cp -f bin/harmony $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
-	bin/harmony dumpconfig $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/harmony/harmony.conf
-	cp -f scripts/package/rclone.conf $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/harmony/
-	cp -f scripts/package/harmony.service $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/systemd/system/
-	cp -f scripts/package/harmony-setup.sh $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
-	cp -f scripts/package/harmony-rclone.sh $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
-	cp -f scripts/package/harmony-sysctl.conf $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/sysctl.d/99-harmony.conf
+	mkdir -p $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/{etc/systemd/system,usr/sbin,etc/sysctl.d,etc/intelchain}
+	cp -f bin/intelchain $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
+	bin/intelchain dumpconfig $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/intelchain/intelchain.conf
+	cp -f scripts/package/rclone.conf $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/intelchain/
+	cp -f scripts/package/intelchain.service $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/systemd/system/
+	cp -f scripts/package/intelchain-setup.sh $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
+	cp -f scripts/package/intelchain-rclone.sh $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/usr/sbin/
+	cp -f scripts/package/intelchain-sysctl.conf $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/etc/sysctl.d/99-intelchain.conf
 	cp -r scripts/package/deb/DEBIAN $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)
 	VER=$(VERSION)-$(RELEASE) scripts/package/templater.sh scripts/package/deb/DEBIAN/control > $(DEBBUILD)/$(PKGNAME)-$(VERSION)-$(RELEASE)/DEBIAN/control
 
@@ -135,18 +135,18 @@ rpm_init:
 	rm -rf $(RPMBUILD)
 	mkdir -p $(RPMBUILD)/{SOURCES,SPECS,BUILD,RPMS,BUILDROOT,SRPMS}
 	mkdir -p $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	cp -f bin/harmony $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	bin/harmony dumpconfig $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)/harmony.conf
-	cp -f scripts/package/harmony.service $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	cp -f scripts/package/harmony-setup.sh $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	cp -f scripts/package/harmony-rclone.sh $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
+	cp -f bin/intelchain $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
+	bin/intelchain dumpconfig $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)/intelchain.conf
+	cp -f scripts/package/intelchain.service $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
+	cp -f scripts/package/intelchain-setup.sh $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
+	cp -f scripts/package/intelchain-rclone.sh $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
 	cp -f scripts/package/rclone.conf $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	cp -f scripts/package/harmony-sysctl.conf $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
-	VER=$(VERSION) REL=$(RELEASE) scripts/package/templater.sh scripts/package/rpm/harmony.spec > $(RPMBUILD)/SPECS/harmony.spec
+	cp -f scripts/package/intelchain-sysctl.conf $(RPMBUILD)/SOURCES/$(PKGNAME)-$(VERSION)
+	VER=$(VERSION) REL=$(RELEASE) scripts/package/templater.sh scripts/package/rpm/intelchain.spec > $(RPMBUILD)/SPECS/intelchain.spec
 	(cd $(RPMBUILD)/SOURCES; tar cvf $(PKGNAME)-$(VERSION).tar $(PKGNAME)-$(VERSION))
 
 rpm_build:
-	rpmbuild --target x86_64 -bb $(RPMBUILD)/SPECS/harmony.spec
+	rpmbuild --target x86_64 -bb $(RPMBUILD)/SPECS/intelchain.spec
 
 rpm: rpm_init rpm_build
 	rpm --addsign $(RPMBUILD)/RPMS/x86_64/$(PKGNAME)-$(VERSION)-$(RELEASE).x86_64.rpm
@@ -164,7 +164,7 @@ go-test:
 	go test -vet=all -race ./...
 
 docker:
-	docker build --pull -t harmonyone/$(PKGNAME):latest -f scripts/docker/Dockerfile .
+	docker build --pull -t intelchainitc/$(PKGNAME):latest -f scripts/docker/Dockerfile .
 
 travis_go_checker:
 	bash ./scripts/travis_go_checker.sh
