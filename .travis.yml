@@ -1,0 +1,47 @@
+os: linux
+dist: jammy
+language: go
+go:
+  - 1.19.5
+go_import_path: github.com/harmony-one/harmony
+cache:
+  directories:
+    - docker_images
+env:
+  - TEST="make"
+  - TEST="bash ./scripts/travis_go_checker.sh"
+  - TEST="bash ./scripts/travis_rpc_checker.sh"
+  - TEST="bash ./scripts/travis_rosetta_checker.sh"
+
+# upgrade docker to latest stable version
+addons:
+  apt:
+    sources:
+      - sourceline: deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
+    packages:
+    - docker.io
+
+install:
+  # default working directory with source code is automatically set to
+  #   /home/travis/gopath/src/github.com/harmony-one/harmony
+  # https://docs.travis-ci.com/user/languages/go/#go-import-path
+  - echo $TRAVIS_PULL_REQUEST_BRANCH
+  - git clone https://github.com/harmony-one/mcl.git $GOPATH/src/github.com/harmony-one/mcl
+  - git clone https://github.com/harmony-one/bls.git $GOPATH/src/github.com/harmony-one/bls
+  - git clone https://github.com/harmony-one/harmony-test.git $GOPATH/src/github.com/harmony-one/harmony-test
+  - (cd $GOPATH/src/github.com/harmony-one/mcl; make -j4)
+  - (cd $GOPATH/src/github.com/harmony-one/bls; make BLS_SWAP_G=1 -j4)
+#  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.41.1
+  - make go-get
+  - go install golang.org/x/tools/cmd/goimports@latest
+  - go install github.com/harmony-ek/gencodec@latest
+script:
+  - ${TEST}
+after_success:
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh success $WEBHOOK_URL
+after_failure:
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh failure $WEBHOOK_URL
