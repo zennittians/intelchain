@@ -3,17 +3,17 @@ package consensus
 import (
 	"time"
 
-	"github.com/harmony-one/harmony/consensus/signature"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/common"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/zennittians/intelchain/consensus/signature"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/common"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/p2p"
 )
 
 // announce fires leader

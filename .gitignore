@@ -47,7 +47,7 @@ bc_config.json
 db/
 
 # intelchain node keystore
-.hmykey
+.itckey
 
 # staking keystore
 .stakingkey
@@ -68,7 +68,7 @@ node_modules/
 test/.bnkey
 
 # exported keys
-.hmy/*.key
+.itc/*.key
 
 # blspass
 blspass.txt
@@ -90,7 +90,7 @@ intelchain_db_*
 explorer_storage_*
 
 # local blskeys for testing
-.hmy/blskeys
+.itc/blskeys
 
 # pprof profiles
 profiles/*.pb.gz

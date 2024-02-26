@@ -3,8 +3,8 @@ package p2ptests
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/test/helpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestHostSetup(t *testing.T) {

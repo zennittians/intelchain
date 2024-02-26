@@ -5,8 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/pkg/errors"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 var (

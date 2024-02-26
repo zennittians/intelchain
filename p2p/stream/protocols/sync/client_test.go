@@ -10,14 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
-	headerV3 "github.com/harmony-one/harmony/block/v3"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/common/ratelimiter"
-	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
-	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/zennittians/intelchain/block"
+	headerV3 "github.com/zennittians/intelchain/block/v3"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/p2p/stream/common/ratelimiter"
+	"github.com/zennittians/intelchain/p2p/stream/common/streammanager"
+	"github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	syncpb "github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 var (

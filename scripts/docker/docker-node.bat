@@ -1,7 +1,7 @@
 @ECHO OFF
 
 SET SELF=%0
-SET DOCKER_IMAGE=harmonyone/node:s3
+SET DOCKER_IMAGE=intelchainitc/node:s3
 
 WHERE docker >NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (

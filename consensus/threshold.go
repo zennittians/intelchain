@@ -2,14 +2,14 @@ package consensus
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/consensus/signature"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/consensus/signature"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/p2p"
 )
 
 func (consensus *Consensus) didReachPrepareQuorum() error {

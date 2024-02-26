@@ -8,21 +8,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	consensus_sig "github.com/harmony-one/harmony/consensus/signature"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
-	"github.com/harmony-one/harmony/staking/effective"
-	staking "github.com/harmony-one/harmony/staking/types"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	consensus_sig "github.com/zennittians/intelchain/consensus/signature"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
+	"github.com/zennittians/intelchain/staking/effective"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 var (

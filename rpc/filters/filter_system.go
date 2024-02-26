@@ -28,11 +28,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/eth/rpc"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/eth/rpc"
 )
 
 // Type determines the kind of filter and is used to put the filter in to

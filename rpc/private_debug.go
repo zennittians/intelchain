@@ -3,8 +3,8 @@ package rpc
 import (
 	"context"
 
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/hmy"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/hmy"
 )
 
 // PrivateDebugService Internal JSON RPC for debugging purpose

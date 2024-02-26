@@ -1,10 +1,10 @@
 package eth
 
 import (
-	"github.com/harmony-one/harmony/core/types"
-	internal_common "github.com/harmony-one/harmony/internal/common"
-	rpc_common "github.com/harmony-one/harmony/rpc/common"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/core/types"
+	internal_common "github.com/zennittians/intelchain/internal/common"
+	rpc_common "github.com/zennittians/intelchain/rpc/common"
 )
 
 // BlockFactory is the factory for v1 rpc block

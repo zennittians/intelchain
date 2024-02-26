@@ -6,16 +6,16 @@ import (
 
 	"github.com/pkg/errors"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/crypto/bls"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/consensus/votepower"
+	"github.com/zennittians/intelchain/consensus/votepower"
 
-	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
+	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
 )
 
 type uniformVoteWeight struct {

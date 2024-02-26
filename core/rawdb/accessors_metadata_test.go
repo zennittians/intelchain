@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	ethRawDB "github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 )
 
 func TestLeaderRotationMeta(t *testing.T) {

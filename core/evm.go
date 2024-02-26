@@ -25,14 +25,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/shard"
-	staking "github.com/harmony-one/harmony/staking"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
+	staking "github.com/zennittians/intelchain/staking"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 // ChainContext supports retrieving headers and consensus parameters from the

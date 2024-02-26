@@ -7,18 +7,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/core/types"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/core/types"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/crypto/bls"
-	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/chain"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/multibls"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/crypto/bls"
+	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/chain"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/multibls"
 )
 
 const (

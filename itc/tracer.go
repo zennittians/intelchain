@@ -32,13 +32,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/hmy/tracers"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/hmy/tracers"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 const (

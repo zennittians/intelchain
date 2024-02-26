@@ -7,8 +7,8 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/pkg/errors"
 
-	hmyTypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/rosetta/common"
+	hmyTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/rosetta/common"
 )
 
 // ConstructionParse implements the /construction/parse endpoint.

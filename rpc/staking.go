@@ -11,13 +11,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/hmy"
-	internal_common "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/shard"
-	staking "github.com/harmony-one/harmony/staking/types"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/hmy"
+	internal_common "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/shard"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

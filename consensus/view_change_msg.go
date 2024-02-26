@@ -3,17 +3,17 @@ package consensus
 import (
 	"encoding/binary"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/api/proto"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/api/proto"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
 
-	"github.com/harmony-one/harmony/multibls"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/multibls"
 )
 
 // construct the view change message

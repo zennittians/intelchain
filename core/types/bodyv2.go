@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/harmony-one/harmony/block"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // BodyV2 is the V2 block body

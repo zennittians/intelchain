@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/harmony-one/harmony/internal/utils/blockedpeers"
 	"github.com/libp2p/go-libp2p"
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -16,6 +15,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/internal/utils/blockedpeers"
 )
 
 type ConnectCallback func(net libp2p_network.Network, conn libp2p_network.Conn) error

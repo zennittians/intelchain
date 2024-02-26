@@ -3,13 +3,13 @@ package blockfactory
 import (
 	"math/big"
 
-	"github.com/harmony-one/harmony/block"
-	blockif "github.com/harmony-one/harmony/block/interface"
-	v0 "github.com/harmony-one/harmony/block/v0"
-	v1 "github.com/harmony-one/harmony/block/v1"
-	v2 "github.com/harmony-one/harmony/block/v2"
-	v3 "github.com/harmony-one/harmony/block/v3"
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/block"
+	blockif "github.com/zennittians/intelchain/block/interface"
+	v0 "github.com/zennittians/intelchain/block/v0"
+	v1 "github.com/zennittians/intelchain/block/v1"
+	v2 "github.com/zennittians/intelchain/block/v2"
+	v3 "github.com/zennittians/intelchain/block/v3"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 // Factory is a data structure factory for a specific chain configuration.

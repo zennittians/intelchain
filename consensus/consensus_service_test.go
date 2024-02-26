@@ -3,17 +3,17 @@ package consensus
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/registry"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/registry"
 
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/multibls"
-	"github.com/harmony-one/harmony/p2p"
-	"github.com/harmony-one/harmony/shard"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/multibls"
+	"github.com/zennittians/intelchain/p2p"
+	"github.com/zennittians/intelchain/shard"
 )
 
 func TestSignAndMarshalConsensusMessage(t *testing.T) {

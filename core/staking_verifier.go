@@ -6,20 +6,20 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/harmony-one/harmony/staking/availability"
+	"github.com/zennittians/intelchain/staking/availability"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/core/vm"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/staking/effective"
-	staking "github.com/harmony-one/harmony/staking/types"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/core/vm"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/staking/effective"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 var (

@@ -7,24 +7,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/hmy/tracers"
+	"github.com/zennittians/intelchain/hmy/tracers"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/state"
-	coreTypes "github.com/harmony-one/harmony/core/types"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/state"
+	coreTypes "github.com/zennittians/intelchain/core/types"
 
 	"github.com/coinbase/rosetta-sdk-go/server"
 	"github.com/coinbase/rosetta-sdk-go/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/harmony-one/harmony/core/rawdb"
-	hmytypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/hmy"
-	"github.com/harmony-one/harmony/rosetta/common"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/core/rawdb"
+	hmytypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/rosetta/common"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

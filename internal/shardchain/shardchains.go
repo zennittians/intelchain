@@ -4,21 +4,21 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/harmony-one/harmony/core/state"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
-	"github.com/harmony-one/harmony/internal/shardchain/tikv_manage"
+	"github.com/zennittians/intelchain/core/state"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	"github.com/zennittians/intelchain/internal/shardchain/tikv_manage"
 
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/shard"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // Collection is a collection of per-shard blockchains.

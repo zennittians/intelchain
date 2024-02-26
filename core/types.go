@@ -17,11 +17,11 @@
 package core
 
 import (
-	"github.com/harmony-one/harmony/consensus/reward"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/consensus/reward"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 // Validator is an interface which defines the standard for block validation. It

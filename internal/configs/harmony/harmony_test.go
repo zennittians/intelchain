@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 func TestToRPCServerConfig(t *testing.T) {

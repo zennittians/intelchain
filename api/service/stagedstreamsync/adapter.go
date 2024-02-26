@@ -5,12 +5,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/common/streammanager"
-	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
-	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/p2p/stream/common/streammanager"
+	syncproto "github.com/zennittians/intelchain/p2p/stream/protocols/sync"
+	"github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 type syncProtocol interface {

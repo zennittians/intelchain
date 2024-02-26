@@ -30,8 +30,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/olekukonko/tablewriter"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 var errNotSupported = errors.New("not supported")

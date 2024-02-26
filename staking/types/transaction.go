@@ -9,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/harmony-one/harmony/crypto/hash"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/crypto/hash"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
 )
 
 var (

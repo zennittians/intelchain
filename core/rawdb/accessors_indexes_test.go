@@ -20,17 +20,17 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/hash"
-	"github.com/harmony-one/harmony/numeric"
-	staking "github.com/harmony-one/harmony/staking/types"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/hash"
+	"github.com/zennittians/intelchain/numeric"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 var (

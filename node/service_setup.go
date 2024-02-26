@@ -3,10 +3,10 @@ package node
 import (
 	"fmt"
 
-	"github.com/harmony-one/harmony/api/service"
-	"github.com/harmony-one/harmony/api/service/blockproposal"
-	"github.com/harmony-one/harmony/api/service/consensus"
-	"github.com/harmony-one/harmony/api/service/explorer"
+	"github.com/zennittians/intelchain/api/service"
+	"github.com/zennittians/intelchain/api/service/blockproposal"
+	"github.com/zennittians/intelchain/api/service/consensus"
+	"github.com/zennittians/intelchain/api/service/explorer"
 )
 
 // RegisterValidatorServices register the validator services.

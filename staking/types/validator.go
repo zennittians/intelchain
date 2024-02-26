@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/shard"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/consensus/votepower"
-	"github.com/harmony-one/harmony/crypto/hash"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/genesis"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/staking/effective"
 	"github.com/pkg/errors"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/consensus/votepower"
+	"github.com/zennittians/intelchain/crypto/hash"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/genesis"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/staking/effective"
 )
 
 // Define validator staking related const
@@ -27,7 +27,7 @@ const (
 	MaxWebsiteLength         = 140
 	MaxSecurityContactLength = 140
 	MaxDetailsLength         = 280
-	BLSVerificationStr       = "harmony-one"
+	BLSVerificationStr       = "zennittians"
 	TenThousand              = 10000
 	APRHistoryLength         = 30
 	SigningHistoryLength     = 30

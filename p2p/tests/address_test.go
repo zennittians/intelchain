@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	p2ptypes "github.com/harmony-one/harmony/p2p/types"
-	"github.com/harmony-one/harmony/test/helpers"
 	"github.com/stretchr/testify/assert"
+	p2ptypes "github.com/zennittians/intelchain/p2p/types"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestMultiAddressParsing(t *testing.T) {

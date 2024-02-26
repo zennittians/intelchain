@@ -3,8 +3,8 @@ package node
 import (
 	"sync"
 
-	prom "github.com/harmony-one/harmony/api/service/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
+	prom "github.com/zennittians/intelchain/api/service/prometheus"
 )
 
 var (

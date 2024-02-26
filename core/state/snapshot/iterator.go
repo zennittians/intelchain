@@ -23,7 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 )
 
 // Iterator is an iterator to step over all the accounts or the specific

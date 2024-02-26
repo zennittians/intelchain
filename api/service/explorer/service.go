@@ -12,21 +12,21 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring/roaring64"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/hmy"
-	"github.com/harmony-one/harmony/hmy/tracers"
-	"github.com/harmony-one/harmony/internal/chain"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/p2p"
-	stakingReward "github.com/harmony-one/harmony/staking/reward"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/chain"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/utils"
+	hmy "github.com/zennittians/intelchain/itc"
+	"github.com/zennittians/intelchain/itc/tracers"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/p2p"
+	stakingReward "github.com/zennittians/intelchain/staking/reward"
 )
 
 // Constants for explorer service.

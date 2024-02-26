@@ -29,17 +29,17 @@ import (
 	"github.com/ethereum/go-ethereum/common/prque"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/harmony-one/harmony/internal/params"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/internal/params"
 
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	hmyCommon "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/shard"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	hmyCommon "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

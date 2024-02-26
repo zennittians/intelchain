@@ -27,7 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // DumpConfig is a set of options to control what portions of the state will be

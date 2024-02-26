@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
 
 	"github.com/spf13/cobra"
 
-	"github.com/harmony-one/harmony/api/service/legacysync"
-	"github.com/harmony-one/harmony/internal/cli"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/zennittians/intelchain/api/service/legacysync"
+	"github.com/zennittians/intelchain/internal/cli"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 var (

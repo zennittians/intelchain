@@ -1,10 +1,10 @@
 package stagedstreamsync
 
 import (
-	"github.com/harmony-one/abool"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/p2p"
+	"github.com/zennittians/abool"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/p2p"
 )
 
 // Downloaders is the set of downloaders

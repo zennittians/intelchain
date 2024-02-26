@@ -3,11 +3,11 @@ package core_test
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/vm"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/vm"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 func TestGenesisBlock(t *testing.T) {

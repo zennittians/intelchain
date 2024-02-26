@@ -4,9 +4,9 @@ import (
 	"math/big"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/internal/genesis"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/numeric"
+	"github.com/zennittians/intelchain/internal/genesis"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/numeric"
 )
 
 // TestnetSchedule is the long-running public testnet sharding

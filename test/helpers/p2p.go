@@ -1,12 +1,12 @@
 package helpers
 
 import (
-	"github.com/harmony-one/bls/ffi/go/bls"
-	harmony_bls "github.com/harmony-one/harmony/crypto/bls"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/p2p"
 	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
+	"github.com/zennittians/bls/ffi/go/bls"
+	harmony_bls "github.com/zennittians/intelchain/crypto/bls"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/p2p"
 )
 
 // Host - struct for representing a host (IP / Port)
@@ -31,11 +31,11 @@ func init() {
 	}
 
 	Topics = []string{
-		"hmy/testnet/0.0.1/client/beacon",
-		"hmy/testnet/0.0.1/node/beacon",
-		"hmy/testnet/0.0.1/node/shard/1",
-		"hmy/testnet/0.0.1/node/shard/2",
-		"hmy/testnet/0.0.1/node/shard/3",
+		"itc/testnet/0.0.1/client/beacon",
+		"itc/testnet/0.0.1/node/beacon",
+		"itc/testnet/0.0.1/node/shard/1",
+		"itc/testnet/0.0.1/node/shard/2",
+		"itc/testnet/0.0.1/node/shard/3",
 	}
 
 	Bootnodes = []string{

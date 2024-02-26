@@ -3,10 +3,10 @@ package main
 import (
 	"time"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/hmy"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/hmy"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 const tomlConfigVersion = "2.6.1"

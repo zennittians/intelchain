@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/harmony-one/harmony/internal/cli"
 	"github.com/spf13/cobra"
+	"github.com/zennittians/intelchain/internal/cli"
 )
 
 const (

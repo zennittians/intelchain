@@ -5,18 +5,18 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/harmony-one/harmony/core/rawdb"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	chain2 "github.com/harmony-one/harmony/internal/chain"
-	"github.com/harmony-one/harmony/internal/params"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	chain2 "github.com/zennittians/intelchain/internal/chain"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 var (

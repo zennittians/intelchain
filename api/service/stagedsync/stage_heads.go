@@ -3,9 +3,9 @@ package stagedsync
 import (
 	"context"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 type StageHeads struct {

@@ -11,13 +11,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // ImportPreimages is public so `main.go` can call it directly`

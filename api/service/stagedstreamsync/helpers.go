@@ -6,8 +6,8 @@ import (
 	"math"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core/types"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/zennittians/intelchain/core/types"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 func marshalData(blockNumber uint64) []byte {

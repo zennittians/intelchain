@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	prom "github.com/harmony-one/harmony/api/service/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
+	prom "github.com/zennittians/intelchain/api/service/prometheus"
 )
 
 // rpc name const

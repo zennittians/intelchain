@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/rs/zerolog"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 type BlockDownloadDetails struct {

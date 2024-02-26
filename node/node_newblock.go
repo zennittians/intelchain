@@ -6,18 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/crypto/bls"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/crypto/bls"
 
-	staking "github.com/harmony-one/harmony/staking/types"
+	staking "github.com/zennittians/intelchain/staking/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
 )
 
 // Constants of proposing a new block

@@ -29,8 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 var (

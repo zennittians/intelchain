@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/shardchain/leveldb_shard"
-	"github.com/harmony-one/harmony/internal/shardchain/local_cache"
+	"github.com/zennittians/intelchain/internal/shardchain/leveldb_shard"
+	"github.com/zennittians/intelchain/internal/shardchain/local_cache"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 )

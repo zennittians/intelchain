@@ -3,18 +3,18 @@
 ## Docker Image
 You can choose to build the docker image using the included Dockerfile with the following command:
 ```bash
-docker build -t harmonyone/explorer-node . 
+docker build -t intelchainitc/explorer-node . 
 ```
 
 Or you can download/pull the image from dockerhub with the following command:
 ```bash
-docker pull harmonyone/explorer-node:latest
+docker pull intelchainitc/explorer-node:latest
 ```
 
 ## Starting the node
 You can start the node with the following command:
 ```bash
-docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 
+docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 
 ```
 > This command will create the container of the harmony node on shard 0 in the detached mode, 
 > binding port 9700 (the rosetta port) on the container to the host and mounting the shared 
@@ -35,7 +35,7 @@ curl -X POST --data '{
 
 You can start the node in the offline mode with the following command:
 ```bash
-docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 --run.offline 
+docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 --run.offline 
 ```
 > The offline mode implies that the node will not connect to any p2p peer or sync.
 
@@ -64,27 +64,27 @@ docker stop [CONTAINER ID]
 All the args on the image run are forwarded to the harmony node binary. Therefore, you can simply add `-n testnet` to 
 run the node for testnet. For example:
 ```bash 
-docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 -n testnet
+docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 -n testnet
 ```
 
 ### Running the node with the http RPC capabilities 
 Similar to running a node on testnet, once can simply add `--http` to enable the rpc server. Then you have to forward
 the host port to the container's rpc server port.
 ```bash
-docker run -d -p 9700:9700 -p 9500:9500 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 -n testnet --http
+docker run -d -p 9700:9700 -p 9500:9500 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 -n testnet --http
 ```
 
 ### Running the node with the web socket RPC capabilities 
 Similar to running a node on testnet, once can simply add `--ws` to enable the rpc server. Then you have to forward
 the host port to the container's rpc server port.
 ```bash
-docker run -d -p 9700:9700 -p 9800:9900 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 -n testnet --ws
+docker run -d -p 9700:9700 -p 9800:9900 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 -n testnet --ws
 ```
 
 ### Running the node in non-archival mode
 One can append `--run.archive=false` to the docker run command to run the node in non-archival mode. For example:
 ```bash 
-docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0 -n testnet --run.archive=false
+docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 -n testnet --run.archive=false
 ```
 
 ### Running a node with a rcloned DB
@@ -92,7 +92,7 @@ Note that all node data will be stored in the `/root/data` directory within the 
 the `harmony_db_*` directory to some directory (i.e: `./data`) and mount the volume on the docker run. 
 This way, the node will use DB in the volume that is shared between the container and host. For example: 
 ```bash 
-docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" harmonyone/explorer-node --run.shard=0
+docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0
 ```
 
 Note that the directory structure for `/root/data` (== `./data`) should look something like:

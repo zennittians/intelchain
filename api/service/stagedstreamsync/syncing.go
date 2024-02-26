@@ -9,18 +9,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon-lib/kv/memdb"
 	"github.com/ledgerwatch/log/v3"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 const (

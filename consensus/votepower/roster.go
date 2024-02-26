@@ -7,15 +7,15 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/shard"
 
 	"github.com/ethereum/go-ethereum/common"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/crypto/bls"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
 	"github.com/pkg/errors"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
 )
 
 var (

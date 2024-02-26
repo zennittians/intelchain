@@ -30,8 +30,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/harmony-one/harmony/accounts"
 	"github.com/pborman/uuid"
+	"github.com/zennittians/intelchain/accounts"
 )
 
 const (

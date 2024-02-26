@@ -29,18 +29,18 @@ import (
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/state/snapshot"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/state/snapshot"
 
-	types2 "github.com/harmony-one/harmony/core/types"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/staking"
-	"github.com/harmony-one/harmony/staking/effective"
-	stk "github.com/harmony-one/harmony/staking/types"
-	staketest "github.com/harmony-one/harmony/staking/types/test"
 	"github.com/pkg/errors"
+	types2 "github.com/zennittians/intelchain/core/types"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/staking"
+	"github.com/zennittians/intelchain/staking/effective"
+	stk "github.com/zennittians/intelchain/staking/types"
+	staketest "github.com/zennittians/intelchain/staking/types/test"
 )
 
 type revision struct {

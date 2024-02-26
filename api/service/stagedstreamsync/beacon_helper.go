@@ -4,10 +4,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // lastMileCache keeps the last 50 number blocks in memory cache

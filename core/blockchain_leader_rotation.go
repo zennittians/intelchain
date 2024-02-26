@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // LeaderRotationMeta contains information about leader rotation

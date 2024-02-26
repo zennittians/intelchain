@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	hmyTypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/rosetta/common"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
 	"github.com/pkg/errors"
+	hmyTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/rosetta/common"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 // ConstructionHash implements the /construction/hash endpoint.

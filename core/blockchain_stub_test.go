@@ -3,8 +3,8 @@ package core_test
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/core"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/core"
 )
 
 type bc struct {

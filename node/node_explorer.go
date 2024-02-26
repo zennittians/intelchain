@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/harmony-one/harmony/internal/tikv"
+	"github.com/zennittians/intelchain/internal/tikv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/api/service"
-	"github.com/harmony-one/harmony/api/service/explorer"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/consensus/signature"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
 	"github.com/pkg/errors"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/api/service"
+	"github.com/zennittians/intelchain/api/service/explorer"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/consensus/signature"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 var once sync.Once

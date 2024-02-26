@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	testutils "github.com/harmony-one/harmony/internal/utils/testing"
+	testutils "github.com/zennittians/intelchain/internal/utils/testing"
 )
 
 func exerciseGetPassphraseFromSource(t *testing.T, source, expected string) {

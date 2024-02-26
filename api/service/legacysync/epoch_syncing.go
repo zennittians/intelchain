@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/Workiva/go-datastructures/queue"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/p2p"
+	"github.com/zennittians/intelchain/shard"
 
 	libp2p_peer "github.com/libp2p/go-libp2p/core/peer"
 )

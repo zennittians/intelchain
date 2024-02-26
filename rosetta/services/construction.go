@@ -11,11 +11,11 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/harmony-one/harmony/common/denominations"
-	hmyTypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/hmy"
-	"github.com/harmony-one/harmony/rosetta/common"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/common/denominations"
+	hmyTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/rosetta/common"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

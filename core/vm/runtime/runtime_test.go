@@ -21,13 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 func TestDefaults(t *testing.T) {

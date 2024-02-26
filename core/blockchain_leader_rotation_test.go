@@ -3,8 +3,8 @@ package core
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/crypto/bls"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/crypto/bls"
 )
 
 var k1 = bls.SerializedPublicKey{1, 2, 3}

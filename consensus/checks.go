@@ -5,12 +5,12 @@ import (
 	"encoding/binary"
 
 	protobuf "github.com/golang/protobuf/proto"
-	libbls "github.com/harmony-one/bls/ffi/go/bls"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/crypto/hash"
 	"github.com/pkg/errors"
+	libbls "github.com/zennittians/bls/ffi/go/bls"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/hash"
 )
 
 // MaxBlockNumDiff limits the received block number to only 100 further from the current block number

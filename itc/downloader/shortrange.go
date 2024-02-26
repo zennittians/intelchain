@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	syncProto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	syncProto "github.com/zennittians/intelchain/p2p/stream/protocols/sync"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
+	"github.com/zennittians/intelchain/shard"
 )
 
 // doShortRangeSync does the short range sync.

@@ -3,10 +3,10 @@ package main
 import (
 	"testing"
 
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
 	"github.com/stretchr/testify/require"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
 
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 var (

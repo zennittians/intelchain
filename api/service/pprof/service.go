@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // Config is the config for the pprof service

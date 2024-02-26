@@ -4,19 +4,19 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/chain"
+	"github.com/zennittians/intelchain/internal/chain"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/p2p"
+	"github.com/zennittians/intelchain/shard"
 )
 
 // MaxViewIDDiff limits the received view ID to only 249 further from the current view ID

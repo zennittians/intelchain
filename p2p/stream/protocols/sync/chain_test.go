@@ -12,10 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	protobuf "github.com/golang/protobuf/proto"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	syncpb "github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
 )
 
 type testChainHelper struct{}

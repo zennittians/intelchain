@@ -3,8 +3,8 @@ package registry
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/core"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/core"
 )
 
 func TestRegistry(t *testing.T) {

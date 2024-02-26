@@ -9,11 +9,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/harmony-one/harmony/api/service/legacysync/downloader"
-	pb "github.com/harmony-one/harmony/api/service/legacysync/downloader/proto"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p"
+	"github.com/zennittians/intelchain/api/service/legacysync/downloader"
+	pb "github.com/zennittians/intelchain/api/service/legacysync/downloader/proto"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/p2p"
 
 	libp2p_peer "github.com/libp2p/go-libp2p/core/peer"
 )

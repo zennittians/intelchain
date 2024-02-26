@@ -5,9 +5,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/internal/utils"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/internal/utils"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // BodyV0 is the V0 block body

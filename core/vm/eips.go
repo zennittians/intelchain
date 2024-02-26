@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 // EnableEIP enables the given EIP on the config.

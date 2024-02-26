@@ -23,7 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core/types"
+	"github.com/zennittians/intelchain/core/types"
 )
 
 var (

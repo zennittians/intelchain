@@ -25,7 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 )
 
 type stateTest struct {

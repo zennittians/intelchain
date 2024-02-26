@@ -4,10 +4,10 @@ import (
 	"sort"
 	"time"
 
-	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
+	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
 )
 
 type pair struct {

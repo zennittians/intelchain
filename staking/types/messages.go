@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/staking/effective"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/staking/effective"
 )
 
 // Directive says what kind of payload follows

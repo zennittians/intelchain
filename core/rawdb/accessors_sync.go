@@ -22,7 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // ReadSkeletonSyncStatus retrieves the serialized sync status saved at shutdown.

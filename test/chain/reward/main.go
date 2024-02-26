@@ -6,28 +6,28 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/crypto/bls"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/crypto/bls"
 
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/internal/utils"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/internal/utils"
 
 	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/crypto/hash"
-	"github.com/harmony-one/harmony/internal/chain"
-	"github.com/harmony-one/harmony/internal/common"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/crypto/hash"
+	"github.com/zennittians/intelchain/internal/chain"
+	"github.com/zennittians/intelchain/internal/common"
 
 	protobuf "github.com/golang/protobuf/proto"
-	"github.com/harmony-one/harmony/numeric"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/numeric"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 var (

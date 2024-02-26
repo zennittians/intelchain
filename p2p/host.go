@@ -11,13 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/bls/ffi/go/bls"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/internal/utils/blockedpeers"
-	"github.com/harmony-one/harmony/p2p/discovery"
-	"github.com/harmony-one/harmony/p2p/security"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -36,6 +29,13 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/bls/ffi/go/bls"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils/blockedpeers"
+	"github.com/zennittians/intelchain/p2p/discovery"
+	"github.com/zennittians/intelchain/p2p/security"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 type ConnectCallback func(net libp2p_network.Network, conn libp2p_network.Conn) error

@@ -22,9 +22,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/shard"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -16,7 +16,7 @@
 
 package bind
 
-import "github.com/harmony-one/harmony/accounts/abi"
+import "github.com/zennittians/intelchain/accounts/abi"
 
 // tmplData is the data structure required to fill the binding template.
 type tmplData struct {

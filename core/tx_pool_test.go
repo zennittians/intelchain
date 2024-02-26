@@ -26,24 +26,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/crypto/hash"
-	chain2 "github.com/harmony-one/harmony/internal/chain"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/numeric"
-	staking "github.com/harmony-one/harmony/staking/types"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/crypto/hash"
+	chain2 "github.com/zennittians/intelchain/internal/chain"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/numeric"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 var (

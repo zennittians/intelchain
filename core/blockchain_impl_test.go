@@ -7,8 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/harmony-one/harmony/core/types"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/core/types"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 func TestPrepareStakingMetadata(t *testing.T) {

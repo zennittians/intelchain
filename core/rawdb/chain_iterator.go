@@ -27,7 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // InitDatabaseFromFreezer reinitializes an empty database from a previous batch

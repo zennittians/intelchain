@@ -3,8 +3,8 @@ package rpc
 import (
 	"context"
 
-	"github.com/harmony-one/harmony/eth/rpc"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/zennittians/intelchain/eth/rpc"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 // PublicWeb3Service offers web3 related RPC methods

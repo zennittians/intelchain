@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/internal/cli"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/internal/cli"
 )
 
 var prefixFlag = cli.StringFlag{

@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/internal/utils"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/internal/utils"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
+	"github.com/zennittians/intelchain/shard"
 
-	//sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	//sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"

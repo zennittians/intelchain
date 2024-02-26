@@ -22,15 +22,15 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/internal/configs/harmony"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/internal/configs/harmony"
+	"github.com/zennittians/intelchain/internal/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/harmony-one/harmony/core/types"
+	"github.com/zennittians/intelchain/core/types"
 )
 
 // OracleBackend includes all necessary background APIs for oracle.

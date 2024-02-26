@@ -6,20 +6,20 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/harmony-one/harmony/core/rawdb"
-	chain2 "github.com/harmony-one/harmony/test/chain/chain"
+	"github.com/zennittians/intelchain/core/rawdb"
+	chain2 "github.com/zennittians/intelchain/test/chain/chain"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/core"
-	core_state "github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/crypto/hash"
-	"github.com/harmony-one/harmony/internal/params"
-	pkgworker "github.com/harmony-one/harmony/node/worker"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/core"
+	core_state "github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/crypto/hash"
+	"github.com/zennittians/intelchain/internal/params"
+	pkgworker "github.com/zennittians/intelchain/node/worker"
 )
 
 const (

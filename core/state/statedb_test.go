@@ -30,8 +30,8 @@ import (
 	"testing/quick"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/types"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/types"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to

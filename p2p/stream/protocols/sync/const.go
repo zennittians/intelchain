@@ -7,34 +7,34 @@ const (
 	GetBlockHashesAmountCap = 50
 
 	// GetBlocksByNumAmountCap is the cap of request of a single GetBlocksByNum request.
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	// Since we have an assumption that rlp encoded block size is smaller than 2MB (p2p.node.MaxMessageSize),
 	// so the max size of a stream message is capped at 2MB * 10 = 20MB.
 	GetBlocksByNumAmountCap = 10
 
 	// GetBlocksByHashesAmountCap is the cap of request of single GetBlocksByHashes request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	// See comments for GetBlocksByNumAmountCap.
 	GetBlocksByHashesAmountCap = 10
 
 	// GetNodeDataCap is the cap of request of single GetNodeData request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	GetNodeDataCap = 256
 
 	// GetReceiptsCap is the cap of request of single GetReceipts request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	GetReceiptsCap = 128
 
 	// GetStorageRangesRequestCap is the cap of request of single GetStorageRanges request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	GetStorageRangesRequestCap = 256
 
 	// GetByteCodesRequestCap is the cap of request of single GetByteCodes request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	GetByteCodesRequestCap = 128
 
 	// GetTrieNodesRequestCap is the cap of request of single GetTrieNodes request
-	// This number has an effect on maxMsgBytes as 20MB defined in github.com/harmony-one/harmony/p2p/stream/types.
+	// This number has an effect on maxMsgBytes as 20MB defined in github.com/zennittians/intelchain/p2p/stream/types.
 	GetTrieNodesRequestCap = 128
 
 	// stateLookupSlack defines the ratio by how much a state response can exceed

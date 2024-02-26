@@ -9,13 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/internal/utils"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/internal/utils"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 	"golang.org/x/crypto/sha3"
 )
 

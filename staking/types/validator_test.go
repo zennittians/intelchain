@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/crypto/hash"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/genesis"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/staking/effective"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/crypto/hash"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/genesis"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/staking/effective"
 )
 
 var (

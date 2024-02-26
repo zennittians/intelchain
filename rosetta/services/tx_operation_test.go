@@ -7,21 +7,21 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/harmony-one/harmony/hmy/tracers"
+	"github.com/zennittians/intelchain/hmy/tracers"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmytypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/hmy"
-	internalCommon "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/rosetta/common"
-	"github.com/harmony-one/harmony/staking"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
-	"github.com/harmony-one/harmony/test/helpers"
+	hmytypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/hmy"
+	internalCommon "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/rosetta/common"
+	"github.com/zennittians/intelchain/staking"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestGetStakingOperationsFromCreateValidator(t *testing.T) {

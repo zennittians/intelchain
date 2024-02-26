@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 func TestLocalnetEpochCalculation(t *testing.T) {

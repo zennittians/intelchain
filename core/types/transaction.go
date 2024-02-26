@@ -25,16 +25,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/harmony-one/harmony/crypto/hash"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/crypto/hash"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // no go:generate gencodec -type txdata -field-override txdataMarshaling -out gen_tx_json.go

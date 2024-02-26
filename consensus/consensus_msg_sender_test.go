@@ -4,10 +4,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/test/helpers"
 	"github.com/stretchr/testify/assert"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestMessageSenderInitialization(t *testing.T) {

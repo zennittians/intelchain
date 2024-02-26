@@ -25,14 +25,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/block"
 
-	consensus_engine "github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/params"
+	consensus_engine "github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and

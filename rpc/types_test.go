@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	internal_common "github.com/harmony-one/harmony/internal/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	internal_common "github.com/zennittians/intelchain/internal/common"
 )
 
 var (

@@ -2,15 +2,15 @@ package node
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
-	proto_node "github.com/harmony-one/harmony/api/proto/node"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/p2p"
-	"github.com/harmony-one/harmony/shard"
+	proto_node "github.com/zennittians/intelchain/api/proto/node"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/p2p"
+	"github.com/zennittians/intelchain/shard"
 )
 
 // BroadcastCXReceipts broadcasts cross shard receipts to correspoding

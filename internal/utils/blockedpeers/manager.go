@@ -3,8 +3,8 @@ package blockedpeers
 import (
 	"time"
 
-	"github.com/harmony-one/harmony/internal/utils/lrucache"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/zennittians/intelchain/internal/utils/lrucache"
 )
 
 type Manager struct {

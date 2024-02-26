@@ -5,13 +5,13 @@ import (
 	"log"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/api/proto"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/staking/slash"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/api/proto"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/staking/slash"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // MessageType is to indicate the specific type of message under Node category

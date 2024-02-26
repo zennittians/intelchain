@@ -5,12 +5,12 @@ import (
 	"io"
 	"sync"
 
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/internal/tikv"
-	tikvCommon "github.com/harmony-one/harmony/internal/tikv/common"
-	"github.com/harmony-one/harmony/internal/tikv/prefix"
-	"github.com/harmony-one/harmony/internal/tikv/remote"
-	"github.com/harmony-one/harmony/internal/tikv/statedb_cache"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/internal/tikv"
+	tikvCommon "github.com/zennittians/intelchain/internal/tikv/common"
+	"github.com/zennittians/intelchain/internal/tikv/prefix"
+	"github.com/zennittians/intelchain/internal/tikv/remote"
+	"github.com/zennittians/intelchain/internal/tikv/statedb_cache"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 )

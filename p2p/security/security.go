@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/internal/utils/blockedpeers"
 	libp2p_network "github.com/libp2p/go-libp2p/core/network"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils/blockedpeers"
 )
 
 type Security interface {

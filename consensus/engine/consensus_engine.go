@@ -5,17 +5,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/consensus/reward"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/state/snapshot"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/params"
-	"github.com/harmony-one/harmony/shard"
-	"github.com/harmony-one/harmony/shard/committee"
-	"github.com/harmony-one/harmony/staking/slash"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/consensus/reward"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/state/snapshot"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/shard"
+	"github.com/zennittians/intelchain/shard/committee"
+	"github.com/zennittians/intelchain/staking/slash"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // ChainReader defines a collection of methods needed to access the local

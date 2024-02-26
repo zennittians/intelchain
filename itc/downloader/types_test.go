@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/harmony-one/harmony/block"
-	headerV3 "github.com/harmony-one/harmony/block/v3"
-	"github.com/harmony-one/harmony/core/types"
-	bls_cosi "github.com/harmony-one/harmony/crypto/bls"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
+	"github.com/zennittians/intelchain/block"
+	headerV3 "github.com/zennittians/intelchain/block/v3"
+	"github.com/zennittians/intelchain/core/types"
+	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 func TestResultQueue_AddBlockResults(t *testing.T) {

@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harmony-one/abool"
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/registry"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/multibls"
-	"github.com/harmony-one/harmony/p2p"
-	"github.com/harmony-one/harmony/shard"
-	"github.com/harmony-one/harmony/staking/slash"
-	"github.com/harmony-one/harmony/test/helpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/zennittians/abool"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/registry"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/multibls"
+	"github.com/zennittians/intelchain/p2p"
+	"github.com/zennittians/intelchain/shard"
+	"github.com/zennittians/intelchain/staking/slash"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestConsensusInitialization(t *testing.T) {

@@ -5,13 +5,13 @@ import (
 
 	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	ffi_bls "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	ffi_bls "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
 )
 
 const (

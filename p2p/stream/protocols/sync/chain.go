@@ -8,15 +8,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/internal/utils/keylocker"
-	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils/keylocker"
+	"github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
 )
 
 // chainHelper is the adapter for blockchain which is friendly to unit test.

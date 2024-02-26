@@ -1,18 +1,18 @@
 package node
 
 import (
-	"github.com/harmony-one/harmony/consensus/quorum"
-	"github.com/harmony-one/harmony/consensus/votepower"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/hmy"
-	"github.com/harmony-one/harmony/internal/tikv"
-	"github.com/harmony-one/harmony/rosetta"
-	hmy_rpc "github.com/harmony-one/harmony/rpc"
-	rpc_common "github.com/harmony-one/harmony/rpc/common"
-	"github.com/harmony-one/harmony/rpc/filters"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/zennittians/intelchain/consensus/quorum"
+	"github.com/zennittians/intelchain/consensus/votepower"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/internal/tikv"
+	"github.com/zennittians/intelchain/rosetta"
+	hmy_rpc "github.com/zennittians/intelchain/rpc"
+	rpc_common "github.com/zennittians/intelchain/rpc/common"
+	"github.com/zennittians/intelchain/rpc/filters"
 )
 
 // IsCurrentlyLeader exposes if node is currently the leader node

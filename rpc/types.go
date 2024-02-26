@@ -10,20 +10,20 @@ import (
 	"strings"
 	"time"
 
-	internal_common "github.com/harmony-one/harmony/internal/common"
 	"github.com/pkg/errors"
+	internal_common "github.com/zennittians/intelchain/internal/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/eth/rpc"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
 )
 
 // CallArgs represents the arguments for a call.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # list of process name to be killed
-targetProcess=( "harmony" "bootnode" "soldier" "commander" "profiler" )
+targetProcess=( "intelchain" "bootnode" "soldier" "commander" "profiler" )
 
 NAME="$(uname -s)"
 

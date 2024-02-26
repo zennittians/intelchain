@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/service/kms"
-	ffi_bls "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/crypto/bls"
 	"github.com/pkg/errors"
+	ffi_bls "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 )
 
 // GenBLSKeyWithPassPhrase generates bls key with passphrase and write into disk.

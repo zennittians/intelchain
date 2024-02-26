@@ -4,13 +4,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/harmony-one/harmony/common/denominations"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/consensus/reward"
-	"github.com/harmony-one/harmony/internal/utils"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
-	stakingReward "github.com/harmony-one/harmony/staking/reward"
+	"github.com/zennittians/intelchain/common/denominations"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/consensus/reward"
+	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
+	stakingReward "github.com/zennittians/intelchain/staking/reward"
 )
 
 var (

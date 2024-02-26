@@ -3,10 +3,10 @@ package multibls
 import (
 	"strings"
 
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/crypto/bls"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 )
 
 // PrivateKeys stores the bls secret keys that belongs to the node

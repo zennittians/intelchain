@@ -10,19 +10,19 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring/roaring64"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
-	"github.com/harmony-one/harmony/internal/tikv"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	"github.com/zennittians/intelchain/internal/tikv"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/abool"
-	"github.com/harmony-one/harmony/core"
-	core2 "github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/hmy/tracers"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/utils"
-	staking "github.com/harmony-one/harmony/staking/types"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/abool"
+	"github.com/zennittians/intelchain/core"
+	core2 "github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/hmy/tracers"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/utils"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

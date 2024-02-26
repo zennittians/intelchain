@@ -23,10 +23,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
-	blockfactory "github.com/harmony-one/harmony/block/factory"
-	"github.com/harmony-one/harmony/core/types"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/block"
+	blockfactory "github.com/zennittians/intelchain/block/factory"
+	"github.com/zennittians/intelchain/core/types"
+	staking "github.com/zennittians/intelchain/staking/types"
 	"golang.org/x/crypto/sha3"
 )
 

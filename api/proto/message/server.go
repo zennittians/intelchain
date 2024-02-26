@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 	"google.golang.org/grpc"
 )
 

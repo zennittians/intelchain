@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 )
 
 type dummyContractRef struct {

@@ -15,16 +15,16 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/hmy"
-	"github.com/harmony-one/harmony/internal/cli"
-	"github.com/harmony-one/harmony/shard"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/internal/cli"
+	"github.com/zennittians/intelchain/shard"
 
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
-	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
 )
 
 var snapdbInfo = rawdb.SnapdbInfo{}

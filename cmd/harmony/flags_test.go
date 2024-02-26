@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/harmony-one/harmony/common/denominations"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
+	"github.com/zennittians/intelchain/common/denominations"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
 
 	"github.com/spf13/cobra"
 
-	"github.com/harmony-one/harmony/internal/cli"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
+	"github.com/zennittians/intelchain/internal/cli"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 var (

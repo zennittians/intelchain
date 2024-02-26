@@ -4,9 +4,9 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils/crosslinks"
 	"github.com/stretchr/testify/require"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils/crosslinks"
 )
 
 func TestCrosslink(t *testing.T) {

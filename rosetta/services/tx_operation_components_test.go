@@ -6,9 +6,9 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/harmony-one/harmony/crypto/bls"
-	internalCommon "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/rosetta/common"
+	"github.com/zennittians/intelchain/crypto/bls"
+	internalCommon "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/rosetta/common"
 )
 
 func TestGetContractCreationOperationComponents(t *testing.T) {

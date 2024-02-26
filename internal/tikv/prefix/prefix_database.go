@@ -2,8 +2,8 @@ package prefix
 
 import (
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/harmony-one/harmony/internal/tikv/byte_alloc"
-	"github.com/harmony-one/harmony/internal/tikv/common"
+	"github.com/zennittians/intelchain/internal/tikv/byte_alloc"
+	"github.com/zennittians/intelchain/internal/tikv/common"
 )
 
 // PrefixDatabase is a wrapper to split the storage with prefix

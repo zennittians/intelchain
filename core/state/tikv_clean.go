@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/harmony-one/harmony/internal/shardchain/tikv_manage"
+	"github.com/zennittians/intelchain/internal/shardchain/tikv_manage"
 )
 
 var secureKeyPrefix = []byte("secure-key-")

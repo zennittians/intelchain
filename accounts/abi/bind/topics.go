@@ -25,7 +25,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/harmony-one/harmony/accounts/abi"
+	"github.com/zennittians/intelchain/accounts/abi"
 )
 
 // makeTopics converts a filter query argument list into a filter topic set.

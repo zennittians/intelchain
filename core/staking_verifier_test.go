@@ -7,23 +7,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/params"
 
-	"github.com/harmony-one/harmony/core/rawdb"
+	"github.com/zennittians/intelchain/core/rawdb"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/block"
-	consensus_engine "github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core/state"
-	"github.com/harmony-one/harmony/core/vm"
-	"github.com/harmony-one/harmony/crypto/hash"
-	"github.com/harmony-one/harmony/numeric"
-	"github.com/harmony-one/harmony/shard"
-	"github.com/harmony-one/harmony/staking/effective"
-	staking "github.com/harmony-one/harmony/staking/types"
-	staketest "github.com/harmony-one/harmony/staking/types/test"
+	"github.com/zennittians/intelchain/block"
+	consensus_engine "github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core/state"
+	"github.com/zennittians/intelchain/core/vm"
+	"github.com/zennittians/intelchain/crypto/hash"
+	"github.com/zennittians/intelchain/numeric"
+	"github.com/zennittians/intelchain/shard"
+	"github.com/zennittians/intelchain/staking/effective"
+	staking "github.com/zennittians/intelchain/staking/types"
+	staketest "github.com/zennittians/intelchain/staking/types/test"
 )
 
 const (
@@ -1790,11 +1790,11 @@ func (chain *fakeErrChainContext) ReadValidatorSnapshot(common.Address) (*stakin
 }
 
 func makeIdentityStr(item interface{}) string {
-	return fmt.Sprintf("harmony-one-%v", item)
+	return fmt.Sprintf("zennittians-%v", item)
 }
 
 func makeTestAddr(item interface{}) common.Address {
-	s := fmt.Sprintf("harmony-one-%v", item)
+	s := fmt.Sprintf("zennittians-%v", item)
 	return common.BytesToAddress([]byte(s))
 }
 

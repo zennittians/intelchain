@@ -3,11 +3,11 @@ package consensus
 import (
 	"testing"
 
-	"github.com/harmony-one/harmony/crypto/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 
-	bls_core "github.com/harmony-one/bls/ffi/go/bls"
-	harmony_bls "github.com/harmony-one/harmony/crypto/bls"
 	"github.com/stretchr/testify/assert"
+	bls_core "github.com/zennittians/bls/ffi/go/bls"
+	harmony_bls "github.com/zennittians/intelchain/crypto/bls"
 )
 
 func TestBasicViewChanging(t *testing.T) {
@@ -86,7 +86,7 @@ func TestGetNextLeaderKeyShouldFailForStandardGeneratedConsensus(t *testing.T) {
 	assert.NoError(t, err)
 
 	// The below results in: "panic: runtime error: integer divide by zero"
-	// This happens because there's no check for if there are any participants or not in https://github.com/harmony-one/harmony/blob/main/consensus/quorum/quorum.go#L188-L197
+	// This happens because there's no check for if there are any participants or not in https://github.com/zennittians/intelchain/blob/main/consensus/quorum/quorum.go#L188-L197
 	assert.Panics(t, func() { consensus.getNextLeaderKey(uint64(1), nil) })
 }
 

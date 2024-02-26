@@ -21,13 +21,13 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/core/state"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/core/state"
 )
 
 func TestMemoryGasCost(t *testing.T) {

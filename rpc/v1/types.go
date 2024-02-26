@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/crypto/bls"
-	internal_common "github.com/harmony-one/harmony/internal/common"
-	staking "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/crypto/bls"
+	internal_common "github.com/zennittians/intelchain/internal/common"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // BlockWithTxHash represents a block that will serialize to the RPC representation of a block

@@ -11,16 +11,16 @@ import (
 
 	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/harmony-one/harmony/crypto/bls"
-	"github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/numeric"
+	"github.com/zennittians/intelchain/crypto/bls"
+	"github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/numeric"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmytypes "github.com/harmony-one/harmony/core/types"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
-	"github.com/harmony-one/harmony/test/helpers"
+	hmytypes "github.com/zennittians/intelchain/core/types"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
+	"github.com/zennittians/intelchain/test/helpers"
 )
 
 func TestUnpackWrappedTransactionFromString(t *testing.T) {

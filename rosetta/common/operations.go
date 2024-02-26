@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/harmony-one/harmony/internal/common"
+	"github.com/zennittians/intelchain/internal/common"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 
-	rpcV2 "github.com/harmony-one/harmony/rpc/v2"
-	staking "github.com/harmony-one/harmony/staking/types"
+	rpcV2 "github.com/zennittians/intelchain/rpc/v2"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 const (

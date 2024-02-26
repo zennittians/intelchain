@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"github.com/harmony-one/bls/ffi/go/bls"
 	"github.com/pkg/errors"
+	"github.com/zennittians/bls/ffi/go/bls"
 )
 
 var (

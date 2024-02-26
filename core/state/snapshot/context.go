@@ -26,8 +26,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 const (

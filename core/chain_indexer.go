@@ -29,9 +29,9 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/rs/zerolog"
 
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/rawdb"
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 type Chain interface {

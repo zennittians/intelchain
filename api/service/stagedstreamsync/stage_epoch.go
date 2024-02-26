@@ -3,13 +3,13 @@ package stagedstreamsync
 import (
 	"context"
 
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/utils"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/utils"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
+	"github.com/zennittians/intelchain/shard"
 )
 
 type StageEpoch struct {

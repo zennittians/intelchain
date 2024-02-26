@@ -8,19 +8,19 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/internal/chain"
-	"github.com/harmony-one/harmony/internal/utils"
-	syncproto "github.com/harmony-one/harmony/p2p/stream/protocols/sync"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/internal/chain"
+	"github.com/zennittians/intelchain/internal/utils"
+	syncproto "github.com/zennittians/intelchain/p2p/stream/protocols/sync"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
+	"github.com/zennittians/intelchain/shard"
 )
 
 type InvalidBlock struct {

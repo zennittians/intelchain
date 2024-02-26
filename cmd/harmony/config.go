@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/cli"
-	harmonyconfig "github.com/harmony-one/harmony/internal/configs/harmony"
-	nodeconfig "github.com/harmony-one/harmony/internal/configs/node"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
+	"github.com/zennittians/intelchain/internal/cli"
+	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 // TODO: use specific type wise validation instead of general string types assertion.

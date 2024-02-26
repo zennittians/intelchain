@@ -6,16 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harmony-one/harmony/internal/utils"
+	"github.com/zennittians/intelchain/internal/utils"
 
-	"github.com/harmony-one/harmony/internal/tikv/redis_helper"
+	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/block"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/eth/rpc"
-	hmy_rpc "github.com/harmony-one/harmony/rpc"
+	"github.com/zennittians/intelchain/block"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/eth/rpc"
+	hmy_rpc "github.com/zennittians/intelchain/rpc"
 )
 
 var (

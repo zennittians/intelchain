@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	shardingconfig "github.com/harmony-one/harmony/internal/configs/sharding"
-	"github.com/harmony-one/harmony/shard"
+	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
+	"github.com/zennittians/intelchain/shard"
 )
 
 const (

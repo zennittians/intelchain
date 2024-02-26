@@ -1,9 +1,9 @@
 package consensus
 
 import (
-	msg_pb "github.com/harmony-one/harmony/api/proto/message"
-	"github.com/harmony-one/harmony/consensus"
-	"github.com/harmony-one/harmony/internal/utils"
+	msg_pb "github.com/zennittians/intelchain/api/proto/message"
+	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // Service is the consensus service.

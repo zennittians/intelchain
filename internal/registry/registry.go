@@ -3,10 +3,10 @@ package registry
 import (
 	"sync"
 
-	"github.com/harmony-one/harmony/consensus/engine"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/internal/shardchain"
-	"github.com/harmony-one/harmony/webhooks"
+	"github.com/zennittians/intelchain/consensus/engine"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/internal/shardchain"
+	"github.com/zennittians/intelchain/webhooks"
 )
 
 // Registry consolidates services at one place.

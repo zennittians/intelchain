@@ -7,11 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/harmony-one/harmony/accounts/abi"
-	"github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/shard"
-	"github.com/harmony-one/harmony/staking"
-	stakingTypes "github.com/harmony-one/harmony/staking/types"
+	"github.com/zennittians/intelchain/accounts/abi"
+	"github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/shard"
+	"github.com/zennittians/intelchain/staking"
+	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 // WriteCapablePrecompiledContractsStaking lists out the write capable precompiled contracts

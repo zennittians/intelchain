@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/core"
-	"github.com/harmony-one/harmony/shard"
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/zennittians/intelchain/core"
+	"github.com/zennittians/intelchain/shard"
 )
 
 type StageLastMile struct {

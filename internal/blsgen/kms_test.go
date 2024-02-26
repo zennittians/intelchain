@@ -13,8 +13,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/ethereum/go-ethereum/common"
-	ffi_bls "github.com/harmony-one/bls/ffi/go/bls"
-	"github.com/harmony-one/harmony/crypto/bls"
+	ffi_bls "github.com/zennittians/bls/ffi/go/bls"
+	"github.com/zennittians/intelchain/crypto/bls"
 )
 
 var TestAwsConfig = AwsConfig{

@@ -4,12 +4,12 @@ import (
 	"math/big"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/internal/params"
+	"github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/internal/params"
 
-	"github.com/harmony-one/harmony/numeric"
+	"github.com/zennittians/intelchain/numeric"
 
-	"github.com/harmony-one/harmony/internal/genesis"
+	"github.com/zennittians/intelchain/internal/genesis"
 )
 
 const (

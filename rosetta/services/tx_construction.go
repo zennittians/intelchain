@@ -7,14 +7,14 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/harmony-one/harmony/crypto/bls"
-	common2 "github.com/harmony-one/harmony/internal/common"
-	"github.com/harmony-one/harmony/numeric"
-	types2 "github.com/harmony-one/harmony/staking/types"
 	"github.com/pkg/errors"
+	"github.com/zennittians/intelchain/crypto/bls"
+	common2 "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/numeric"
+	types2 "github.com/zennittians/intelchain/staking/types"
 
-	hmyTypes "github.com/harmony-one/harmony/core/types"
-	"github.com/harmony-one/harmony/rosetta/common"
+	hmyTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/rosetta/common"
 )
 
 // TransactionMetadata contains all (optional) information for a transaction.

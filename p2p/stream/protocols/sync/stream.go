@@ -10,12 +10,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	protobuf "github.com/golang/protobuf/proto"
-	"github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	syncpb "github.com/harmony-one/harmony/p2p/stream/protocols/sync/message"
-	sttypes "github.com/harmony-one/harmony/p2p/stream/types"
 	libp2p_network "github.com/libp2p/go-libp2p/core/network"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	syncpb "github.com/zennittians/intelchain/p2p/stream/protocols/sync/message"
+	sttypes "github.com/zennittians/intelchain/p2p/stream/types"
 )
 
 // syncStream is the structure for a stream running sync protocol.
