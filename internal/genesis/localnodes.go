@@ -1,7 +1,7 @@
 package genesis
 
-// LocalHarmonyAccounts are the accounts for the initial genesis nodes used for local test.
-var LocalHarmonyAccounts = []DeployAccount{
+// LocalIntelchainAccounts are the accounts for the initial genesis nodes used for local test.
+var LocalIntelchainAccounts = []DeployAccount{
 	{Index: " 0 ", Address: "one1pdv9lrdwl0rg5vglh4xtyrv3wjk3wsqket7zxy", BLSPublicKey: "65f55eb3052f9e9f632b2923be594ba77c55543f5c58ee1454b9cfd658d25e06373b0f7d42a19c84768139ea294f6204"},
 	{Index: " 1 ", Address: "one1m6m0ll3q7ljdqgmth2t5j7dfe6stykucpj2nr5", BLSPublicKey: "40379eed79ed82bebfb4310894fd33b6a3f8413a78dc4d43b98d0adc9ef69f3285df05eaab9f2ce5f7227f8cb920e809"},
 	{Index: " 2 ", Address: "one12fuf7x9rgtdgqg7vgq0962c556m3p7afsxgvll", BLSPublicKey: "02c8ff0b88f313717bc3a627d2f8bb172ba3ad3bb9ba3ecb8eed4b7c878653d3d4faf769876c528b73f343967f74a917"},
@@ -22,8 +22,8 @@ var LocalFnAccounts = []DeployAccount{
 	{Index: " 3 ", Address: "one129r9pj3sk0re76f7zs3qz92rggmdgjhtwge62k", BLSPublicKey: "63f479f249c59f0486fda8caa2ffb247209489dae009dfde6144ff38c370230963d360dffd318cfb26c213320e89a512"},
 }
 
-// LocalHarmonyAccountsV1 are the accounts for the initial genesis nodes used for local test.
-var LocalHarmonyAccountsV1 = []DeployAccount{
+// LocalIntelchainAccountsV1 are the accounts for the initial genesis nodes used for local test.
+var LocalIntelchainAccountsV1 = []DeployAccount{
 	{Index: " 0 ", Address: "one1pdv9lrdwl0rg5vglh4xtyrv3wjk3wsqket7zxy", BLSPublicKey: "65f55eb3052f9e9f632b2923be594ba77c55543f5c58ee1454b9cfd658d25e06373b0f7d42a19c84768139ea294f6204"},
 	{Index: " 1 ", Address: "one1m6m0ll3q7ljdqgmth2t5j7dfe6stykucpj2nr5", BLSPublicKey: "40379eed79ed82bebfb4310894fd33b6a3f8413a78dc4d43b98d0adc9ef69f3285df05eaab9f2ce5f7227f8cb920e809"},
 	{Index: " 2 ", Address: "one12fuf7x9rgtdgqg7vgq0962c556m3p7afsxgvll", BLSPublicKey: "02c8ff0b88f313717bc3a627d2f8bb172ba3ad3bb9ba3ecb8eed4b7c878653d3d4faf769876c528b73f343967f74a917"},
@@ -46,8 +46,8 @@ var LocalFnAccountsV1 = []DeployAccount{
 	{Index: " 5 ", Address: "one1658znfwf40epvy7e46cqrmzyy54h4n0qa73nep", BLSPublicKey: "576d3c48294e00d6be4a22b07b66a870ddee03052fe48a5abbd180222e5d5a1f8946a78d55b025de21635fd743bbad90"},
 }
 
-// LocalHarmonyAccountsV2 are the accounts for the initial genesis nodes used for local test.
-var LocalHarmonyAccountsV2 = []DeployAccount{
+// LocalIntelchainAccountsV2 are the accounts for the initial genesis nodes used for local test.
+var LocalIntelchainAccountsV2 = []DeployAccount{
 	{Index: " 0 ", Address: "one1pdv9lrdwl0rg5vglh4xtyrv3wjk3wsqket7zxy", BLSPublicKey: "65f55eb3052f9e9f632b2923be594ba77c55543f5c58ee1454b9cfd658d25e06373b0f7d42a19c84768139ea294f6204"},
 	{Index: " 1 ", Address: "one1m6m0ll3q7ljdqgmth2t5j7dfe6stykucpj2nr5", BLSPublicKey: "40379eed79ed82bebfb4310894fd33b6a3f8413a78dc4d43b98d0adc9ef69f3285df05eaab9f2ce5f7227f8cb920e809"},
 	{Index: " 2 ", Address: "one12fuf7x9rgtdgqg7vgq0962c556m3p7afsxgvll", BLSPublicKey: "02c8ff0b88f313717bc3a627d2f8bb172ba3ad3bb9ba3ecb8eed4b7c878653d3d4faf769876c528b73f343967f74a917"},

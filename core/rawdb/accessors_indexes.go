@@ -118,10 +118,10 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 	if tx == nil {
 		missing = true
 	} else {
-		hmyHash := tx.Hash()
+		itcHash := tx.Hash()
 		ethHash := tx.ConvertToEth().Hash()
 
-		if !bytes.Equal(hash.Bytes(), hmyHash.Bytes()) && !bytes.Equal(hash.Bytes(), ethHash.Bytes()) {
+		if !bytes.Equal(hash.Bytes(), itcHash.Bytes()) && !bytes.Equal(hash.Bytes(), ethHash.Bytes()) {
 			missing = true
 		}
 	}

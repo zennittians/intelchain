@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 
 	"github.com/zennittians/intelchain/internal/blsgen"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
@@ -18,7 +18,7 @@ var (
 )
 
 // setupConsensusKeys load bls keys and set the keys to nodeConfig. Return the loaded public keys.
-func setupConsensusKeys(hc harmonyconfig.HarmonyConfig, config *nodeconfig.ConfigType) multibls.PublicKeys {
+func setupConsensusKeys(hc intelchainconfig.IntelchainConfig, config *nodeconfig.ConfigType) multibls.PublicKeys {
 	onceLoadBLSKey.Do(func() {
 		var err error
 		multiBLSPriKey, err = loadBLSKeys(hc.BLSKeys)
@@ -32,7 +32,7 @@ func setupConsensusKeys(hc harmonyconfig.HarmonyConfig, config *nodeconfig.Confi
 	return multiBLSPriKey.GetPublicKeys()
 }
 
-func loadBLSKeys(raw harmonyconfig.BlsConfig) (multibls.PrivateKeys, error) {
+func loadBLSKeys(raw intelchainconfig.BlsConfig) (multibls.PrivateKeys, error) {
 	config, err := parseBLSLoadingConfig(raw)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func loadBLSKeys(raw harmonyconfig.BlsConfig) (multibls.PrivateKeys, error) {
 	return keys.Dedup(), err
 }
 
-func parseBLSLoadingConfig(raw harmonyconfig.BlsConfig) (blsgen.Config, error) {
+func parseBLSLoadingConfig(raw intelchainconfig.BlsConfig) (blsgen.Config, error) {
 	var (
 		config blsgen.Config
 		err    error
@@ -71,7 +71,7 @@ func parseBLSLoadingConfig(raw harmonyconfig.BlsConfig) (blsgen.Config, error) {
 	return config, nil
 }
 
-func parseBLSPassConfig(cfg blsgen.Config, raw harmonyconfig.BlsConfig) (blsgen.Config, error) {
+func parseBLSPassConfig(cfg blsgen.Config, raw intelchainconfig.BlsConfig) (blsgen.Config, error) {
 	if !raw.PassEnabled {
 		cfg.PassSrcType = blsgen.PassSrcNil
 		return blsgen.Config{}, nil
@@ -92,7 +92,7 @@ func parseBLSPassConfig(cfg blsgen.Config, raw harmonyconfig.BlsConfig) (blsgen.
 	return cfg, nil
 }
 
-func parseBLSKmsConfig(cfg blsgen.Config, raw harmonyconfig.BlsConfig) (blsgen.Config, error) {
+func parseBLSKmsConfig(cfg blsgen.Config, raw intelchainconfig.BlsConfig) (blsgen.Config, error) {
 	if !raw.KMSEnabled {
 		cfg.AwsCfgSrcType = blsgen.AwsCfgSrcNil
 		return cfg, nil

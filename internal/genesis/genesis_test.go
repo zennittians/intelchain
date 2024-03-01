@@ -23,8 +23,8 @@ func TestCommitteeAccounts(test *testing.T) {
 	testAccounts(test, FoundationalNodeAccountsV1_3)
 	testAccounts(test, FoundationalNodeAccountsV1_4)
 	testAccounts(test, FoundationalNodeAccountsV1_5)
-	testAccounts(test, HarmonyAccounts)
-	testAccounts(test, TNHarmonyAccounts)
+	testAccounts(test, IntelchainAccounts)
+	testAccounts(test, TNIntelchainAccounts)
 	testAccounts(test, TNFoundationalAccounts)
 	testAccounts(test, PangaeaAccounts)
 }

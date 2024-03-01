@@ -12,32 +12,32 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/zennittians/intelchain/common/denominations"
-	hmyTypes "github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy"
+	itcTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 const (
 	// DefaultGasPrice ..
-	DefaultGasPrice = 100 * denominations.Nano
+	DefaultGasPrice = 100 * denominations.Intello
 )
 
 // ConstructAPI implements the server.ConstructAPIServicer interface.
 type ConstructAPI struct {
-	hmy            *hmy.Harmony
-	signer         hmyTypes.Signer
+	itc            *itc.Intelchain
+	signer         itcTypes.Signer
 	stakingSigner  stakingTypes.Signer
 	evmCallTimeout time.Duration
 }
 
 // NewConstructionAPI creates a new instance of a ConstructAPI.
-func NewConstructionAPI(hmy *hmy.Harmony) server.ConstructionAPIServicer {
+func NewConstructionAPI(itc *itc.Intelchain) server.ConstructionAPIServicer {
 	return &ConstructAPI{
-		hmy:            hmy,
-		signer:         hmyTypes.NewEIP155Signer(new(big.Int).SetUint64(hmy.ChainID)),
-		stakingSigner:  stakingTypes.NewEIP155Signer(new(big.Int).SetUint64(hmy.ChainID)),
-		evmCallTimeout: hmy.NodeAPI.GetConfig().NodeConfig.RPCServer.EvmCallTimeout,
+		itc:            itc,
+		signer:         itcTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
+		stakingSigner:  stakingTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
+		evmCallTimeout: itc.NodeAPI.GetConfig().NodeConfig.RPCServer.EvmCallTimeout,
 	}
 }
 
@@ -45,7 +45,7 @@ func NewConstructionAPI(hmy *hmy.Harmony) server.ConstructionAPIServicer {
 func (s *ConstructAPI) ConstructionDerive(
 	ctx context.Context, request *types.ConstructionDeriveRequest,
 ) (*types.ConstructionDeriveResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 	address, rosettaError := getAddressFromPublicKey(request.PublicKey)

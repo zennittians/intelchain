@@ -13,8 +13,8 @@ import (
 
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
 	commonRPC "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/shard"
@@ -22,13 +22,13 @@ import (
 
 // NetworkAPI implements the server.NetworkAPIServicer interface.
 type NetworkAPI struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
 // NewNetworkAPI creates a new instance of a NetworkAPI.
-func NewNetworkAPI(hmy *hmy.Harmony) server.NetworkAPIServicer {
+func NewNetworkAPI(itc *itc.Intelchain) server.NetworkAPIServicer {
 	return &NetworkAPI{
-		hmy: hmy,
+		itc: itc,
 	}
 }
 
@@ -37,7 +37,7 @@ func NewNetworkAPI(hmy *hmy.Harmony) server.NetworkAPIServicer {
 func (s *NetworkAPI) NetworkList(
 	ctx context.Context, request *types.MetadataRequest,
 ) (*types.NetworkListResponse, *types.Error) {
-	network, err := common.GetNetwork(s.hmy.ShardID)
+	network, err := common.GetNetwork(s.itc.ShardID)
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": err.Error(),
@@ -54,37 +54,37 @@ func (s *NetworkAPI) NetworkList(
 func (s *NetworkAPI) NetworkStatus(
 	ctx context.Context, request *types.NetworkRequest,
 ) (*types.NetworkStatusResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 
 	// Fetch relevant headers, syncing status, & peers
-	currBlock := s.hmy.CurrentBlock()
+	currBlock := s.itc.CurrentBlock()
 	var currentHeader *block.Header
 	var err error
-	if currBlock.Number().Cmp(big.NewInt(0)) == 1 && !s.hmy.IsStakingEpoch(currBlock.Epoch()) {
+	if currBlock.Number().Cmp(big.NewInt(0)) == 1 && !s.itc.IsStakingEpoch(currBlock.Epoch()) {
 		// all blocks in the era before staking epoch requires the next block to get the block reward transactions
 		blkNum := new(big.Int).Sub(currBlock.Number(), big.NewInt(1))
-		currentHeader, err = s.hmy.HeaderByNumber(ctx, rpc.BlockNumber(blkNum.Uint64()))
+		currentHeader, err = s.itc.HeaderByNumber(ctx, rpc.BlockNumber(blkNum.Uint64()))
 	} else {
-		currentHeader, err = s.hmy.HeaderByNumber(ctx, rpc.LatestBlockNumber)
+		currentHeader, err = s.itc.HeaderByNumber(ctx, rpc.LatestBlockNumber)
 	}
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": fmt.Sprintf("unable to get current header: %v", err.Error()),
 		})
 	}
-	genesisHeader, err := s.hmy.HeaderByNumber(ctx, rpc.BlockNumber(0))
+	genesisHeader, err := s.itc.HeaderByNumber(ctx, rpc.BlockNumber(0))
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": fmt.Sprintf("unable to get genesis header: %v", err.Error()),
 		})
 	}
-	peers, rosettaError := getPeersFromNodePeerInfo(s.hmy.GetPeerInfo())
+	peers, rosettaError := getPeersFromNodePeerInfo(s.itc.GetPeerInfo())
 	if rosettaError != nil {
 		return nil, rosettaError
 	}
-	isSyncing, targetHeight, _ := s.hmy.NodeAPI.SyncStatus(s.hmy.BlockChain.ShardID())
+	isSyncing, targetHeight, _ := s.itc.NodeAPI.SyncStatus(s.itc.BlockChain.ShardID())
 	syncStatus := common.SyncingFinish
 	if targetHeight == 0 {
 		syncStatus = common.SyncingUnknown
@@ -100,12 +100,12 @@ func (s *NetworkAPI) NetworkStatus(
 
 	// Only applicable to non-archival nodes
 	var oldestBlockIdentifier *types.BlockIdentifier
-	if !nodeconfig.GetShardConfig(s.hmy.ShardID).GetArchival() {
-		maxGarbCollectedBlockNum := s.hmy.BlockChain.GetMaxGarbageCollectedBlockNumber()
+	if !nodeconfig.GetShardConfig(s.itc.ShardID).GetArchival() {
+		maxGarbCollectedBlockNum := s.itc.BlockChain.GetMaxGarbageCollectedBlockNumber()
 		if maxGarbCollectedBlockNum == -1 || maxGarbCollectedBlockNum >= currentHeader.Number().Int64() {
 			oldestBlockIdentifier = currentBlockIdentifier
 		} else {
-			oldestBlockHeader, err := s.hmy.HeaderByNumber(ctx, rpc.BlockNumber(maxGarbCollectedBlockNum+1))
+			oldestBlockHeader, err := s.itc.HeaderByNumber(ctx, rpc.BlockNumber(maxGarbCollectedBlockNum+1))
 			if err != nil {
 				return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 					"message": fmt.Sprintf("unable to get oldest block header: %v", err.Error()),
@@ -145,14 +145,14 @@ func (s *NetworkAPI) NetworkStatus(
 func (s *NetworkAPI) NetworkOptions(
 	ctx context.Context, request *types.NetworkRequest,
 ) (*types.NetworkOptionsResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 
 	// Fetch allows based on current network option
 	var allow *types.Allow
-	isArchival := nodeconfig.GetShardConfig(s.hmy.ShardID).GetArchival()
-	if s.hmy.ShardID == shard.BeaconChainShardID {
+	isArchival := nodeconfig.GetShardConfig(s.itc.ShardID).GetArchival()
+	if s.itc.ShardID == shard.BeaconChainShardID {
 		allow = getBeaconAllow(isArchival)
 	} else {
 		allow = getAllow(isArchival)

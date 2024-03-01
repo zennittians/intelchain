@@ -124,7 +124,7 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 }
 
 func (node *Node) TraceLoopForExplorer() {
-	if !node.HarmonyConfig.General.TraceEnable {
+	if !node.IntelchainConfig.General.TraceEnable {
 		return
 	}
 	ch := make(chan core.TraceEvent)
@@ -147,7 +147,7 @@ func (node *Node) TraceLoopForExplorer() {
 
 // AddNewBlockForExplorer add new block for explorer.
 func (node *Node) AddNewBlockForExplorer(block *types.Block) {
-	if node.HarmonyConfig.General.RunElasticMode && node.HarmonyConfig.TiKV.Role == tikv.RoleReader {
+	if node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
 		node.Consensus.FBFTLog().DeleteBlockByNumber(block.NumberU64())
 		return
 	}
@@ -162,7 +162,7 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 		node.Consensus.FBFTLog().DeleteBlockByNumber(block.NumberU64())
 
 		// if in tikv mode, only master writer node need dump all explorer block
-		if !node.HarmonyConfig.General.RunElasticMode || node.Blockchain().IsTikvWriterMaster() {
+		if !node.IntelchainConfig.General.RunElasticMode || node.Blockchain().IsTikvWriterMaster() {
 			// Do dump all blocks from state syncing for explorer one time
 			// TODO: some blocks can be dumped before state syncing finished.
 			// And they would be dumped again here. Please fix it.
@@ -200,7 +200,7 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 // ExplorerMessageHandler passes received message in node_handler to explorer service.
 func (node *Node) commitBlockForExplorer(block *types.Block) {
 	// if in tikv mode, only master writer node need dump explorer block
-	if !node.HarmonyConfig.General.RunElasticMode || (node.HarmonyConfig.TiKV.Role == tikv.RoleWriter && node.Blockchain().IsTikvWriterMaster()) {
+	if !node.IntelchainConfig.General.RunElasticMode || (node.IntelchainConfig.TiKV.Role == tikv.RoleWriter && node.Blockchain().IsTikvWriterMaster()) {
 		if block.ShardID() != node.NodeConfig.ShardID {
 			return
 		}

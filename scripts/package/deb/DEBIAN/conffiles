@@ -1,4 +1,4 @@
-/etc/harmony/harmony.conf
-/etc/harmony/rclone.conf
-/etc/sysctl.d/99-harmony.conf
-/etc/systemd/system/harmony.service
+/etc/intelchain/intelchain.conf
+/etc/intelchain/rclone.conf
+/etc/sysctl.d/99-intelchain.conf
+/etc/systemd/system/intelchain.service

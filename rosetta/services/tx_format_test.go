@@ -10,7 +10,7 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmytypes "github.com/zennittians/intelchain/core/types"
+	itctypes "github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/rosetta/common"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
@@ -33,7 +33,7 @@ func assertNativeOperationTypeUniquenessInvariant(operations []*types.Operation)
 	return nil
 }
 
-// Note that this test only checks the general format of each type transaction on Harmony.
+// Note that this test only checks the general format of each type transaction on Intelchain.
 // The detailed operation checks for each type of transaction is done in separate unit tests.
 func TestFormatTransactionIntegration(t *testing.T) {
 	gasLimit := uint64(1e18)
@@ -74,8 +74,8 @@ func testFormatStakingTransaction(
 		t.Fatal(rosettaError)
 	}
 
-	receipt := &hmytypes.Receipt{
-		Status:  hmytypes.ReceiptStatusSuccessful,
+	receipt := &itctypes.Receipt{
+		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
 	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
@@ -113,7 +113,7 @@ func testFormatPlainTransaction(
 	t *testing.T, gasLimit, gasUsed uint64, senderKey, receiverKey *ecdsa.PrivateKey,
 ) {
 	// Note that post EIP-155 epoch singer is tested in detailed tests.
-	signer := hmytypes.HomesteadSigner{}
+	signer := itctypes.HomesteadSigner{}
 	tx, err := helpers.CreateTestTransaction(
 		signer, 0, 0, 0, 1e18, gasPrice, big.NewInt(1), []byte("test"),
 	)
@@ -129,8 +129,8 @@ func testFormatPlainTransaction(
 		t.Fatal(rosettaError)
 	}
 
-	receipt := &hmytypes.Receipt{
-		Status:  hmytypes.ReceiptStatusSuccessful,
+	receipt := &itctypes.Receipt{
+		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
 	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
@@ -170,7 +170,7 @@ func testFormatCrossShardSenderTransaction(
 	t *testing.T, gasLimit, gasUsed uint64, senderKey, receiverKey *ecdsa.PrivateKey,
 ) {
 	// Note that post EIP-155 epoch singer is tested in detailed tests.
-	signer := hmytypes.HomesteadSigner{}
+	signer := itctypes.HomesteadSigner{}
 	tx, err := helpers.CreateTestTransaction(
 		signer, 0, 1, 0, 1e18, gasPrice, big.NewInt(1), []byte("test"),
 	)
@@ -186,8 +186,8 @@ func testFormatCrossShardSenderTransaction(
 		t.Fatal(rosettaError)
 	}
 
-	receipt := &hmytypes.Receipt{
-		Status:  hmytypes.ReceiptStatusSuccessful,
+	receipt := &itctypes.Receipt{
+		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
 	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
@@ -221,7 +221,7 @@ func testFormatCrossShardSenderTransaction(
 }
 
 func TestFormatCrossShardReceiverTransaction(t *testing.T) {
-	signer := hmytypes.NewEIP155Signer(params.TestChainConfig.ChainID)
+	signer := itctypes.NewEIP155Signer(params.TestChainConfig.ChainID)
 	tx, err := helpers.CreateTestTransaction(
 		signer, 0, 1, 0, 1e18, gasPrice, big.NewInt(1), []byte{},
 	)
@@ -240,7 +240,7 @@ func TestFormatCrossShardReceiverTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	cxReceipt := &hmytypes.CXReceipt{
+	cxReceipt := &itctypes.CXReceipt{
 		TxHash:    tx.Hash(),
 		From:      senderAddr,
 		To:        tx.To(),

@@ -223,7 +223,7 @@ func (node *Node) doBeaconSyncing() {
 		return
 	}
 
-	if node.HarmonyConfig.General.RunElasticMode {
+	if node.IntelchainConfig.General.RunElasticMode {
 		return
 	}
 
@@ -264,7 +264,7 @@ func (node *Node) doBeaconSyncing() {
 			}
 
 			if err := node.epochSync.CreateSyncConfig(peers, shard.BeaconChainShardID, node.host.GetID(),
-				node.HarmonyConfig.P2P.WaitForEachPeerToConnect); err != nil {
+				node.IntelchainConfig.P2P.WaitForEachPeerToConnect); err != nil {
 				utils.Logger().Warn().Err(err).Msg("[EPOCHSYNC] cannot create beacon sync config")
 				continue
 			}
@@ -303,7 +303,7 @@ func (node *Node) doSync(syncInstance ISync, syncingPeerProvider SyncingPeerProv
 				Msg("cannot retrieve syncing peers")
 			return
 		}
-		if err := syncInstance.CreateSyncConfig(peers, shardID, node.host.GetID(), node.HarmonyConfig.P2P.WaitForEachPeerToConnect); err != nil {
+		if err := syncInstance.CreateSyncConfig(peers, shardID, node.host.GetID(), node.IntelchainConfig.P2P.WaitForEachPeerToConnect); err != nil {
 			utils.Logger().Warn().
 				Err(err).
 				Interface("peers", peers).
@@ -346,16 +346,16 @@ func (node *Node) StartGRPCSyncClient() {
 
 // NodeSyncing makes sure to start all the processes needed to sync the node based on different configuration factors.
 func (node *Node) NodeSyncing() {
-	if node.HarmonyConfig.General.RunElasticMode {
+	if node.IntelchainConfig.General.RunElasticMode {
 		node.syncFromTiKVWriter() // this is for both reader and backup writers
 
-		if node.HarmonyConfig.TiKV.Role == tikv.RoleReader {
+		if node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
 			node.Consensus.UpdateConsensusInformation()
 		}
-		if node.HarmonyConfig.TiKV.Role == tikv.RoleWriter {
+		if node.IntelchainConfig.TiKV.Role == tikv.RoleWriter {
 			node.supportSyncing() // the writer needs to be in sync with it's other peers
 		}
-	} else if !node.HarmonyConfig.General.IsOffline && (node.HarmonyConfig.DNSSync.Client || node.HarmonyConfig.Sync.Downloader) {
+	} else if !node.IntelchainConfig.General.IsOffline && (node.IntelchainConfig.DNSSync.Client || node.IntelchainConfig.Sync.Downloader) {
 		node.supportSyncing() // for non-writer-reader mode a.k.a tikv nodes
 	}
 }
@@ -376,7 +376,7 @@ func (node *Node) supportSyncing() {
 	}
 
 	// if stream sync client is running, don't create other sync client instances
-	if node.HarmonyConfig.Sync.Downloader {
+	if node.IntelchainConfig.Sync.Downloader {
 		return
 	}
 
@@ -643,7 +643,7 @@ func init() {
 var (
 	dnsServerRequestCounterVec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "hmy",
+			Namespace: "itc",
 			Subsystem: "dns_server",
 			Name:      "request_count",
 			Help:      "request count for each dns request",

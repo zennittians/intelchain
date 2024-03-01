@@ -1,4 +1,4 @@
-package hmy
+package itc
 
 import (
 	"context"
@@ -28,31 +28,31 @@ import (
 )
 
 // ChainConfig ...
-func (hmy *Harmony) ChainConfig() *params.ChainConfig {
-	return hmy.BlockChain.Config()
+func (itc *Intelchain) ChainConfig() *params.ChainConfig {
+	return itc.BlockChain.Config()
 }
 
 // GetShardState ...
-func (hmy *Harmony) GetShardState() (*shard.State, error) {
-	return hmy.BlockChain.ReadShardState(hmy.BlockChain.CurrentHeader().Epoch())
+func (itc *Intelchain) GetShardState() (*shard.State, error) {
+	return itc.BlockChain.ReadShardState(itc.BlockChain.CurrentHeader().Epoch())
 }
 
 // GetBlockSigners ..
-func (hmy *Harmony) GetBlockSigners(
+func (itc *Intelchain) GetBlockSigners(
 	ctx context.Context, blockNum rpc.BlockNumber,
 ) (shard.SlotList, *internal_bls.Mask, error) {
-	blk, err := hmy.BlockByNumber(ctx, blockNum)
+	blk, err := itc.BlockByNumber(ctx, blockNum)
 	if err != nil {
 		return nil, nil, err
 	}
-	blockWithSigners, err := hmy.BlockByNumber(ctx, blockNum+1)
+	blockWithSigners, err := itc.BlockByNumber(ctx, blockNum+1)
 	if err != nil {
 		return nil, nil, err
 	}
 	if blockWithSigners == nil {
 		return nil, nil, fmt.Errorf("block number %v not found", blockNum+1)
 	}
-	committee, err := hmy.GetValidators(blk.Epoch())
+	committee, err := itc.GetValidators(blk.Epoch())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -85,14 +85,14 @@ type DetailedBlockSignerInfo struct {
 }
 
 // GetDetailedBlockSignerInfo fetches the block signer information for any non-genesis block
-func (hmy *Harmony) GetDetailedBlockSignerInfo(
+func (itc *Intelchain) GetDetailedBlockSignerInfo(
 	ctx context.Context, blk *types.Block,
 ) (*DetailedBlockSignerInfo, error) {
-	parentBlk, err := hmy.BlockByNumber(ctx, rpc.BlockNumber(blk.NumberU64()-1))
+	parentBlk, err := itc.BlockByNumber(ctx, rpc.BlockNumber(blk.NumberU64()-1))
 	if err != nil {
 		return nil, err
 	}
-	parentShardState, err := hmy.BlockChain.ReadShardState(parentBlk.Epoch())
+	parentShardState, err := itc.BlockChain.ReadShardState(parentBlk.Epoch())
 	if err != nil {
 		return nil, err
 	}
@@ -111,19 +111,19 @@ type PreStakingBlockRewards map[common.Address]*big.Int
 
 // GetPreStakingBlockRewards for the given block number.
 // Calculated rewards are done exactly like chain.AccumulateRewardsAndCountSigs.
-func (hmy *Harmony) GetPreStakingBlockRewards(
+func (itc *Intelchain) GetPreStakingBlockRewards(
 	ctx context.Context, blk *types.Block,
 ) (PreStakingBlockRewards, error) {
-	if hmy.IsStakingEpoch(blk.Epoch()) {
+	if itc.IsStakingEpoch(blk.Epoch()) {
 		return nil, fmt.Errorf("block %v is in staking era", blk.Number())
 	}
 
-	if cachedReward, ok := hmy.preStakingBlockRewardsCache.Get(blk.Hash()); ok {
+	if cachedReward, ok := itc.preStakingBlockRewardsCache.Get(blk.Hash()); ok {
 		return cachedReward.(PreStakingBlockRewards), nil
 	}
 	rewards := PreStakingBlockRewards{}
 
-	sigInfo, err := hmy.GetDetailedBlockSignerInfo(ctx, blk)
+	sigInfo, err := itc.GetDetailedBlockSignerInfo(ctx, blk)
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +142,14 @@ func (hmy *Harmony) GetPreStakingBlockRewards(
 	}
 
 	// Report tx fees of the coinbase (== leader)
-	receipts, err := hmy.GetReceipts(ctx, blk.Hash())
+	receipts, err := itc.GetReceipts(ctx, blk.Hash())
 	if err != nil {
 		return nil, err
 	}
 	txFees := big.NewInt(0)
 	for _, tx := range blk.Transactions() {
 		txnHash := tx.HashByType()
-		dbTx, _, _, receiptIndex := rawdb.ReadTransaction(hmy.ChainDb(), txnHash)
+		dbTx, _, _, receiptIndex := rawdb.ReadTransaction(itc.ChainDb(), txnHash)
 		if dbTx == nil {
 			return nil, fmt.Errorf("could not find receipt for tx: %v", txnHash.String())
 		}
@@ -167,33 +167,33 @@ func (hmy *Harmony) GetPreStakingBlockRewards(
 		rewards[blk.Header().Coinbase()] = txFees
 	}
 
-	hmy.preStakingBlockRewardsCache.Add(blk.Hash(), rewards)
+	itc.preStakingBlockRewardsCache.Add(blk.Hash(), rewards)
 	return rewards, nil
 }
 
 // GetLatestChainHeaders ..
-func (hmy *Harmony) GetLatestChainHeaders() *block.HeaderPair {
+func (itc *Intelchain) GetLatestChainHeaders() *block.HeaderPair {
 	pair := &block.HeaderPair{
 		BeaconHeader: &block.Header{Header: v3.NewHeader()},
 		ShardHeader:  &block.Header{Header: v3.NewHeader()},
 	}
 
-	if hmy.BeaconChain != nil {
-		pair.BeaconHeader = hmy.BeaconChain.CurrentHeader()
+	if itc.BeaconChain != nil {
+		pair.BeaconHeader = itc.BeaconChain.CurrentHeader()
 	}
 
-	if hmy.BlockChain != nil {
-		pair.ShardHeader = hmy.BlockChain.CurrentHeader()
+	if itc.BlockChain != nil {
+		pair.ShardHeader = itc.BlockChain.CurrentHeader()
 	}
 
 	return pair
 }
 
 // GetLastCrossLinks ..
-func (hmy *Harmony) GetLastCrossLinks() ([]*types.CrossLink, error) {
+func (itc *Intelchain) GetLastCrossLinks() ([]*types.CrossLink, error) {
 	crossLinks := []*types.CrossLink{}
-	for i := uint32(1); i < shard.Schedule.InstanceForEpoch(hmy.CurrentBlock().Epoch()).NumShards(); i++ {
-		link, err := hmy.BlockChain.ReadShardLastCrossLink(i)
+	for i := uint32(1); i < shard.Schedule.InstanceForEpoch(itc.CurrentBlock().Epoch()).NumShards(); i++ {
+		link, err := itc.BlockChain.ReadShardLastCrossLink(i)
 		if err != nil {
 			return nil, err
 		}
@@ -204,43 +204,43 @@ func (hmy *Harmony) GetLastCrossLinks() ([]*types.CrossLink, error) {
 }
 
 // CurrentBlock ...
-func (hmy *Harmony) CurrentBlock() *types.Block {
-	return types.NewBlockWithHeader(hmy.BlockChain.CurrentHeader())
+func (itc *Intelchain) CurrentBlock() *types.Block {
+	return types.NewBlockWithHeader(itc.BlockChain.CurrentHeader())
 }
 
 // CurrentHeader returns the current header from the local chain.
-func (hmy *Harmony) CurrentHeader() *block.Header {
-	return hmy.BlockChain.CurrentHeader()
+func (itc *Intelchain) CurrentHeader() *block.Header {
+	return itc.BlockChain.CurrentHeader()
 }
 
 // GetBlock returns block by hash.
-func (hmy *Harmony) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	return hmy.BlockChain.GetBlockByHash(hash), nil
+func (itc *Intelchain) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	return itc.BlockChain.GetBlockByHash(hash), nil
 }
 
 // GetHeader returns header by hash.
-func (hmy *Harmony) GetHeader(ctx context.Context, hash common.Hash) (*block.Header, error) {
-	return hmy.BlockChain.GetHeaderByHash(hash), nil
+func (itc *Intelchain) GetHeader(ctx context.Context, hash common.Hash) (*block.Header, error) {
+	return itc.BlockChain.GetHeaderByHash(hash), nil
 }
 
 // GetCurrentBadBlocks ..
-func (hmy *Harmony) GetCurrentBadBlocks() []core.BadBlock {
-	return hmy.BlockChain.BadBlocks()
+func (itc *Intelchain) GetCurrentBadBlocks() []core.BadBlock {
+	return itc.BlockChain.BadBlocks()
 }
 
-func (hmy *Harmony) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
+func (itc *Intelchain) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
 	if blockNr, ok := blockNrOrHash.Number(); ok {
-		return hmy.BlockByNumber(ctx, blockNr)
+		return itc.BlockByNumber(ctx, blockNr)
 	}
 	if hash, ok := blockNrOrHash.Hash(); ok {
-		header := hmy.BlockChain.GetHeaderByHash(hash)
+		header := itc.BlockChain.GetHeaderByHash(hash)
 		if header == nil {
 			return nil, errors.New("header for hash not found")
 		}
-		if blockNrOrHash.RequireCanonical && hmy.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
+		if blockNrOrHash.RequireCanonical && itc.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
 			return nil, errors.New("hash is not currently canonical")
 		}
-		block := hmy.BlockChain.GetBlock(hash, header.Number().Uint64())
+		block := itc.BlockChain.GetBlock(hash, header.Number().Uint64())
 		if block == nil {
 			return nil, errors.New("header found, but block body is missing")
 		}
@@ -250,8 +250,8 @@ func (hmy *Harmony) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.B
 }
 
 // GetBalance returns balance of an given address.
-func (hmy *Harmony) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error) {
-	s, _, err := hmy.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+func (itc *Intelchain) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error) {
+	s, _, err := itc.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if s == nil || err != nil {
 		return nil, err
 	}
@@ -259,34 +259,34 @@ func (hmy *Harmony) GetBalance(ctx context.Context, address common.Address, bloc
 }
 
 // BlockByNumber ...
-func (hmy *Harmony) BlockByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*types.Block, error) {
+func (itc *Intelchain) BlockByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*types.Block, error) {
 	// Pending block is only known by the miner
 	if blockNum == rpc.PendingBlockNumber {
 		return nil, errors.New("not implemented")
 	}
 	// Otherwise resolve and return the block
 	if blockNum == rpc.LatestBlockNumber {
-		return hmy.BlockChain.CurrentBlock(), nil
+		return itc.BlockChain.CurrentBlock(), nil
 	}
-	return hmy.BlockChain.GetBlockByNumber(uint64(blockNum)), nil
+	return itc.BlockChain.GetBlockByNumber(uint64(blockNum)), nil
 }
 
 // HeaderByNumber ...
-func (hmy *Harmony) HeaderByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*block.Header, error) {
+func (itc *Intelchain) HeaderByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*block.Header, error) {
 	// Pending block is only known by the miner
 	if blockNum == rpc.PendingBlockNumber {
 		return nil, errors.New("not implemented")
 	}
 	// Otherwise resolve and return the block
 	if blockNum == rpc.LatestBlockNumber {
-		return hmy.BlockChain.CurrentBlock().Header(), nil
+		return itc.BlockChain.CurrentBlock().Header(), nil
 	}
-	return hmy.BlockChain.GetHeaderByNumber(uint64(blockNum)), nil
+	return itc.BlockChain.GetHeaderByNumber(uint64(blockNum)), nil
 }
 
 // HeaderByHash ...
-func (hmy *Harmony) HeaderByHash(ctx context.Context, blockHash common.Hash) (*block.Header, error) {
-	header := hmy.BlockChain.GetHeaderByHash(blockHash)
+func (itc *Intelchain) HeaderByHash(ctx context.Context, blockHash common.Hash) (*block.Header, error) {
+	header := itc.BlockChain.GetHeaderByHash(blockHash)
 	if header == nil {
 		return nil, errors.New("Header is not found")
 	}
@@ -294,36 +294,36 @@ func (hmy *Harmony) HeaderByHash(ctx context.Context, blockHash common.Hash) (*b
 }
 
 // StateAndHeaderByNumber ...
-func (hmy *Harmony) StateAndHeaderByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*state.DB, *block.Header, error) {
+func (itc *Intelchain) StateAndHeaderByNumber(ctx context.Context, blockNum rpc.BlockNumber) (*state.DB, *block.Header, error) {
 	// Pending state is only known by the miner
 	if blockNum == rpc.PendingBlockNumber {
 		return nil, nil, errors.New("not implemented")
 	}
 	// Otherwise resolve the block number and return its state
-	header, err := hmy.HeaderByNumber(ctx, blockNum)
+	header, err := itc.HeaderByNumber(ctx, blockNum)
 	if header == nil || err != nil {
 		return nil, nil, err
 	}
-	stateDb, err := hmy.BlockChain.StateAt(header.Root())
+	stateDb, err := itc.BlockChain.StateAt(header.Root())
 	return stateDb, header, err
 }
 
-func (hmy *Harmony) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.DB, *block.Header, error) {
+func (itc *Intelchain) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.DB, *block.Header, error) {
 	if blockNr, ok := blockNrOrHash.Number(); ok {
-		return hmy.StateAndHeaderByNumber(ctx, blockNr)
+		return itc.StateAndHeaderByNumber(ctx, blockNr)
 	}
 	if hash, ok := blockNrOrHash.Hash(); ok {
-		header, err := hmy.HeaderByHash(ctx, hash)
+		header, err := itc.HeaderByHash(ctx, hash)
 		if err != nil {
 			return nil, nil, err
 		}
 		if header == nil {
 			return nil, nil, errors.New("header for hash not found")
 		}
-		if blockNrOrHash.RequireCanonical && hmy.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
+		if blockNrOrHash.RequireCanonical && itc.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
 			return nil, nil, errors.New("hash is not currently canonical")
 		}
-		stateDb, err := hmy.BlockChain.StateAt(header.Root())
+		stateDb, err := itc.BlockChain.StateAt(header.Root())
 		return stateDb, header, err
 	}
 	return nil, nil, errors.New("invalid arguments; neither block nor hash specified")
@@ -331,19 +331,19 @@ func (hmy *Harmony) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrH
 
 // GetLeaderAddress returns the one address of the leader, given the coinbaseAddr.
 // Note that the coinbaseAddr is overloaded with the BLS pub key hash in staking era.
-func (hmy *Harmony) GetLeaderAddress(coinbaseAddr common.Address, epoch *big.Int) string {
-	if hmy.IsStakingEpoch(epoch) {
-		if leader, exists := hmy.leaderCache.Get(coinbaseAddr); exists {
+func (itc *Intelchain) GetLeaderAddress(coinbaseAddr common.Address, epoch *big.Int) string {
+	if itc.IsStakingEpoch(epoch) {
+		if leader, exists := itc.leaderCache.Get(coinbaseAddr); exists {
 			bech32, _ := internal_common.AddressToBech32(leader.(common.Address))
 			return bech32
 		}
-		committee, err := hmy.GetValidators(epoch)
+		committee, err := itc.GetValidators(epoch)
 		if err != nil {
 			return ""
 		}
 		for _, val := range committee.Slots {
 			addr := utils.GetAddressFromBLSPubKeyBytes(val.BLSPublicKey[:])
-			hmy.leaderCache.Add(addr, val.EcdsaAddress)
+			itc.leaderCache.Add(addr, val.EcdsaAddress)
 			if addr == coinbaseAddr {
 				bech32, _ := internal_common.AddressToBech32(val.EcdsaAddress)
 				return bech32
@@ -358,13 +358,13 @@ func (hmy *Harmony) GetLeaderAddress(coinbaseAddr common.Address, epoch *big.Int
 // Filter related APIs
 
 // GetLogs ...
-func (hmy *Harmony) GetLogs(ctx context.Context, blockHash common.Hash, isEth bool) ([][]*types.Log, error) {
-	receipts := hmy.BlockChain.GetReceiptsByHash(blockHash)
+func (itc *Intelchain) GetLogs(ctx context.Context, blockHash common.Hash, isEth bool) ([][]*types.Log, error) {
+	receipts := itc.BlockChain.GetReceiptsByHash(blockHash)
 	if receipts == nil {
 		return nil, errors.New("Missing receipts")
 	}
 	if isEth {
-		block := hmy.BlockChain.GetBlockByHash(blockHash)
+		block := itc.BlockChain.GetBlockByHash(blockHash)
 		if block == nil {
 			return nil, errors.New("Missing block data")
 		}
@@ -389,42 +389,42 @@ func (hmy *Harmony) GetLogs(ctx context.Context, blockHash common.Hash, isEth bo
 }
 
 // ServiceFilter ...
-func (hmy *Harmony) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
+func (itc *Intelchain) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
 	// TODO(dm): implement
 }
 
 // SubscribeNewTxsEvent subscribes new tx event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
-	return hmy.TxPool.SubscribeNewTxsEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+	return itc.TxPool.SubscribeNewTxsEvent(ch)
 }
 
 // SubscribeChainEvent subscribes chain event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
-	return hmy.BlockChain.SubscribeChainEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
+	return itc.BlockChain.SubscribeChainEvent(ch)
 }
 
 // SubscribeChainHeadEvent subcribes chain head event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription {
-	return hmy.BlockChain.SubscribeChainHeadEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription {
+	return itc.BlockChain.SubscribeChainHeadEvent(ch)
 }
 
 // SubscribeChainSideEvent subcribes chain side event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeChainSideEvent(ch chan<- core.ChainSideEvent) event.Subscription {
-	return hmy.BlockChain.SubscribeChainSideEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeChainSideEvent(ch chan<- core.ChainSideEvent) event.Subscription {
+	return itc.BlockChain.SubscribeChainSideEvent(ch)
 }
 
 // SubscribeRemovedLogsEvent subcribes removed logs event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
-	return hmy.BlockChain.SubscribeRemovedLogsEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
+	return itc.BlockChain.SubscribeRemovedLogsEvent(ch)
 }
 
 // SubscribeLogsEvent subcribes log event.
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	return hmy.BlockChain.SubscribeLogsEvent(ch)
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
+	return itc.BlockChain.SubscribeLogsEvent(ch)
 }

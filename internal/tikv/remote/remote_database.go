@@ -12,7 +12,7 @@ import (
 	"github.com/zennittians/intelchain/internal/tikv/common"
 )
 
-var EmptyValueStub = []byte("HarmonyTiKVEmptyValueStub")
+var EmptyValueStub = []byte("IntelchainTiKVEmptyValueStub")
 
 type RemoteDatabase struct {
 	client   *rawkv.Client

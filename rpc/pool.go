@@ -16,20 +16,20 @@ import (
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	common2 "github.com/zennittians/intelchain/internal/common"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/itc"
 	eth "github.com/zennittians/intelchain/rpc/eth"
 	v1 "github.com/zennittians/intelchain/rpc/v1"
 	v2 "github.com/zennittians/intelchain/rpc/v2"
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
-// PublicPoolService provides an API to access the Harmony node's transaction pool.
+// PublicPoolService provides an API to access the Intelchain node's transaction pool.
 // It offers only methods that operate on public data that is freely available to anyone.
 type PublicPoolService struct {
-	hmy     *hmy.Harmony
+	itc     *itc.Intelchain
 	version Version
 
 	// TEMP SOLUTION to rpc node spamming issue
@@ -37,7 +37,7 @@ type PublicPoolService struct {
 }
 
 // NewPublicPoolAPI creates a new API for the RPC interface
-func NewPublicPoolAPI(hmy *hmy.Harmony, version Version, limiterEnable bool, limit int) rpc.API {
+func NewPublicPoolAPI(itc *itc.Intelchain, version Version, limiterEnable bool, limit int) rpc.API {
 	var limiter *rate.Limiter
 	if limiterEnable {
 		limiter = rate.NewLimiter(rate.Limit(limit), limit)
@@ -45,7 +45,7 @@ func NewPublicPoolAPI(hmy *hmy.Harmony, version Version, limiterEnable bool, lim
 	return rpc.API{
 		Namespace: version.Namespace(),
 		Version:   APIVersion,
-		Service:   &PublicPoolService{hmy, version, limiter},
+		Service:   &PublicPoolService{itc, version, limiter},
 		Public:    true,
 	}
 }
@@ -89,7 +89,7 @@ func (s *PublicPoolService) SendRawTransaction(
 			return common.Hash{}, err
 		}
 		txHash = ethTx.Hash()
-		tx = ethTx.ConvertToHmy()
+		tx = ethTx.ConvertToItc()
 	} else {
 		tx = new(types.Transaction)
 		if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
@@ -104,15 +104,15 @@ func (s *PublicPoolService) SendRawTransaction(
 	}
 
 	// Submit transaction
-	if err := s.hmy.SendTx(ctx, tx); err != nil {
+	if err := s.itc.SendTx(ctx, tx); err != nil {
 		utils.Logger().Warn().Err(err).Msg("Could not submit transaction")
 		return common.Hash{}, err
 	}
 
 	// Log submission
 	if tx.To() == nil {
-		signer := types.MakeSigner(s.hmy.ChainConfig(), s.hmy.CurrentBlock().Epoch())
-		ethSigner := types.NewEIP155Signer(s.hmy.ChainConfig().EthCompatibleChainID)
+		signer := types.MakeSigner(s.itc.ChainConfig(), s.itc.CurrentBlock().Epoch())
+		ethSigner := types.NewEIP155Signer(s.itc.ChainConfig().EthCompatibleChainID)
 
 		if tx.IsEthCompatible() {
 			signer = ethSigner
@@ -141,7 +141,7 @@ func (s *PublicPoolService) SendRawTransaction(
 }
 
 func (s *PublicPoolService) verifyChainID(tx *types.Transaction) error {
-	nodeChainID := s.hmy.ChainConfig().ChainID
+	nodeChainID := s.itc.ChainConfig().ChainID
 	ethChainID := nodeconfig.GetDefaultConfig().GetNetworkType().ChainConfig().EthCompatibleChainID
 
 	if tx.ChainID().Cmp(ethChainID) != 0 && tx.ChainID().Cmp(nodeChainID) != 0 {
@@ -172,7 +172,7 @@ func (s *PublicPoolService) SendRawStakingTransaction(
 	if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
 		return common.Hash{}, err
 	}
-	c := s.hmy.ChainConfig().ChainID
+	c := s.itc.ChainConfig().ChainID
 	if id := tx.ChainID(); id.Cmp(c) != 0 {
 		return common.Hash{}, errors.Wrapf(
 			ErrInvalidChainID, "blockchain chain id:%s, given %s", c.String(), id.String(),
@@ -180,7 +180,7 @@ func (s *PublicPoolService) SendRawStakingTransaction(
 	}
 
 	// Submit transaction
-	if err := s.hmy.SendStakingTx(ctx, tx); err != nil {
+	if err := s.itc.SendStakingTx(ctx, tx); err != nil {
 		utils.Logger().Warn().Err(err).Msg("Could not submit staking transaction")
 		return tx.Hash(), err
 	}
@@ -201,7 +201,7 @@ func (s *PublicPoolService) GetPoolStats(
 	timer := DoMetricRPCRequest(GetPoolStats)
 	defer DoRPCRequestDuration(GetPoolStats, timer)
 
-	pendingCount, queuedCount := s.hmy.GetPoolStats()
+	pendingCount, queuedCount := s.itc.GetPoolStats()
 
 	// Response output is the same for all versions
 	return StructuredResponse{
@@ -224,7 +224,7 @@ func (s *PublicPoolService) PendingTransactions(
 	}
 
 	// Fetch all pending transactions (stx & plain tx)
-	pending, err := s.hmy.GetPoolTransactions()
+	pending, err := s.itc.GetPoolTransactions()
 	if err != nil {
 		DoMetricRPCQueryInfo(PendingTransactions, FailedNumber)
 		return nil, err
@@ -296,7 +296,7 @@ func (s *PublicPoolService) PendingStakingTransactions(
 	defer DoRPCRequestDuration(PendingStakingTransactions, timer)
 
 	// Fetch all pending transactions (stx & plain tx)
-	pending, err := s.hmy.GetPoolTransactions()
+	pending, err := s.itc.GetPoolTransactions()
 	if err != nil {
 		DoMetricRPCQueryInfo(PendingStakingTransactions, FailedNumber)
 		return nil, err
@@ -354,7 +354,7 @@ func (s *PublicPoolService) GetCurrentTransactionErrorSink(
 
 	// For each transaction error in the error sink, format the response (same format for all versions)
 	formattedErrors := []StructuredResponse{}
-	for _, txError := range s.hmy.GetCurrentTransactionErrorSink() {
+	for _, txError := range s.itc.GetCurrentTransactionErrorSink() {
 		formattedErr, err := NewStructuredResponse(txError)
 		if err != nil {
 			DoMetricRPCQueryInfo(GetCurrentTransactionErrorSink, FailedNumber)
@@ -374,7 +374,7 @@ func (s *PublicPoolService) GetCurrentStakingErrorSink(
 
 	// For each staking tx error in the error sink, format the response (same format for all versions)
 	formattedErrors := []StructuredResponse{}
-	for _, txErr := range s.hmy.GetCurrentStakingErrorSink() {
+	for _, txErr := range s.itc.GetCurrentStakingErrorSink() {
 		formattedErr, err := NewStructuredResponse(txErr)
 		if err != nil {
 			DoMetricRPCQueryInfo(GetCurrentStakingErrorSink, FailedNumber)
@@ -394,7 +394,7 @@ func (s *PublicPoolService) GetPendingCXReceipts(
 
 	// For each cx receipt, format the response (same format for all versions)
 	formattedReceipts := []StructuredResponse{}
-	for _, receipts := range s.hmy.GetPendingCXReceipts() {
+	for _, receipts := range s.itc.GetPendingCXReceipts() {
 		formattedReceipt, err := NewStructuredResponse(receipts)
 		if err != nil {
 			DoMetricRPCQueryInfo(GetPendingCXReceipts, FailedNumber)
@@ -414,7 +414,7 @@ func (s *PublicPoolService) GetNumPendingCXReceipts(
 
 	// For each cx receipt, format the response (same format for all versions)
 	formattedReceipts := []StructuredResponse{}
-	for _, receipts := range s.hmy.GetPendingCXReceipts() {
+	for _, receipts := range s.itc.GetPendingCXReceipts() {
 		formattedReceipt, err := NewStructuredResponse(receipts)
 		if err != nil {
 			DoMetricRPCQueryInfo(GetPendingCXReceipts, FailedNumber)

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring/roaring64"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/tikv"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,9 +19,9 @@ import (
 	"github.com/zennittians/intelchain/core"
 	core2 "github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy/tracers"
 	common2 "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/itc/tracers"
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
@@ -104,7 +104,7 @@ type (
 	}
 )
 
-func newExplorerDB(hc *harmonyconfig.HarmonyConfig, dbPath string) (database, error) {
+func newExplorerDB(hc *intelchainconfig.IntelchainConfig, dbPath string) (database, error) {
 	if hc.General.RunElasticMode {
 		// init the storage using tikv
 		dbPath = fmt.Sprintf("explorer_tikv_%d", hc.General.ShardID)
@@ -118,7 +118,7 @@ func newExplorerDB(hc *harmonyconfig.HarmonyConfig, dbPath string) (database, er
 	}
 }
 
-func newStorage(hc *harmonyconfig.HarmonyConfig, bc core.BlockChain, dbPath string) (*storage, error) {
+func newStorage(hc *intelchainconfig.IntelchainConfig, bc core.BlockChain, dbPath string) (*storage, error) {
 	db, err := newExplorerDB(hc, dbPath)
 	if err != nil {
 		utils.Logger().Error().Err(err).Msg("Failed to create new explorer database")

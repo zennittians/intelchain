@@ -5,12 +5,12 @@ import (
 )
 
 const (
-	isValidatorKeyStr     = "Harmony/IsValidator/Key/v1"
-	isValidatorStr        = "Harmony/IsValidator/Value/v1"
-	collectRewardsStr     = "Harmony/CollectRewards"
-	delegateStr           = "Harmony/Delegate"
-	unDelegateStr         = "Harmony/UnDelegate"
-	firstElectionEpochStr = "Harmony/FirstElectionEpoch/Key/v1"
+	isValidatorKeyStr     = "Intelchain/IsValidator/Key/v1"
+	isValidatorStr        = "Intelchain/IsValidator/Value/v1"
+	collectRewardsStr     = "Intelchain/CollectRewards"
+	delegateStr           = "Intelchain/Delegate"
+	unDelegateStr         = "Intelchain/UnDelegate"
+	firstElectionEpochStr = "Intelchain/FirstElectionEpoch/Key/v1"
 )
 
 // keys used to retrieve staking related informatio

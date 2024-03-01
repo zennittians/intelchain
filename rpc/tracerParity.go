@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/itc"
 )
 
 var (
@@ -21,7 +21,7 @@ type PublicParityTracerService struct {
 func (s *PublicParityTracerService) Transaction(ctx context.Context, hash common.Hash) (interface{}, error) {
 	timer := DoMetricRPCRequest(Transaction)
 	defer DoRPCRequestDuration(Transaction, timer)
-	return s.TraceTransaction(ctx, hash, &hmy.TraceConfig{Tracer: &parityTraceGO})
+	return s.TraceTransaction(ctx, hash, &itc.TraceConfig{Tracer: &parityTraceGO})
 }
 
 // trace_block RPC
@@ -29,14 +29,14 @@ func (s *PublicParityTracerService) Block(ctx context.Context, number rpc.BlockN
 	timer := DoMetricRPCRequest(Block)
 	defer DoRPCRequestDuration(Block, timer)
 
-	block := s.hmy.BlockChain.GetBlockByNumber(uint64(number))
+	block := s.itc.BlockChain.GetBlockByNumber(uint64(number))
 	if block == nil {
 		return nil, nil
 	}
-	if results, err := s.hmy.NodeAPI.GetTraceResultByHash(block.Hash()); err == nil {
+	if results, err := s.itc.NodeAPI.GetTraceResultByHash(block.Hash()); err == nil {
 		return results, nil
 	}
-	results, err := s.hmy.TraceBlock(ctx, block, &hmy.TraceConfig{Tracer: &parityTraceGO})
+	results, err := s.itc.TraceBlock(ctx, block, &itc.TraceConfig{Tracer: &parityTraceGO})
 	if err != nil {
 		return results, err
 	}

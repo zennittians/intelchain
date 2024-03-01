@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
@@ -17,7 +17,7 @@ Version = "1.0.2"
   KMSConfigFile = ""
   KMSConfigSrcType = "shared"
   KMSEnabled = false
-  KeyDir = "./.hmy/blskeys"
+  KeyDir = "./.itc/blskeys"
   KeyFiles = []
   MaxKeys = 10
   PassEnabled = true
@@ -41,7 +41,7 @@ Version = "1.0.2"
   RosettaPort = 9700
 
 [Log]
-  FileName = "harmony.log"
+  FileName = "intelchain.log"
   Folder = "./latest"
   RotateSize = 100
   Verbosity = 3
@@ -55,7 +55,7 @@ Version = "1.0.2"
 
 [P2P]
   IP = "0.0.0.0"
-  KeyFile = "./.hmykey"
+  KeyFile = "./.itckey"
   Port = 9000
 
 [Pprof]
@@ -67,11 +67,11 @@ Version = "1.0.2"
   EthRPCsEnabled = true
   StakingRPCsEnabled = true
   LegacyRPCsEnabled = true
-  RpcFilterFile = "./.hmy/rpc_filter.txt"
+  RpcFilterFile = "./.itc/rpc_filter.txt"
 
 [TxPool]
-  BlacklistFile = "./.hmy/blacklist.txt"
-  LocalAccountsFile = "./.hmy/locals.txt"
+  BlacklistFile = "./.itc/blacklist.txt"
+  LocalAccountsFile = "./.itc/locals.txt"
   AccountQueue = 64
   GlobalQueue = 5120
   Lifetime = "30m"
@@ -91,7 +91,7 @@ Version = "1.0.3"
   KMSConfigFile = ""
   KMSConfigSrcType = "shared"
   KMSEnabled = false
-  KeyDir = "./.hmy/blskeys"
+  KeyDir = "./.itc/blskeys"
   KeyFiles = []
   MaxKeys = 10
   PassEnabled = true
@@ -116,7 +116,7 @@ Version = "1.0.3"
   RosettaPort = 9700
 
 [Log]
-  FileName = "harmony.log"
+  FileName = "intelchain.log"
   Folder = "./latest"
   RotateSize = 100
   Verbosity = 3
@@ -130,7 +130,7 @@ Version = "1.0.3"
 
 [P2P]
   IP = "0.0.0.0"
-  KeyFile = "./.hmykey"
+  KeyFile = "./.itckey"
   Port = 9000
 
 [Pprof]
@@ -142,11 +142,11 @@ Version = "1.0.3"
   EthRPCsEnabled = true
   StakingRPCsEnabled = true
   LegacyRPCsEnabled = true
-  RpcFilterFile = "./.hmy/rpc_filter.txt"
+  RpcFilterFile = "./.itc/rpc_filter.txt"
 
 [TxPool]
-  BlacklistFile = "./.hmy/blacklist.txt"
-  LocalAccountsFile = "./.hmy/locals.txt"
+  BlacklistFile = "./.itc/blacklist.txt"
+  LocalAccountsFile = "./.itc/locals.txt"
   AccountQueue = 64
   GlobalQueue = 5120
   Lifetime = "30m"
@@ -166,7 +166,7 @@ Version = "1.0.4"
   KMSConfigFile = ""
   KMSConfigSrcType = "shared"
   KMSEnabled = false
-  KeyDir = "./.hmy/blskeys"
+  KeyDir = "./.itc/blskeys"
   KeyFiles = []
   MaxKeys = 10
   PassEnabled = true
@@ -191,7 +191,7 @@ Version = "1.0.4"
   RosettaPort = 9700
 
 [Log]
-  FileName = "harmony.log"
+  FileName = "intelchain.log"
   Folder = "./latest"
   RotateSize = 100
   Verbosity = 3
@@ -205,7 +205,7 @@ Version = "1.0.4"
 
 [P2P]
   IP = "0.0.0.0"
-  KeyFile = "./.hmykey"
+  KeyFile = "./.itckey"
   Port = 9000
 
 [Pprof]
@@ -217,7 +217,7 @@ Version = "1.0.4"
   EthRPCsEnabled = true
   StakingRPCsEnabled = true
   LegacyRPCsEnabled = true
-  RpcFilterFile = "./.hmy/rpc_filter.txt"
+  RpcFilterFile = "./.itc/rpc_filter.txt"
 
 [Sync]
   Concurrency = 6
@@ -232,8 +232,8 @@ Version = "1.0.4"
   MinPeers = 6
 
 [TxPool]
-  BlacklistFile = "./.hmy/blacklist.txt"
-  LocalAccountsFile = "./.hmy/locals.txt"
+  BlacklistFile = "./.itc/blacklist.txt"
+  LocalAccountsFile = "./.itc/locals.txt"
   AccountQueue = 64
   GlobalQueue = 5120
   Lifetime = "30m"
@@ -253,7 +253,7 @@ Version = "1.0.4"
   KMSConfigFile = ""
   KMSConfigSrcType = "shared"
   KMSEnabled = false
-  KeyDir = "./.hmy/blskeys"
+  KeyDir = "./.itc/blskeys"
   KeyFiles = []
   MaxKeys = 10
   PassEnabled = true
@@ -278,7 +278,7 @@ Version = "1.0.4"
   RosettaPort = 9700
 
 [Log]
-  FileName = "harmony.log"
+  FileName = "intelchain.log"
   Folder = "./latest"
   RotateSize = 100
   Verbosity = 3
@@ -292,7 +292,7 @@ Version = "1.0.4"
 
 [P2P]
   IP = "0.0.0.0"
-  KeyFile = "./.hmykey"
+  KeyFile = "./.itckey"
   Port = 9000
 
 [Pprof]
@@ -304,7 +304,7 @@ Version = "1.0.4"
   EthRPCsEnabled = true
   StakingRPCsEnabled = true
   LegacyRPCsEnabled = true
-  RpcFilterFile = "./.hmy/rpc_filter.txt"
+  RpcFilterFile = "./.itc/rpc_filter.txt"
 
 [Sync]
   Concurrency = 6
@@ -326,9 +326,9 @@ Version = "1.0.4"
   CacheSize = 512
 
 [TxPool]
-  BlacklistFile = "./.hmy/blacklist.txt"
-  LocalAccountsFile = "./.hmy/locals.txt"
-  AllowedTxsFile = "./.hmy/allowedtxs.txt"
+  BlacklistFile = "./.itc/blacklist.txt"
+  LocalAccountsFile = "./.itc/locals.txt"
+  AllowedTxsFile = "./.itc/allowedtxs.txt"
   AccountQueue = 64
   GlobalQueue = 5120
   Lifetime = "30m"
@@ -343,8 +343,8 @@ Version = "1.0.4"
 )
 
 func Test_migrateConf(t *testing.T) {
-	defConf := getDefaultHmyConfigCopy(nodeconfig.Mainnet)
-	legacyDefConf := getDefaultHmyConfigCopy(nodeconfig.Mainnet)
+	defConf := getDefaultItcConfigCopy(nodeconfig.Mainnet)
+	legacyDefConf := getDefaultItcConfigCopy(nodeconfig.Mainnet)
 	// Versions prior to 1.0.3 use different BootNodes
 	legacyDefConf.Network.BootNodes = []string{
 		"/ip4/100.26.90.187/tcp/9874/p2p/Qmdfjtk6hPoyrH1zVD9PEH4zfWLo38dP2mDvvKXfh3tnEv",
@@ -358,7 +358,7 @@ func Test_migrateConf(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    harmonyconfig.HarmonyConfig
+		want    intelchainconfig.IntelchainConfig
 		wantErr bool
 	}{
 		{
@@ -390,7 +390,7 @@ func Test_migrateConf(t *testing.T) {
 			args: args{
 				confBytes: V1_0_4ConfigDownloaderOn,
 			},
-			want: func() harmonyconfig.HarmonyConfig {
+			want: func() intelchainconfig.IntelchainConfig {
 				hc := defConf
 				hc.Sync.Downloader = true
 				hc.Sync.Enabled = true

@@ -65,8 +65,8 @@ const (
 )
 
 var (
-	// GenesisFund is the initial total number of ONE (in atto) in the genesis block for mainnet.
-	GenesisFund = new(big.Int).Mul(big.NewInt(GenesisONEToken), big.NewInt(denominations.One))
+	// GenesisFund is the initial total number of ITC (in intello) in the genesis block for mainnet.
+	GenesisFund = new(big.Int).Mul(big.NewInt(GenesisONEToken), big.NewInt(denominations.Itc))
 )
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
@@ -131,7 +131,7 @@ func NewGenesisSpec(netType nodeconfig.NetworkType, shardID uint32) *Genesis {
 		contractDeployerAddress := crypto.PubkeyToAddress(contractDeployerKey.PublicKey)
 		contractDeployerFunds := big.NewInt(ContractDeployerInitFund)
 		contractDeployerFunds = contractDeployerFunds.Mul(
-			contractDeployerFunds, big.NewInt(denominations.One),
+			contractDeployerFunds, big.NewInt(denominations.Itc),
 		)
 		genesisAlloc[contractDeployerAddress] = GenesisAccount{Balance: contractDeployerFunds}
 
@@ -150,7 +150,7 @@ func NewGenesisSpec(netType nodeconfig.NetworkType, shardID uint32) *Genesis {
 		ShardID:   shardID,
 		GasLimit:  gasLimit,
 		Timestamp: 1561734000, // GMT: Friday, June 28, 2019 3:00:00 PM. PST: Friday, June 28, 2019 8:00:00 AM
-		ExtraData: []byte("Harmony for One and All. Open Consensus for 10B."),
+		ExtraData: []byte("Intelchain for One and All. Open Consensus for 10B."),
 	}
 }
 

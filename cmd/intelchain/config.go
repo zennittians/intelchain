@@ -10,12 +10,12 @@ import (
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
 	"github.com/zennittians/intelchain/internal/cli"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
 // TODO: use specific type wise validation instead of general string types assertion.
-func validateHarmonyConfig(config harmonyconfig.HarmonyConfig) error {
+func validateIntelchainConfig(config intelchainconfig.IntelchainConfig) error {
 	var accepts []string
 
 	nodeType := config.General.NodeType
@@ -58,7 +58,7 @@ func validateHarmonyConfig(config harmonyconfig.HarmonyConfig) error {
 	return nil
 }
 
-func sanityFixHarmonyConfig(hc *harmonyconfig.HarmonyConfig) {
+func sanityFixIntelchainConfig(hc *intelchainconfig.IntelchainConfig) {
 	// When running sync downloader, set sync.Enabled to true
 	if hc.Sync.Downloader && !hc.Sync.Enabled {
 		fmt.Println("Set Sync.Enabled to true when running stream downloader")
@@ -76,10 +76,10 @@ func checkStringAccepted(flag string, val string, accepts []string) error {
 	return fmt.Errorf("unknown arg for %s: %s (%v)", flag, val, acceptsStr)
 }
 
-func getDefaultDNSSyncConfig(nt nodeconfig.NetworkType) harmonyconfig.DnsSync {
+func getDefaultDNSSyncConfig(nt nodeconfig.NetworkType) intelchainconfig.DnsSync {
 	zone := nodeconfig.GetDefaultDNSZone(nt)
 	port := nodeconfig.GetDefaultDNSPort(nt)
-	dnsSync := harmonyconfig.DnsSync{
+	dnsSync := intelchainconfig.DnsSync{
 		Port:       port,
 		Zone:       zone,
 		ServerPort: nodeconfig.DefaultDNSPort,
@@ -101,9 +101,9 @@ func getDefaultDNSSyncConfig(nt nodeconfig.NetworkType) harmonyconfig.DnsSync {
 	return dnsSync
 }
 
-func getDefaultNetworkConfig(nt nodeconfig.NetworkType) harmonyconfig.NetworkConfig {
+func getDefaultNetworkConfig(nt nodeconfig.NetworkType) intelchainconfig.NetworkConfig {
 	bn := nodeconfig.GetDefaultBootNodes(nt)
-	return harmonyconfig.NetworkConfig{
+	return intelchainconfig.NetworkConfig{
 		NetworkType: string(nt),
 		BootNodes:   bn,
 	}
@@ -130,7 +130,7 @@ func parseNetworkType(nt string) nodeconfig.NetworkType {
 	}
 }
 
-func getDefaultSyncConfig(nt nodeconfig.NetworkType) harmonyconfig.SyncConfig {
+func getDefaultSyncConfig(nt nodeconfig.NetworkType) intelchainconfig.SyncConfig {
 	switch nt {
 	case nodeconfig.Mainnet:
 		return defaultMainnetSyncConfig
@@ -145,8 +145,8 @@ func getDefaultSyncConfig(nt nodeconfig.NetworkType) harmonyconfig.SyncConfig {
 	}
 }
 
-func getDefaultCacheConfig(nt nodeconfig.NetworkType) harmonyconfig.CacheConfig {
-	cacheConfig := harmonyconfig.CacheConfig{
+func getDefaultCacheConfig(nt nodeconfig.NetworkType) intelchainconfig.CacheConfig {
+	cacheConfig := intelchainconfig.CacheConfig{
 		Disabled:        defaultCacheConfig.Disabled,
 		TrieNodeLimit:   defaultCacheConfig.TrieNodeLimit,
 		TriesInMemory:   defaultCacheConfig.TriesInMemory,
@@ -196,9 +196,9 @@ var updateConfigCmd = &cobra.Command{
 
 func dumpConfig(cmd *cobra.Command, args []string) {
 	nt := getNetworkType(cmd)
-	config := getDefaultHmyConfigCopy(nt)
+	config := getDefaultItcConfigCopy(nt)
 
-	if err := writeHarmonyConfigToFile(config, args[0]); err != nil {
+	if err := writeIntelchainConfigToFile(config, args[0]); err != nil {
 		fmt.Println(err)
 		os.Exit(128)
 	}
@@ -206,8 +206,8 @@ func dumpConfig(cmd *cobra.Command, args []string) {
 
 var dumpConfigCmd = &cobra.Command{
 	Use:   "dump [config_file]",
-	Short: "dump default config file for harmony binary configurations",
-	Long:  "dump default config file for harmony binary configurations",
+	Short: "dump default config file for intelchain binary configurations",
+	Long:  "dump default config file for intelchain binary configurations",
 	Args:  cobra.MinimumNArgs(1),
 	Run:   dumpConfig,
 }
@@ -236,7 +236,7 @@ func promptConfigUpdate() bool {
 	}()
 	select {
 	case <-timeoutTimer.C:
-		fmt.Println("Timed out - update manually with ./harmony config update [config_file]")
+		fmt.Println("Timed out - update manually with ./intelchain config update [config_file]")
 		return false
 	case <-read:
 		readStr = strings.TrimSpace(readStr)
@@ -248,14 +248,14 @@ func promptConfigUpdate() bool {
 	}
 }
 
-func loadHarmonyConfig(file string) (harmonyconfig.HarmonyConfig, string, error) {
+func loadIntelchainConfig(file string) (intelchainconfig.IntelchainConfig, string, error) {
 	b, err := os.ReadFile(file)
 	if err != nil {
-		return harmonyconfig.HarmonyConfig{}, "", err
+		return intelchainconfig.IntelchainConfig{}, "", err
 	}
 	config, migratedVer, err := migrateConf(b)
 	if err != nil {
-		return harmonyconfig.HarmonyConfig{}, "", err
+		return intelchainconfig.IntelchainConfig{}, "", err
 	}
 
 	return config, migratedVer, nil
@@ -275,14 +275,14 @@ func updateConfigFile(file string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeHarmonyConfigToFile(config, file); err != nil {
+	if err := writeIntelchainConfigToFile(config, file); err != nil {
 		return err
 	}
 	fmt.Printf("Successfully migrated %s from %s to %s \n", file, migratedFromVer, config.Version)
 	return nil
 }
 
-func writeHarmonyConfigToFile(config harmonyconfig.HarmonyConfig, file string) error {
+func writeIntelchainConfigToFile(config intelchainconfig.IntelchainConfig, file string) error {
 	b, err := toml.Marshal(config)
 	if err != nil {
 		return err

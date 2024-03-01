@@ -9,32 +9,32 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	internal_common "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
 	rpc2 "github.com/zennittians/intelchain/rpc"
 )
 
 var CallMethod = []string{
-	"hmyv2_call",
-	"hmyv2_getCode",
-	"hmyv2_getStorageAt",
-	"hmyv2_getDelegationsByDelegator",
-	"hmyv2_getDelegationsByDelegatorByBlockNumber",
-	"hmyv2_getDelegationsByValidator",
-	"hmyv2_getAllValidatorAddresses",
-	"hmyv2_getAllValidatorInformation",
-	"hmyv2_getAllValidatorInformationByBlockNumber",
-	"hmyv2_getElectedValidatorAddresses",
-	"hmyv2_getValidatorInformation",
-	"hmyv2_getCurrentUtilityMetrics",
-	"hmyv2_getMedianRawStakeSnapshot",
-	"hmyv2_getStakingNetworkInfo",
-	"hmyv2_getSuperCommittees",
+	"itcv2_call",
+	"itcv2_getCode",
+	"itcv2_getStorageAt",
+	"itcv2_getDelegationsByDelegator",
+	"itcv2_getDelegationsByDelegatorByBlockNumber",
+	"itcv2_getDelegationsByValidator",
+	"itcv2_getAllValidatorAddresses",
+	"itcv2_getAllValidatorInformation",
+	"itcv2_getAllValidatorInformationByBlockNumber",
+	"itcv2_getElectedValidatorAddresses",
+	"itcv2_getValidatorInformation",
+	"itcv2_getCurrentUtilityMetrics",
+	"itcv2_getMedianRawStakeSnapshot",
+	"itcv2_getStakingNetworkInfo",
+	"itcv2_getSuperCommittees",
 }
 
 type CallAPIService struct {
-	hmy                 *hmy.Harmony
+	itc                 *itc.Intelchain
 	publicContractAPI   rpc.API
 	publicStakingAPI    rpc.API
 	publicBlockChainAPI rpc.API
@@ -45,35 +45,35 @@ func (c *CallAPIService) Call(
 	ctx context.Context, request *types.CallRequest,
 ) (*types.CallResponse, *types.Error) {
 	switch request.Method {
-	case "hmyv2_call":
+	case "itcv2_call":
 		return c.call(ctx, request)
-	case "hmyv2_getCode":
+	case "itcv2_getCode":
 		return c.getCode(ctx, request)
-	case "hmyv2_getStorageAt":
+	case "itcv2_getStorageAt":
 		return c.getStorageAt(ctx, request)
-	case "hmyv2_getDelegationsByDelegator":
+	case "itcv2_getDelegationsByDelegator":
 		return c.getDelegationsByDelegator(ctx, request)
-	case "hmyv2_getDelegationsByDelegatorByBlockNumber":
+	case "itcv2_getDelegationsByDelegatorByBlockNumber":
 		return c.getDelegationsByDelegatorByBlockNumber(ctx, request)
-	case "hmyv2_getDelegationsByValidator":
+	case "itcv2_getDelegationsByValidator":
 		return c.getDelegationsByValidator(ctx, request)
-	case "hmyv2_getAllValidatorAddresses":
+	case "itcv2_getAllValidatorAddresses":
 		return c.getAllValidatorAddresses(ctx)
-	case "hmyv2_getAllValidatorInformation":
+	case "itcv2_getAllValidatorInformation":
 		return c.getAllValidatorInformation(ctx, request)
-	case "hmyv2_getAllValidatorInformationByBlockNumber":
+	case "itcv2_getAllValidatorInformationByBlockNumber":
 		return c.getAllValidatorInformationByBlockNumber(ctx, request)
-	case "hmyv2_getElectedValidatorAddresses":
+	case "itcv2_getElectedValidatorAddresses":
 		return c.getElectedValidatorAddresses(ctx)
-	case "hmyv2_getValidatorInformation":
+	case "itcv2_getValidatorInformation":
 		return c.getValidatorInformation(ctx, request)
-	case "hmyv2_getCurrentUtilityMetrics":
+	case "itcv2_getCurrentUtilityMetrics":
 		return c.getCurrentUtilityMetrics()
-	case "hmyv2_getMedianRawStakeSnapshot":
+	case "itcv2_getMedianRawStakeSnapshot":
 		return c.getMedianRawStakeSnapshot()
-	case "hmyv2_getStakingNetworkInfo":
+	case "itcv2_getStakingNetworkInfo":
 		return c.getStakingNetworkInfo(ctx)
-	case "hmyv2_getSuperCommittees":
+	case "itcv2_getSuperCommittees":
 		return c.getSuperCommittees()
 	}
 
@@ -84,21 +84,21 @@ func (c *CallAPIService) Call(
 }
 
 func NewCallAPIService(
-	hmy *hmy.Harmony,
+	itc *itc.Intelchain,
 	limiterEnable bool,
 	rateLimit int,
 	evmCallTimeout time.Duration,
 ) server.CallAPIServicer {
 	return &CallAPIService{
-		hmy:                 hmy,
-		publicContractAPI:   rpc2.NewPublicContractAPI(hmy, rpc2.V2, limiterEnable, rateLimit, evmCallTimeout),
-		publicStakingAPI:    rpc2.NewPublicStakingAPI(hmy, rpc2.V2),
-		publicBlockChainAPI: rpc2.NewPublicBlockchainAPI(hmy, rpc2.V2, limiterEnable, rateLimit),
+		itc:                 itc,
+		publicContractAPI:   rpc2.NewPublicContractAPI(itc, rpc2.V2, limiterEnable, rateLimit, evmCallTimeout),
+		publicStakingAPI:    rpc2.NewPublicStakingAPI(itc, rpc2.V2),
+		publicBlockChainAPI: rpc2.NewPublicBlockchainAPI(itc, rpc2.V2, limiterEnable, rateLimit),
 	}
 }
 
 func (c *CallAPIService) getSuperCommittees() (*types.CallResponse, *types.Error) {
-	committees, err := c.hmy.GetSuperCommittees()
+	committees, err := c.itc.GetSuperCommittees()
 	if err != nil {
 		return nil, common.NewError(common.ErrGetStakingInfo, map[string]interface{}{
 			"message": errors.WithMessage(err, "get super committees error").Error(),
@@ -129,7 +129,7 @@ func (c *CallAPIService) getStakingNetworkInfo(
 }
 
 func (c *CallAPIService) getMedianRawStakeSnapshot() (*types.CallResponse, *types.Error) {
-	snapshot, err := c.hmy.GetMedianRawStakeSnapshot()
+	snapshot, err := c.itc.GetMedianRawStakeSnapshot()
 	if err != nil {
 		return nil, common.NewError(common.ErrGetStakingInfo, map[string]interface{}{
 			"message": errors.WithMessage(err, "get median raw stake snapshot error").Error(),
@@ -143,7 +143,7 @@ func (c *CallAPIService) getMedianRawStakeSnapshot() (*types.CallResponse, *type
 }
 
 func (c *CallAPIService) getCurrentUtilityMetrics() (*types.CallResponse, *types.Error) {
-	metric, err := c.hmy.GetCurrentUtilityMetrics()
+	metric, err := c.itc.GetCurrentUtilityMetrics()
 	if err != nil {
 		return nil, common.NewError(common.ErrGetStakingInfo, map[string]interface{}{
 			"message": errors.WithMessage(err, "get current utility metrics error").Error(),

@@ -384,7 +384,7 @@ func makeFakeHeader() *block.Header {
 //
 
 func makeTestAddress(item interface{}) common.Address {
-	s := fmt.Sprintf("harmony.one.%v", item)
+	s := fmt.Sprintf("intelchain.org.%v", item)
 	return common.BytesToAddress([]byte(s))
 }
 

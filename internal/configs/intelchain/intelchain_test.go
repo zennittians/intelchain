@@ -1,4 +1,4 @@
-package harmony
+package intelchain
 
 import (
 	"fmt"
@@ -13,11 +13,11 @@ import (
 
 func TestToRPCServerConfig(t *testing.T) {
 	tests := []struct {
-		input  HarmonyConfig
+		input  IntelchainConfig
 		output nodeconfig.RPCServerConfig
 	}{
 		{
-			input: HarmonyConfig{
+			input: IntelchainConfig{
 				HTTP: HttpConfig{
 					Enabled:        true,
 					RosettaEnabled: false,
@@ -40,7 +40,7 @@ func TestToRPCServerConfig(t *testing.T) {
 					EthRPCsEnabled:     true,
 					StakingRPCsEnabled: true,
 					LegacyRPCsEnabled:  true,
-					RpcFilterFile:      "./.hmy/rpc_filter.txt",
+					RpcFilterFile:      "./.itc/rpc_filter.txt",
 					RateLimterEnabled:  true,
 					RequestsPerSecond:  nodeconfig.DefaultRPCRateLimit,
 					EvmCallTimeout:     "-4",
@@ -62,7 +62,7 @@ func TestToRPCServerConfig(t *testing.T) {
 				EthRPCsEnabled:     true,
 				StakingRPCsEnabled: true,
 				LegacyRPCsEnabled:  true,
-				RpcFilterFile:      "./.hmy/rpc_filter.txt",
+				RpcFilterFile:      "./.itc/rpc_filter.txt",
 				RateLimiterEnabled: true,
 				RequestsPerSecond:  nodeconfig.DefaultRPCRateLimit,
 				EvmCallTimeout:     5 * time.Second,

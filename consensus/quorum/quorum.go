@@ -77,8 +77,8 @@ type ParticipantTracker interface {
 	ParticipantsCount() int64
 	// NthNextValidator returns key for next validator. It assumes external validators and leader rotation.
 	NthNextValidator(slotList shard.SlotList, pubKey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper)
-	NthNextHmy(instance shardingconfig.Instance, pubkey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper)
-	NthNextHmyExt(shardingconfig.Instance, *bls.PublicKeyWrapper, int) (bool, *bls.PublicKeyWrapper)
+	NthNextItc(instance shardingconfig.Instance, pubkey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper)
+	NthNextItcExt(shardingconfig.Instance, *bls.PublicKeyWrapper, int) (bool, *bls.PublicKeyWrapper)
 	FirstParticipant(shardingconfig.Instance) *bls.PublicKeyWrapper
 	UpdateParticipants(pubKeys, allowlist []bls.PublicKeyWrapper)
 }
@@ -240,7 +240,7 @@ func (s *cIdentities) NthNextValidator(slotList shard.SlotList, pubKey *bls.Publ
 	} else {
 		utils.Logger().Error().
 			Str("key", pubKey.Bytes.Hex()).
-			Msg("[NthNextHmy] pubKey not found")
+			Msg("[NthNextItc] pubKey not found")
 	}
 	for {
 		numNodes := len(s.publicKeys)
@@ -254,7 +254,7 @@ func (s *cIdentities) NthNextValidator(slotList shard.SlotList, pubKey *bls.Publ
 	}
 }
 
-func (s *cIdentities) NthNextHmy(instance shardingconfig.Instance, pubKey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
+func (s *cIdentities) NthNextItc(instance shardingconfig.Instance, pubKey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
 	found := false
 
 	idx := s.IndexOf(pubKey.Bytes)
@@ -263,9 +263,9 @@ func (s *cIdentities) NthNextHmy(instance shardingconfig.Instance, pubKey *bls.P
 	} else {
 		utils.Logger().Error().
 			Str("key", pubKey.Bytes.Hex()).
-			Msg("[NthNextHmy] pubKey not found")
+			Msg("[NthNextItc] pubKey not found")
 	}
-	numNodes := instance.NumHarmonyOperatedNodesPerShard()
+	numNodes := instance.NumIntelchainOperatedNodesPerShard()
 	// sanity check to avoid out of bound access
 	if numNodes <= 0 || numNodes > len(s.publicKeys) {
 		numNodes = len(s.publicKeys)
@@ -274,22 +274,22 @@ func (s *cIdentities) NthNextHmy(instance shardingconfig.Instance, pubKey *bls.P
 	return found, &s.publicKeys[idx]
 }
 
-// NthNextHmyExt return the Nth next pubkey of Harmony + allowlist nodes, next can be negative number
-func (s *cIdentities) NthNextHmyExt(instance shardingconfig.Instance, pubKey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
+// NthNextItcExt return the Nth next pubkey of Intelchain + allowlist nodes, next can be negative number
+func (s *cIdentities) NthNextItcExt(instance shardingconfig.Instance, pubKey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
 	found := false
 
 	idx := s.IndexOf(pubKey.Bytes)
 	if idx != -1 {
 		found = true
 	}
-	numHmyNodes := instance.NumHarmonyOperatedNodesPerShard()
+	numItcNodes := instance.NumIntelchainOperatedNodesPerShard()
 	// sanity check to avoid out of bound access
-	if numHmyNodes <= 0 || numHmyNodes > len(s.publicKeys) {
-		numHmyNodes = len(s.publicKeys)
+	if numItcNodes <= 0 || numItcNodes > len(s.publicKeys) {
+		numItcNodes = len(s.publicKeys)
 	}
 	nth := idx
-	if idx >= numHmyNodes {
-		nth = sort.SearchInts(s.allowlistIndex, idx) + numHmyNodes
+	if idx >= numItcNodes {
+		nth = sort.SearchInts(s.allowlistIndex, idx) + numItcNodes
 	}
 
 	numExtNodes := instance.ExternalAllowlistLimit()
@@ -297,14 +297,14 @@ func (s *cIdentities) NthNextHmyExt(instance shardingconfig.Instance, pubKey *bl
 		numExtNodes = len(s.allowlistIndex)
 	}
 
-	totalNodes := numHmyNodes + numExtNodes
+	totalNodes := numItcNodes + numExtNodes
 	// (totalNodes + next%totalNodes) can convert negitive 'next' to positive
 	nth = (nth + totalNodes + next%totalNodes) % totalNodes
-	if nth < numHmyNodes {
+	if nth < numItcNodes {
 		idx = nth
 	} else {
 		// find index of external slot key
-		idx = s.allowlistIndex[nth-numHmyNodes]
+		idx = s.allowlistIndex[nth-numItcNodes]
 	}
 	return found, &s.publicKeys[idx]
 }

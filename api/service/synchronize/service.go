@@ -2,7 +2,7 @@ package synchronize
 
 import (
 	"github.com/zennittians/intelchain/core"
-	"github.com/zennittians/intelchain/hmy/downloader"
+	"github.com/zennittians/intelchain/itc/downloader"
 	"github.com/zennittians/intelchain/p2p"
 )
 

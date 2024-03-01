@@ -18,7 +18,7 @@ import (
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/core/vm"
 	"github.com/zennittians/intelchain/crypto/bls"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
 	"github.com/zennittians/intelchain/shard"
@@ -451,7 +451,7 @@ func (a Stub) SyncFromTiKVWriter(newBlkNum uint64, logs []*types.Log) error {
 	return errors.Errorf("method SyncFromTiKVWriter not implemented for %s", a.Name)
 }
 
-func (a Stub) InitTiKV(conf *harmonyconfig.TiKVConfig) {
+func (a Stub) InitTiKV(conf *intelchainconfig.TiKVConfig) {
 	return
 }
 

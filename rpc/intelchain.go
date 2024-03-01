@@ -6,37 +6,37 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/itc"
 )
 
-// PublicHarmonyService provides an API to access Harmony related information.
+// PublicIntelchainService provides an API to access Intelchain related information.
 // It offers only methods that operate on public data that is freely available to anyone.
-type PublicHarmonyService struct {
-	hmy     *hmy.Harmony
+type PublicIntelchainService struct {
+	itc     *itc.Intelchain
 	version Version
 }
 
-// NewPublicHarmonyAPI creates a new API for the RPC interface
-func NewPublicHarmonyAPI(hmy *hmy.Harmony, version Version) rpc.API {
+// NewPublicIntelchainAPI creates a new API for the RPC interface
+func NewPublicIntelchainAPI(itc *itc.Intelchain, version Version) rpc.API {
 	return rpc.API{
 		Namespace: version.Namespace(),
 		Version:   APIVersion,
-		Service:   &PublicHarmonyService{hmy, version},
+		Service:   &PublicIntelchainService{itc, version},
 		Public:    true,
 	}
 }
 
-// ProtocolVersion returns the current Harmony protocol version this node supports
+// ProtocolVersion returns the current Intelchain protocol version this node supports
 // Note that the return type is an interface to account for the different versions
-func (s *PublicHarmonyService) ProtocolVersion(
+func (s *PublicIntelchainService) ProtocolVersion(
 	ctx context.Context,
 ) (interface{}, error) {
 	// Format response according to version
 	switch s.version {
 	case V1, Eth:
-		return hexutil.Uint(s.hmy.ProtocolVersion()), nil
+		return hexutil.Uint(s.itc.ProtocolVersion()), nil
 	case V2:
-		return s.hmy.ProtocolVersion(), nil
+		return s.itc.ProtocolVersion(), nil
 	default:
 		return nil, ErrUnknownRPCVersion
 	}
@@ -45,11 +45,11 @@ func (s *PublicHarmonyService) ProtocolVersion(
 // Syncing returns false in case the node is in sync with the network
 // If it is syncing, it returns:
 // starting block, current block, and network height
-func (s *PublicHarmonyService) Syncing(
+func (s *PublicIntelchainService) Syncing(
 	ctx context.Context,
 ) (interface{}, error) {
 	// difference = target - current
-	inSync, target, difference := s.hmy.NodeAPI.SyncStatus(s.hmy.ShardID)
+	inSync, target, difference := s.itc.NodeAPI.SyncStatus(s.itc.ShardID)
 	if inSync {
 		return false, nil
 	}
@@ -66,8 +66,8 @@ func (s *PublicHarmonyService) Syncing(
 
 // GasPrice returns a suggestion for a gas price.
 // Note that the return type is an interface to account for the different versions
-func (s *PublicHarmonyService) GasPrice(ctx context.Context) (interface{}, error) {
-	price, err := s.hmy.SuggestPrice(ctx)
+func (s *PublicIntelchainService) GasPrice(ctx context.Context) (interface{}, error) {
+	price, err := s.itc.SuggestPrice(ctx)
 	if err != nil || price.Cmp(big.NewInt(100e9)) < 0 {
 		price = big.NewInt(100e9)
 	}
@@ -83,24 +83,24 @@ func (s *PublicHarmonyService) GasPrice(ctx context.Context) (interface{}, error
 }
 
 // GetNodeMetadata produces a NodeMetadata record, data is from the answering RPC node
-func (s *PublicHarmonyService) GetNodeMetadata(
+func (s *PublicIntelchainService) GetNodeMetadata(
 	ctx context.Context,
 ) (StructuredResponse, error) {
 	// Response output is the same for all versions
-	return NewStructuredResponse(s.hmy.GetNodeMetadata())
+	return NewStructuredResponse(s.itc.GetNodeMetadata())
 }
 
 // GetPeerInfo produces a NodePeerInfo record
-func (s *PublicHarmonyService) GetPeerInfo(
+func (s *PublicIntelchainService) GetPeerInfo(
 	ctx context.Context,
 ) (StructuredResponse, error) {
 	// Response output is the same for all versions
-	return NewStructuredResponse(s.hmy.GetPeerInfo())
+	return NewStructuredResponse(s.itc.GetPeerInfo())
 }
 
-// GetNumPendingCrossLinks returns length of hmy.BlockChain.ReadPendingCrossLinks()
-func (s *PublicHarmonyService) GetNumPendingCrossLinks() (int, error) {
-	links, err := s.hmy.BlockChain.ReadPendingCrossLinks()
+// GetNumPendingCrossLinks returns length of itc.BlockChain.ReadPendingCrossLinks()
+func (s *PublicIntelchainService) GetNumPendingCrossLinks() (int, error) {
+	links, err := s.itc.BlockChain.ReadPendingCrossLinks()
 	if err != nil {
 		return 0, err
 	}

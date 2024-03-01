@@ -230,7 +230,7 @@ func testCrossShardXferPrecompile(test writeCapablePrecompileTest, t *testing.T)
 			db.Close()
 		}
 	}()
-	if db, err = rawdb.NewLevelDBDatabase("/tmp/harmony_shard_0", 256, 1024, "", false); err != nil {
+	if db, err = rawdb.NewLevelDBDatabase("/tmp/intelchain_shard_0", 256, 1024, "", false); err != nil {
 		db = nil
 		t.Fatalf("Could not initialize db %s", err)
 	}

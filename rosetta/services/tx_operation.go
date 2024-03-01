@@ -3,7 +3,7 @@ package services
 import (
 	"math/big"
 
-	"github.com/zennittians/intelchain/hmy/tracers"
+	"github.com/zennittians/intelchain/itc/tracers"
 
 	"github.com/zennittians/intelchain/internal/bech32"
 	internalCommon "github.com/zennittians/intelchain/internal/common"
@@ -12,9 +12,9 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/zennittians/intelchain/core"
-	hmytypes "github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy"
+	itctypes "github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/params"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
 	rpcV2 "github.com/zennittians/intelchain/rpc/v2"
 	"github.com/zennittians/intelchain/staking"
@@ -32,7 +32,7 @@ const (
 // contract creation, cross-shard sender, same-shard transfer with and without code execution.
 // Native operations only include operations that affect the native currency balance of an account.
 func GetNativeOperationsFromTransaction(
-	tx *hmytypes.Transaction, receipt *hmytypes.Receipt, contractInfo *ContractInfo,
+	tx *itctypes.Transaction, receipt *itctypes.Receipt, contractInfo *ContractInfo,
 ) ([]*types.Operation, *types.Error) {
 	senderAddress, err := tx.SenderAddress()
 	if err != nil {
@@ -77,7 +77,7 @@ func GetNativeOperationsFromTransaction(
 // GetNativeOperationsFromStakingTransaction for all staking directives
 // Note that only native token operations can come from staking transactions.
 func GetNativeOperationsFromStakingTransaction(
-	tx *stakingTypes.StakingTransaction, receipt *hmytypes.Receipt, signed bool,
+	tx *stakingTypes.StakingTransaction, receipt *itctypes.Receipt, signed bool,
 ) ([]*types.Operation, *types.Error) {
 	senderAddress, err := tx.SenderAddress()
 	if err != nil {
@@ -179,7 +179,7 @@ func GetNativeOperationsFromStakingTransaction(
 }
 
 func getUndelegateOperationForSubAccount(
-	tx *stakingTypes.StakingTransaction, delegateOperation *types.Operation, receipt *hmytypes.Receipt,
+	tx *stakingTypes.StakingTransaction, delegateOperation *types.Operation, receipt *itctypes.Receipt,
 ) *types.Operation {
 	// set sub account
 	validatorAddress := delegateOperation.Metadata["validatorAddress"]
@@ -219,7 +219,7 @@ func getUndelegateOperationForSubAccount(
 	return undelegateion
 }
 
-func getDelegateOperationForSubAccount(tx *stakingTypes.StakingTransaction, receipt *hmytypes.Receipt, delegateOperation *types.Operation) (ops []*types.Operation) {
+func getDelegateOperationForSubAccount(tx *stakingTypes.StakingTransaction, receipt *itctypes.Receipt, delegateOperation *types.Operation) (ops []*types.Operation) {
 	msg, err := stakingTypes.RLPDecodeStakeMsg(tx.Data(), stakingTypes.DirectiveDelegate)
 	if err != nil {
 		return nil
@@ -234,7 +234,7 @@ func getDelegateOperationForSubAccount(tx *stakingTypes.StakingTransaction, rece
 	validatorAddress := delegateOperation.Metadata["validatorAddress"]
 	idx := int64(0)
 
-	logs := hmytypes.FindLogsWithTopic(receipt, staking.DelegateTopic)
+	logs := itctypes.FindLogsWithTopic(receipt, staking.DelegateTopic)
 	for _, log := range logs {
 		if len(log.Data) > ethcommon.AddressLength && log.Address == stkMsg.DelegatorAddress {
 			// add undelegated transaction
@@ -314,7 +314,7 @@ func getDelegateOperationForSubAccount(tx *stakingTypes.StakingTransaction, rece
 // getSideEffectOperationsFromUndelegationPayouts from the given payouts.
 // If the startingOperationIndex is provided, all operations will be indexed starting from the given operation index.
 func getSideEffectOperationsFromUndelegationPayouts(
-	payouts *hmy.UndelegationPayouts, startingOperationIndex *int64,
+	payouts *itc.UndelegationPayouts, startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	return getSideEffectOperationsFromUndelegationPayoutsMap(
 		payouts, common.UndelegationPayoutOperation, startingOperationIndex,
@@ -324,7 +324,7 @@ func getSideEffectOperationsFromUndelegationPayouts(
 // GetSideEffectOperationsFromPreStakingRewards from the given rewards.
 // If the startingOperationIndex is provided, all operations will be indexed starting from the given operation index.
 func GetSideEffectOperationsFromPreStakingRewards(
-	rewards hmy.PreStakingBlockRewards, startingOperationIndex *int64,
+	rewards itc.PreStakingBlockRewards, startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	return getSideEffectOperationsFromValueMap(
 		rewards, common.PreStakingBlockRewardOperation, startingOperationIndex,
@@ -345,9 +345,9 @@ func GetSideEffectOperationsFromGenesisSpec(
 	)
 }
 
-// GetTransactionStatus for any valid harmony transaction given its receipt.
-func GetTransactionStatus(tx hmytypes.PoolTransaction, receipt *hmytypes.Receipt) *string {
-	if _, ok := tx.(*hmytypes.Transaction); ok {
+// GetTransactionStatus for any valid Intelchain transaction given its receipt.
+func GetTransactionStatus(tx itctypes.PoolTransaction, receipt *itctypes.Receipt) *string {
+	if _, ok := tx.(*itctypes.Transaction); ok {
 		status := common.SuccessOperationStatus.Status
 		if common.GetDefaultFix().IsForceTxSuccess(tx.Hash().Hex()) {
 			return &status
@@ -356,7 +356,7 @@ func GetTransactionStatus(tx hmytypes.PoolTransaction, receipt *hmytypes.Receipt
 			return &status
 		}
 
-		if receipt.Status == hmytypes.ReceiptStatusFailed {
+		if receipt.Status == itctypes.ReceiptStatusFailed {
 			if len(tx.Data()) == 0 && receipt.CumulativeGasUsed <= params.TxGas {
 				status = common.FailureOperationStatus.Status
 			} else {
@@ -374,7 +374,7 @@ func GetTransactionStatus(tx hmytypes.PoolTransaction, receipt *hmytypes.Receipt
 // getBasicTransferNativeOperations extracts & formats the basic native operations for non-staking transaction.
 // Note that this does NOT include any contract related transfers (i.e: internal transactions).
 func getBasicTransferNativeOperations(
-	tx *hmytypes.Transaction, receipt *hmytypes.Receipt, senderAddress ethcommon.Address, toAddress *ethcommon.Address,
+	tx *itctypes.Transaction, receipt *itctypes.Receipt, senderAddress ethcommon.Address, toAddress *ethcommon.Address,
 	startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	if toAddress == nil {
@@ -401,7 +401,7 @@ func getBasicTransferNativeOperations(
 // transaction involving a contract.
 // Note that this will include any native tokens that were transferred from the contract (i.e: internal transactions).
 func getContractTransferNativeOperations(
-	tx *hmytypes.Transaction, receipt *hmytypes.Receipt, senderAddress ethcommon.Address, toAddress *ethcommon.Address,
+	tx *itctypes.Transaction, receipt *itctypes.Receipt, senderAddress ethcommon.Address, toAddress *ethcommon.Address,
 	contractInfo *ContractInfo, startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	basicOps, rosettaError := getBasicTransferNativeOperations(
@@ -425,7 +425,7 @@ func getContractTransferNativeOperations(
 
 // getContractCreationNativeOperations extracts & formats the native operations for a contract creation tx
 func getContractCreationNativeOperations(
-	tx *hmytypes.Transaction, receipt *hmytypes.Receipt, senderAddress ethcommon.Address, contractInfo *ContractInfo,
+	tx *itctypes.Transaction, receipt *itctypes.Receipt, senderAddress ethcommon.Address, contractInfo *ContractInfo,
 	startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	basicOps, rosettaError := getBasicTransferNativeOperations(
@@ -493,7 +493,7 @@ func getContractInternalTransferNativeOperations(
 
 // getCrossShardSenderTransferNativeOperations extracts & formats the native operation(s)
 // for cross-shard-tx on the sender's shard.
-func getCrossShardSenderTransferNativeOperations(tx *hmytypes.Transaction, receipt *hmytypes.Receipt, senderAddress ethcommon.Address, startingOperationIndex *int64) ([]*types.Operation, *types.Error) {
+func getCrossShardSenderTransferNativeOperations(tx *itctypes.Transaction, receipt *itctypes.Receipt, senderAddress ethcommon.Address, startingOperationIndex *int64) ([]*types.Operation, *types.Error) {
 	if tx.To() == nil {
 		return nil, common.NewError(common.CatchAllError, nil)
 	}
@@ -540,7 +540,7 @@ func getCrossShardSenderTransferNativeOperations(tx *hmytypes.Transaction, recei
 
 // delegator address => validator address => amount
 func getSideEffectOperationsFromUndelegationPayoutsMap(
-	undelegationPayouts *hmy.UndelegationPayouts, opType string, startingOperationIndex *int64,
+	undelegationPayouts *itc.UndelegationPayouts, opType string, startingOperationIndex *int64,
 ) ([]*types.Operation, *types.Error) {
 	var opIndex int64
 	operations := []*types.Operation{}
@@ -665,7 +665,7 @@ func getAmountFromCreateValidatorMessage(data []byte) (*types.Amount, *types.Err
 	}, nil
 }
 
-func getAmountFromDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*types.Amount, *types.Error) {
+func getAmountFromDelegateMessage(receipt *itctypes.Receipt, data []byte) (*types.Amount, *types.Error) {
 	msg, err := stakingTypes.RLPDecodeStakeMsg(data, stakingTypes.DirectiveDelegate)
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
@@ -680,7 +680,7 @@ func getAmountFromDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*type
 	}
 
 	deductedAmt := stkMsg.Amount
-	logs := hmytypes.FindLogsWithTopic(receipt, staking.DelegateTopic)
+	logs := itctypes.FindLogsWithTopic(receipt, staking.DelegateTopic)
 	for _, log := range logs {
 		if len(log.Data) > ethcommon.AddressLength && log.Address == stkMsg.DelegatorAddress {
 			// Remove re-delegation amount as funds were never credited to account's balance.
@@ -693,7 +693,7 @@ func getAmountFromDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*type
 	}, nil
 }
 
-func getAmountFromUnDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*types.Amount, *types.Error) {
+func getAmountFromUnDelegateMessage(receipt *itctypes.Receipt, data []byte) (*types.Amount, *types.Error) {
 	msg, err := stakingTypes.RLPDecodeStakeMsg(data, stakingTypes.DirectiveUndelegate)
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
@@ -708,7 +708,7 @@ func getAmountFromUnDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*ty
 	}
 
 	deductedAmt := stkMsg.Amount
-	logs := hmytypes.FindLogsWithTopic(receipt, staking.UnDelegateTopic)
+	logs := itctypes.FindLogsWithTopic(receipt, staking.UnDelegateTopic)
 	for _, log := range logs {
 		if len(log.Data) > ethcommon.AddressLength && log.Address == stkMsg.DelegatorAddress {
 			// Remove re-delegation amount as funds were never credited to account's balance.
@@ -722,10 +722,10 @@ func getAmountFromUnDelegateMessage(receipt *hmytypes.Receipt, data []byte) (*ty
 }
 
 func getAmountFromCollectRewards(
-	receipt *hmytypes.Receipt, senderAddress ethcommon.Address,
+	receipt *itctypes.Receipt, senderAddress ethcommon.Address,
 ) (*types.Amount, *types.Error) {
 	var amount *types.Amount
-	logs := hmytypes.FindLogsWithTopic(receipt, staking.CollectRewardsTopic)
+	logs := itctypes.FindLogsWithTopic(receipt, staking.CollectRewardsTopic)
 	for _, log := range logs {
 		if log.Address == senderAddress {
 			amount = &types.Amount{

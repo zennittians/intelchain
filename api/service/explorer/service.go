@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/RoaringBitmap/roaring/roaring64"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	itc "github.com/zennittians/intelchain/itc"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -20,9 +20,9 @@ import (
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/chain"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/internal/utils"
-	hmy "github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/itc/tracers"
 	"github.com/zennittians/intelchain/numeric"
 	"github.com/zennittians/intelchain/p2p"
@@ -45,21 +45,21 @@ type HTTPError struct {
 
 // Service is the struct for explorer service.
 type Service struct {
-	router        *mux.Router
-	IP            string
-	Port          string
-	storage       *storage
-	server        *http.Server
-	messageChan   chan *msg_pb.Message
-	blockchain    core.BlockChain
-	backend       hmy.NodeAPI
-	harmonyConfig *harmonyconfig.HarmonyConfig
+	router           *mux.Router
+	IP               string
+	Port             string
+	storage          *storage
+	server           *http.Server
+	messageChan      chan *msg_pb.Message
+	blockchain       core.BlockChain
+	backend          itc.NodeAPI
+	intelchainconfig *intelchainconfig.IntelchainConfig
 }
 
 // New returns explorer service.
-func New(harmonyConfig *harmonyconfig.HarmonyConfig, selfPeer *p2p.Peer, bc core.BlockChain, backend hmy.NodeAPI) *Service {
+func New(intelchainconfig *intelchainconfig.IntelchainConfig, selfPeer *p2p.Peer, bc core.BlockChain, backend itc.NodeAPI) *Service {
 	dbPath := defaultDBPath(selfPeer.IP, selfPeer.Port)
-	storage, err := newStorage(harmonyConfig, bc, dbPath)
+	storage, err := newStorage(intelchainconfig, bc, dbPath)
 	if err != nil {
 		utils.Logger().Fatal().Err(err).Msg("cannot open explorer DB")
 	}

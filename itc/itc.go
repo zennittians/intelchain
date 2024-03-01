@@ -1,4 +1,4 @@
-package hmy
+package itc
 
 import (
 	"context"
@@ -11,6 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/api/proto"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core"
@@ -21,9 +24,6 @@ import (
 	commonRPC "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/shard"
 	staking "github.com/zennittians/intelchain/staking/types"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -44,10 +44,10 @@ var (
 	ErrFinalizedTransaction = errors.New("transaction already finalized")
 )
 
-// Harmony implements the Harmony full node service.
-type Harmony struct {
+// Intelchain implements the Intelchain full node service.
+type Intelchain struct {
 	// Channel for shutting down the service
-	ShutdownChan  chan bool                      // Channel for shutting down the Harmony
+	ShutdownChan  chan bool                      // Channel for shutting down the Intelchain
 	BloomRequests chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
 	BlockChain    core.BlockChain
 	BeaconChain   core.BlockChain
@@ -123,11 +123,11 @@ type NodeAPI interface {
 	GetLastSigningPower2() (float64, error)
 }
 
-// New creates a new Harmony object (including the
-// initialisation of the common Harmony object)
+// New creates a new Intelchain object (including the
+// initialisation of the common Intelchain object)
 func New(
 	nodeAPI NodeAPI, txPool *core.TxPool, cxPool *core.CxPool, shardID uint32,
-) *Harmony {
+) *Intelchain {
 	leaderCache, _ := lru.New(leaderCacheSize)
 	undelegationPayoutsCache, _ := lru.New(undelegationPayoutsCacheSize)
 	stakeByBlockNumberCache, _ := lru.New(stakeByBlockNumberCacheSize)
@@ -136,7 +136,7 @@ func New(
 	bloomIndexer := NewBloomIndexer(nodeAPI.Blockchain(), params.BloomBitsBlocks, params.BloomConfirms)
 	bloomIndexer.Start(nodeAPI.Blockchain())
 
-	backend := &Harmony{
+	backend := &Intelchain{
 		ShutdownChan:                make(chan bool),
 		BloomRequests:               make(chan chan *bloombits.Retrieval),
 		BloomIndexer:                bloomIndexer,
@@ -158,7 +158,7 @@ func New(
 	}
 
 	// Setup gas price oracle
-	config := nodeAPI.GetConfig().HarmonyConfig.GPO
+	config := nodeAPI.GetConfig().IntelchainConfig.GPO
 	gpo := NewOracle(backend, &config)
 	backend.gpo = gpo
 
@@ -166,33 +166,33 @@ func New(
 }
 
 // SingleFlightRequest ..
-func (hmy *Harmony) SingleFlightRequest(
+func (itc *Intelchain) SingleFlightRequest(
 	key string,
 	fn func() (interface{}, error),
 ) (interface{}, error) {
-	res, err, _ := hmy.group.Do(key, fn)
+	res, err, _ := itc.group.Do(key, fn)
 	return res, err
 }
 
 // SingleFlightForgetKey ...
-func (hmy *Harmony) SingleFlightForgetKey(key string) {
-	hmy.group.Forget(key)
+func (itc *Intelchain) SingleFlightForgetKey(key string) {
+	itc.group.Forget(key)
 }
 
 // ProtocolVersion ...
-func (hmy *Harmony) ProtocolVersion() int {
+func (itc *Intelchain) ProtocolVersion() int {
 	return proto.ProtocolVersion
 }
 
 // IsLeader exposes if node is currently leader.
-func (hmy *Harmony) IsLeader() bool {
-	return hmy.NodeAPI.IsCurrentlyLeader()
+func (itc *Intelchain) IsLeader() bool {
+	return itc.NodeAPI.IsCurrentlyLeader()
 }
 
 // GetNodeMetadata returns the node metadata.
-func (hmy *Harmony) GetNodeMetadata() commonRPC.NodeMetadata {
+func (itc *Intelchain) GetNodeMetadata() commonRPC.NodeMetadata {
 	var (
-		header     = hmy.CurrentHeader()
+		header     = itc.CurrentHeader()
 		cfg        = nodeconfig.GetShardConfig(header.ShardID())
 		blockEpoch *uint64
 		blsKeys    []string
@@ -211,26 +211,26 @@ func (hmy *Harmony) GetNodeMetadata() commonRPC.NodeMetadata {
 		}
 	}
 
-	c.TotalKnownPeers, c.Connected, c.NotConnected = hmy.NodeAPI.PeerConnectivity()
+	c.TotalKnownPeers, c.Connected, c.NotConnected = itc.NodeAPI.PeerConnectivity()
 
-	syncPeers := hmy.NodeAPI.SyncPeers()
-	consensusInternal := hmy.NodeAPI.GetConsensusInternal()
+	syncPeers := itc.NodeAPI.SyncPeers()
+	consensusInternal := itc.NodeAPI.GetConsensusInternal()
 
 	return commonRPC.NodeMetadata{
 		BLSPublicKey:    blsKeys,
 		Version:         nodeconfig.GetVersion(),
 		NetworkType:     string(cfg.GetNetworkType()),
-		ChainConfig:     *hmy.ChainConfig(),
-		IsLeader:        hmy.IsLeader(),
-		ShardID:         hmy.ShardID,
+		ChainConfig:     *itc.ChainConfig(),
+		IsLeader:        itc.IsLeader(),
+		ShardID:         itc.ShardID,
 		CurrentBlockNum: header.Number().Uint64(),
 		CurrentEpoch:    header.Epoch().Uint64(),
 		BlocksPerEpoch:  blockEpoch,
 		Role:            cfg.Role().String(),
 		DNSZone:         cfg.DNSZone,
 		Archival:        cfg.GetArchival(),
-		IsBackup:        hmy.NodeAPI.IsBackup(),
-		NodeBootTime:    hmy.NodeAPI.GetNodeBootTime(),
+		IsBackup:        itc.NodeAPI.IsBackup(),
+		NodeBootTime:    itc.NodeAPI.GetNodeBootTime(),
 		PeerID:          nodeconfig.GetPeerID(),
 		Consensus:       consensusInternal,
 		C:               c,
@@ -239,25 +239,25 @@ func (hmy *Harmony) GetNodeMetadata() commonRPC.NodeMetadata {
 }
 
 // GetEVM returns a new EVM entity
-func (hmy *Harmony) GetEVM(ctx context.Context, msg core.Message, state *state.DB, header *block.Header) (*vm.EVM, error) {
+func (itc *Intelchain) GetEVM(ctx context.Context, msg core.Message, state *state.DB, header *block.Header) (*vm.EVM, error) {
 	state.SetBalance(msg.From(), math.MaxBig256)
-	vmCtx := core.NewEVMContext(msg, header, hmy.BlockChain, nil)
-	return vm.NewEVM(vmCtx, state, hmy.BlockChain.Config(), *hmy.BlockChain.GetVMConfig()), nil
+	vmCtx := core.NewEVMContext(msg, header, itc.BlockChain, nil)
+	return vm.NewEVM(vmCtx, state, itc.BlockChain.Config(), *itc.BlockChain.GetVMConfig()), nil
 }
 
 // ChainDb ..
-func (hmy *Harmony) ChainDb() ethdb.Database {
-	return hmy.chainDb
+func (itc *Intelchain) ChainDb() ethdb.Database {
+	return itc.chainDb
 }
 
 // EventMux ..
-func (hmy *Harmony) EventMux() *event.TypeMux {
-	return hmy.eventMux
+func (itc *Intelchain) EventMux() *event.TypeMux {
+	return itc.eventMux
 }
 
 // BloomStatus ...
-// TODO: this is not implemented or verified yet for harmony.
-func (hmy *Harmony) BloomStatus() (uint64, uint64) {
-	sections, _, _ := hmy.BloomIndexer.Sections()
+// TODO: this is not implemented or verified yet for Intelchain.
+func (itc *Intelchain) BloomStatus() (uint64, uint64) {
+	sections, _, _ := itc.BloomIndexer.Sections()
 	return BloomBitsBlocks, sections
 }

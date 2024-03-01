@@ -3,7 +3,7 @@ package common
 import (
 	"encoding/json"
 
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -85,7 +85,7 @@ type NodePeerInfo struct {
 }
 
 type Config struct {
-	HarmonyConfig harmonyconfig.HarmonyConfig
-	NodeConfig    nodeconfig.ConfigType
-	ChainConfig   params.ChainConfig
+	IntelchainConfig intelchainconfig.IntelchainConfig
+	NodeConfig       nodeconfig.ConfigType
+	ChainConfig      params.ChainConfig
 }

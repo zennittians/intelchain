@@ -1,6 +1,6 @@
 ## Docker Image
 
-Included in this repo is a Dockerfile that you can launch harmony node for trying it out. Docker images are available on `intelchainitc/harmony`.
+Included in this repo is a Dockerfile that you can launch intelchain node for trying it out. Docker images are available on `intelchainitc/intelchain`.
 
 You can build the docker image with the following commands:
 ```bash
@@ -10,37 +10,37 @@ make docker
 If your build machine has an ARM-based chip, like Apple silicon (M1), the image is built for `linux/arm64` by default. To build for `x86_64`, apply the --platform arg:
 
 ```bash
-docker build --platform linux/amd64 -t intelchainitc/harmony -f Dockerfile .
+docker build --platform linux/amd64 -t intelchainitc/intelchain -f Dockerfile .
 ```
 
-Before start the docker, dump the default config `harmony.conf` by running:
+Before start the docker, dump the default config `intelchain.conf` by running:
 
 for testnet
 ```bash
-docker run -v $(pwd)/config:/harmony --rm --name harmony intelchainitc/harmony harmony config dump --network testnet harmony.conf
+docker run -v $(pwd)/config:/intelchain --rm --name intelchain intelchainitc/intelchain intelchain config dump --network testnet intelchain.conf
 ```
 for mainnet
 ```bash
-docker run -v $(pwd)/config:/harmony --rm --name harmony intelchainitc/harmony harmony config dump harmony.conf
+docker run -v $(pwd)/config:/intelchain --rm --name intelchain intelchainitc/intelchain intelchain config dump intelchain.conf
 ```
 
-make your customization. `harmony.conf` should be mounted into default `HOME` directory `/harmony` inside the container. Assume `harmony.conf`, `blskeys` and `hmykey` are under `./config` in your current working directory, you can start your docker container with the following command:
+make your customization. `intelchain.conf` should be mounted into default `HOME` directory `/intelchain` inside the container. Assume `intelchain.conf`, `blskeys` and `itckey` are under `./config` in your current working directory, you can start your docker container with the following command:
 ```bash
-docker run -v $(pwd)/config:/harmony --rm --name harmony -it intelchainitc/harmony
+docker run -v $(pwd)/config:/intelchain --rm --name intelchain -it intelchainitc/intelchain
 ```
 
 If you need to open another shell, just do:
 ```bash
-docker exec -it intelchainitc/harmony /bin/bash
+docker exec -it intelchainitc/intelchain /bin/bash
 ```
 
 We also provide a `docker-compose` file for local testing
 
-To use the container in kubernetes, you can use a configmap or secret to mount the `harmony.conf` into the container
+To use the container in kubernetes, you can use a configmap or secret to mount the `intelchain.conf` into the container
 ```bash
 containers:
-  - name: harmony
-    image: intelchainitc/harmony
+  - name: intelchain
+    image: intelchainitc/intelchain
     ports:
       - name: p2p
         containerPort: 9000  
@@ -50,21 +50,21 @@ containers:
         containerPort: 9800     
     volumeMounts:
       - name: config
-        mountPath: /harmony/harmony.conf
+        mountPath: /intelchain/intelchain.conf
   volumes:
     - name: config
       configMap:
-        name: cm-harmony-config
+        name: cm-intelchain-config
     
 ```
 
-Your configmap `cm-harmony-config` should look like this:
+Your configmap `cm-intelchain-config` should look like this:
 ```
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm-harmony-config
+  name: cm-intelchain-config
 data:
-  harmony.conf: |
+  intelchain.conf: |
     ...
 ```

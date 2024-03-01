@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
-	harmony_bls "github.com/zennittians/intelchain/crypto/bls"
+	intelchain_bls "github.com/zennittians/intelchain/crypto/bls"
 	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
 	"github.com/zennittians/intelchain/numeric"
 	"github.com/zennittians/intelchain/shard"
@@ -56,11 +56,11 @@ func TestAddingQuoromParticipants(t *testing.T) {
 
 	assert.Equal(t, int64(0), decider.ParticipantsCount())
 
-	blsKeys := []harmony_bls.PublicKeyWrapper{}
+	blsKeys := []intelchain_bls.PublicKeyWrapper{}
 	keyCount := int64(5)
 	for i := int64(0); i < keyCount; i++ {
-		blsKey := harmony_bls.RandPrivateKey()
-		wrapper := harmony_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
+		blsKey := intelchain_bls.RandPrivateKey()
+		wrapper := intelchain_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
 		wrapper.Bytes.FromLibBLSPublicKey(wrapper.Object)
 		blsKeys = append(blsKeys, wrapper)
 	}
@@ -235,7 +235,7 @@ func TestAddNewVote(test *testing.T) {
 		}
 	}
 
-	// aggregate sig from all of 3 harmony nodes
+	// aggregate sig from all of 3 intelchain nodes
 	decider.AddNewVote(Prepare,
 		[]*bls.PublicKeyWrapper{&pubKeys[0], &pubKeys[1], &pubKeys[2]},
 		aggSig,
@@ -244,10 +244,10 @@ func TestAddNewVote(test *testing.T) {
 		viewID)
 
 	if !decider.IsQuorumAchieved(Prepare) {
-		test.Error("quorum should have been achieved with harmony nodes")
+		test.Error("quorum should have been achieved with intelchain nodes")
 	}
 	if decider.SignersCount(Prepare) != 3 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 3)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 3)
 	}
 
 	decider.ResetPrepareAndCommitVotes()
@@ -273,7 +273,7 @@ func TestAddNewVote(test *testing.T) {
 		test.Fatal("quorum shouldn't have been achieved with external nodes")
 	}
 	if decider.SignersCount(Prepare) != 0 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 0)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 0)
 	}
 
 	decider.ResetPrepareAndCommitVotes()
@@ -292,7 +292,7 @@ func TestAddNewVote(test *testing.T) {
 		test.Fatal("quorum shouldn't have been achieved with only one key signing")
 	}
 	if decider.SignersCount(Prepare) != 1 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 1)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 1)
 	}
 }
 
@@ -340,7 +340,7 @@ func TestAddNewVoteAggregateSig(test *testing.T) {
 		}
 	}
 
-	// aggregate sig from all of 2 harmony nodes
+	// aggregate sig from all of 2 intelchain nodes
 	decider.AddNewVote(Prepare,
 		[]*bls.PublicKeyWrapper{&pubKeys[0], &pubKeys[1]},
 		aggSig,
@@ -349,10 +349,10 @@ func TestAddNewVoteAggregateSig(test *testing.T) {
 		viewID)
 
 	if decider.IsQuorumAchieved(Prepare) {
-		test.Error("quorum should not have been achieved with 2 harmony nodes")
+		test.Error("quorum should not have been achieved with 2 intelchain nodes")
 	}
 	if decider.SignersCount(Prepare) != 2 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 2)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 2)
 	}
 	// aggregate sig from all of 2 external nodes
 
@@ -370,10 +370,10 @@ func TestAddNewVoteAggregateSig(test *testing.T) {
 		viewID)
 
 	if !decider.IsQuorumAchieved(Prepare) {
-		test.Error("quorum should have been achieved with 2 harmony nodes")
+		test.Error("quorum should have been achieved with 2 intelchain nodes")
 	}
 	if decider.SignersCount(Prepare) != 4 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
 	}
 }
 
@@ -424,7 +424,7 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 		}
 	}
 
-	// aggregate sig from all of 2 harmony nodes
+	// aggregate sig from all of 2 intelchain nodes
 	decider.AddNewVote(Prepare,
 		[]*bls.PublicKeyWrapper{&pubKeys[0], &pubKeys[1]},
 		aggSig,
@@ -433,10 +433,10 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 		viewID)
 
 	if decider.IsQuorumAchieved(Prepare) {
-		test.Error("quorum should not have been achieved with 2 harmony nodes")
+		test.Error("quorum should not have been achieved with 2 intelchain nodes")
 	}
 	if decider.SignersCount(Prepare) != 2 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 2)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 2)
 	}
 
 	aggSig = &bls_core.Sign{}
@@ -457,7 +457,7 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 		test.Error(err, "expect no error")
 	}
 	if decider.SignersCount(Prepare) != 4 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
 	}
 
 	// Aggregate Vote should only contain sig from 0, 1, 3, 4
@@ -481,7 +481,7 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 		test.Error(err, "expect error due to already submitted votes")
 	}
 	if decider.SignersCount(Prepare) != 4 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
 	}
 
 	_, err = decider.AddNewVote(Prepare,
@@ -495,7 +495,7 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 		test.Error(err, "expect error due to duplicate keys in aggregated votes")
 	}
 	if decider.SignersCount(Prepare) != 4 {
-		test.Errorf("signers are incorrect for harmony nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
+		test.Errorf("signers are incorrect for intelchain nodes signing with aggregate sig: have %d, expect %d", decider.SignersCount(Prepare), 4)
 	}
 }
 
@@ -550,30 +550,30 @@ func TestInvalidAggregateSig(test *testing.T) {
 	}
 }
 
-func TestNthNextHmyExt(test *testing.T) {
-	numHmyNodes := 10
+func TestNthNextItcExt(test *testing.T) {
+	numItcNodes := 10
 	numAllExtNodes := 10
 	numAllowlistExtNodes := numAllExtNodes / 2
 	allowlist := shardingconfig.Allowlist{MaxLimitPerShard: numAllowlistExtNodes - 1}
-	blsKeys := []harmony_bls.PublicKeyWrapper{}
-	for i := 0; i < numHmyNodes+numAllExtNodes; i++ {
-		blsKey := harmony_bls.RandPrivateKey()
-		wrapper := harmony_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
+	blsKeys := []intelchain_bls.PublicKeyWrapper{}
+	for i := 0; i < numItcNodes+numAllExtNodes; i++ {
+		blsKey := intelchain_bls.RandPrivateKey()
+		wrapper := intelchain_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
 		wrapper.Bytes.FromLibBLSPublicKey(wrapper.Object)
 		blsKeys = append(blsKeys, wrapper)
 	}
 	allowlistLeaders := blsKeys[len(blsKeys)-allowlist.MaxLimitPerShard:]
-	allLeaders := append(blsKeys[:numHmyNodes], allowlistLeaders...)
+	allLeaders := append(blsKeys[:numItcNodes], allowlistLeaders...)
 
 	decider := NewDecider(SuperMajorityVote, shard.BeaconChainShardID)
-	fakeInstance := shardingconfig.MustNewInstance(2, 20, numHmyNodes, 0, numeric.OneDec(), nil, nil, allowlist, nil, numeric.ZeroDec(), common.Address{}, nil, 0)
+	fakeInstance := shardingconfig.MustNewInstance(2, 20, numItcNodes, 0, numeric.OneDec(), nil, nil, allowlist, nil, numeric.ZeroDec(), common.Address{}, nil, 0)
 
 	decider.UpdateParticipants(blsKeys, allowlistLeaders)
 	for i := 0; i < len(allLeaders); i++ {
 		leader := allLeaders[i]
 		for j := 0; j < len(allLeaders)*2; j++ {
 			expectNextLeader := allLeaders[(i+j)%len(allLeaders)]
-			found, nextLeader := decider.NthNextHmyExt(fakeInstance, &leader, j)
+			found, nextLeader := decider.NthNextItcExt(fakeInstance, &leader, j)
 			if !found {
 				test.Fatal("next leader not found")
 			}
@@ -584,7 +584,7 @@ func TestNthNextHmyExt(test *testing.T) {
 			preJ := -j
 			preIndex := (i + len(allLeaders) + preJ%len(allLeaders)) % len(allLeaders)
 			expectPreLeader := allLeaders[preIndex]
-			found, preLeader := decider.NthNextHmyExt(fakeInstance, &leader, preJ)
+			found, preLeader := decider.NthNextItcExt(fakeInstance, &leader, preJ)
 			if !found {
 				test.Fatal("previous leader not found")
 			}
@@ -595,18 +595,18 @@ func TestNthNextHmyExt(test *testing.T) {
 	}
 }
 
-func TestCIdentities_NthNextValidatorHmy(t *testing.T) {
+func TestCIdentities_NthNextValidatorItc(t *testing.T) {
 	address := []common.Address{
 		common.HexToAddress("0x1"),
 		common.HexToAddress("0x2"),
 		common.HexToAddress("0x3"),
 	}
 	slots := shard.SlotList{}
-	list := []harmony_bls.PublicKeyWrapper{}
+	list := []intelchain_bls.PublicKeyWrapper{}
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
-			blsKey := harmony_bls.RandPrivateKey()
-			wrapper := harmony_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
+			blsKey := intelchain_bls.RandPrivateKey()
+			wrapper := intelchain_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
 			wrapper.Bytes.FromLibBLSPublicKey(wrapper.Object)
 			slots = append(slots, shard.Slot{
 				EcdsaAddress:   address[i%3],

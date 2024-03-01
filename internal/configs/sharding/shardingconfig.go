@@ -1,4 +1,4 @@
-// Package shardingconfig defines types and utilities that deal with Harmony
+// Package shardingconfig defines types and utilities that deal with Intelchain
 // sharding configuration schedule.
 package shardingconfig
 
@@ -50,18 +50,18 @@ type Instance interface {
 	// NumNodesPerShard returns number of nodes in each shard.
 	NumNodesPerShard() int
 
-	// NumHarmonyOperatedNodesPerShard returns number of nodes in each shard
-	// that are operated by Harmony.
-	NumHarmonyOperatedNodesPerShard() int
+	// NumIntelchainOperatedNodesPerShard returns number of nodes in each shard
+	// that are operated by Intelchain.
+	NumIntelchainOperatedNodesPerShard() int
 
-	// HarmonyVotePercent returns total percentage of voting power harmony nodes possess.
-	HarmonyVotePercent() numeric.Dec
+	// IntelchainVotePercent returns total percentage of voting power Intelchain nodes possess.
+	IntelchainVotePercent() numeric.Dec
 
 	// ExternalVotePercent returns total percentage of voting power external validators possess.
 	ExternalVotePercent() numeric.Dec
 
-	// HmyAccounts returns a list of Harmony accounts
-	HmyAccounts() []genesis.DeployAccount
+	// ItcAccounts returns a list of Intelchain accounts
+	ItcAccounts() []genesis.DeployAccount
 
 	// FnAccounts returns a list of Foundational node accounts
 	FnAccounts() []genesis.DeployAccount

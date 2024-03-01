@@ -1,8 +1,8 @@
 package denominations
 
-// ONE Units
+// ITC Units
 const (
-	Atto = 1
-	Nano = 1e9
-	One  = 1e18
+	Intelli = 1
+	Intello = 1e9
+	Itc     = 1e18
 )

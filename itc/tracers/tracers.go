@@ -21,7 +21,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/zennittians/intelchain/hmy/tracers/internal/tracers"
+	"github.com/zennittians/intelchain/itc/tracers/internal/tracers"
 )
 
 // all contains all the built in JavaScript tracers by name.

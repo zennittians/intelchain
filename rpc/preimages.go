@@ -5,16 +5,16 @@ import (
 
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
+	"github.com/zennittians/intelchain/itc"
 )
 
 type PreimagesService struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
 // NewPreimagesAPI creates a new API for the RPC interface
-func NewPreimagesAPI(hmy *hmy.Harmony, version string) rpc.API {
-	var service interface{} = &PreimagesService{hmy}
+func NewPreimagesAPI(itc *itc.Intelchain, version string) rpc.API {
+	var service interface{} = &PreimagesService{itc}
 	return rpc.API{
 		Namespace: version,
 		Version:   APIVersion,
@@ -25,11 +25,11 @@ func NewPreimagesAPI(hmy *hmy.Harmony, version string) rpc.API {
 
 func (s *PreimagesService) Export(ctx context.Context, path string) error {
 	// these are by default not blocking
-	return core.ExportPreimages(s.hmy.BlockChain, path)
+	return core.ExportPreimages(s.itc.BlockChain, path)
 }
 
 func (s *PreimagesService) Verify(ctx context.Context) (uint64, error) {
-	currentBlock := s.hmy.CurrentBlock()
+	currentBlock := s.itc.CurrentBlock()
 	// these are by default not blocking
-	return core.VerifyPreimages(currentBlock.Header(), s.hmy.BlockChain)
+	return core.VerifyPreimages(currentBlock.Header(), s.itc.BlockChain)
 }

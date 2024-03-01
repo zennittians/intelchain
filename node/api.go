@@ -7,10 +7,10 @@ import (
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	"github.com/zennittians/intelchain/internal/tikv"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta"
-	hmy_rpc "github.com/zennittians/intelchain/rpc"
+	itc_rpc "github.com/zennittians/intelchain/rpc"
 	rpc_common "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/rpc/filters"
 )
@@ -68,23 +68,23 @@ func (node *Node) ReportPlainErrorSink() types.TransactionErrorReports {
 
 // StartRPC start RPC service
 func (node *Node) StartRPC() error {
-	harmony := hmy.New(node, node.TxPool, node.CxPool, node.Consensus.ShardID)
+	intelchain := itc.New(node, node.TxPool, node.CxPool, node.Consensus.ShardID)
 
 	// Gather all the possible APIs to surface
-	apis := node.APIs(harmony)
+	apis := node.APIs(intelchain)
 
-	return hmy_rpc.StartServers(harmony, apis, node.NodeConfig.RPCServer, node.HarmonyConfig.RPCOpt)
+	return itc_rpc.StartServers(intelchain, apis, node.NodeConfig.RPCServer, node.IntelchainConfig.RPCOpt)
 }
 
 // StopRPC stop RPC service
 func (node *Node) StopRPC() error {
-	return hmy_rpc.StopServers()
+	return itc_rpc.StopServers()
 }
 
 // StartRosetta start rosetta service
 func (node *Node) StartRosetta() error {
-	harmony := hmy.New(node, node.TxPool, node.CxPool, node.Consensus.ShardID)
-	return rosetta.StartServers(harmony, node.NodeConfig.RosettaServer, node.NodeConfig.RPCServer.RateLimiterEnabled, node.NodeConfig.RPCServer.RequestsPerSecond)
+	intelchain := itc.New(node, node.TxPool, node.CxPool, node.Consensus.ShardID)
+	return rosetta.StartServers(intelchain, node.NodeConfig.RosettaServer, node.NodeConfig.RPCServer.RateLimiterEnabled, node.NodeConfig.RPCServer.RequestsPerSecond)
 }
 
 // StopRosetta stops rosetta service
@@ -94,22 +94,22 @@ func (node *Node) StopRosetta() error {
 
 // APIs return the collection of local RPC services.
 // NOTE, some of these services probably need to be moved to somewhere else.
-func (node *Node) APIs(harmony *hmy.Harmony) []rpc.API {
-	hmyFilter := filters.NewPublicFilterAPI(harmony, false, "hmy", harmony.ShardID)
-	ethFilter := filters.NewPublicFilterAPI(harmony, false, "eth", harmony.ShardID)
+func (node *Node) APIs(intelchain *itc.Intelchain) []rpc.API {
+	itcFilter := filters.NewPublicFilterAPI(intelchain, false, "itc", intelchain.ShardID)
+	ethFilter := filters.NewPublicFilterAPI(intelchain, false, "eth", intelchain.ShardID)
 
-	if node.HarmonyConfig.General.RunElasticMode && node.HarmonyConfig.TiKV.Role == tikv.RoleReader {
-		hmyFilter.Service.(*filters.PublicFilterAPI).SyncNewFilterFromOtherReaders()
+	if node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
+		itcFilter.Service.(*filters.PublicFilterAPI).SyncNewFilterFromOtherReaders()
 		ethFilter.Service.(*filters.PublicFilterAPI).SyncNewFilterFromOtherReaders()
 	}
 
 	// Append all the local APIs and return
 	return []rpc.API{
-		hmy_rpc.NewPublicNetAPI(node.host, harmony.ChainID, hmy_rpc.V1),
-		hmy_rpc.NewPublicNetAPI(node.host, harmony.ChainID, hmy_rpc.V2),
-		hmy_rpc.NewPublicNetAPI(node.host, harmony.ChainID, hmy_rpc.Eth),
-		hmy_rpc.NewPublicWeb3API(),
-		hmyFilter,
+		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.V1),
+		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.V2),
+		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.Eth),
+		itc_rpc.NewPublicWeb3API(),
+		itcFilter,
 		ethFilter,
 	}
 }
@@ -169,9 +169,9 @@ func (node *Node) SetNodeBackupMode(isBackup bool) bool {
 
 func (node *Node) GetConfig() rpc_common.Config {
 	return rpc_common.Config{
-		HarmonyConfig: *node.HarmonyConfig,
-		NodeConfig:    *node.NodeConfig,
-		ChainConfig:   node.chainConfig,
+		IntelchainConfig: *node.IntelchainConfig,
+		NodeConfig:       *node.NodeConfig,
+		ChainConfig:      node.chainConfig,
 	}
 }
 

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	LDBTiKVPrefix = "harmony_tikv"
+	LDBTiKVPrefix = "Intelchain_tikv"
 )
 
 type TiKvCacheConfig struct {

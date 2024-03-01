@@ -64,7 +64,7 @@ var StakingTypeMap = map[staking.Directive]TransactionType{staking.DirectiveCrea
 	staking.DirectiveEditValidator: StakeEditVal, staking.DirectiveDelegate: Delegate,
 	staking.DirectiveUndelegate: Undelegate, staking.DirectiveCollectRewards: CollectRewards}
 
-// InternalTransaction defines the common interface for harmony and ethereum transactions.
+// InternalTransaction defines the common interface for intelchain and ethereum transactions.
 type InternalTransaction interface {
 	CoreTransaction
 
@@ -413,7 +413,7 @@ func (tx *Transaction) Hash() common.Hash {
 	return v
 }
 
-// HashByType hashes the RLP encoding of tx in it's original format (eth or hmy)
+// HashByType hashes the RLP encoding of tx in it's original format (eth or itc)
 // It uniquely identifies the transaction.
 func (tx *Transaction) HashByType() common.Hash {
 	if tx.IsEthCompatible() {
@@ -439,7 +439,7 @@ func (tx *Transaction) IsEthCompatible() bool {
 	return params.IsEthCompatible(tx.ChainID())
 }
 
-// ConvertToEth converts hmy txn to eth txn by removing the ShardID and ToShardID fields.
+// ConvertToEth converts itc txn to eth txn by removing the ShardID and ToShardID fields.
 func (tx *Transaction) ConvertToEth() *EthTransaction {
 	var tx2 EthTransaction
 	d := &tx.data
@@ -606,7 +606,7 @@ type TransactionsByPriceAndNonce struct {
 //
 // Note, the input map is reowned so the caller should not interact any more with
 // if after providing it to the constructor.
-func NewTransactionsByPriceAndNonce(hmySigner Signer, ethSigner Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
+func NewTransactionsByPriceAndNonce(itcSigner Signer, ethSigner Signer, txs map[common.Address]Transactions) *TransactionsByPriceAndNonce {
 	// Initialize a price based heap with the head transactions
 	heads := make(TxByPriceAndTime, 0, len(txs))
 	for from, accTxs := range txs {
@@ -615,7 +615,7 @@ func NewTransactionsByPriceAndNonce(hmySigner Signer, ethSigner Signer, txs map[
 		}
 		heads = append(heads, accTxs[0])
 		// Ensure the sender address is from the signer
-		signer := hmySigner
+		signer := itcSigner
 		if accTxs[0].IsEthCompatible() {
 			signer = ethSigner
 		}
@@ -631,7 +631,7 @@ func NewTransactionsByPriceAndNonce(hmySigner Signer, ethSigner Signer, txs map[
 	return &TransactionsByPriceAndNonce{
 		txs:       txs,
 		heads:     heads,
-		signer:    hmySigner,
+		signer:    itcSigner,
 		ethSigner: ethSigner,
 	}
 }

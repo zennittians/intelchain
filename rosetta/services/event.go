@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	hmyTypes "github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy"
+	itcTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/itc"
 )
 
 // EventAPI implements the server.EventsAPIServicer interface.
 type EventAPI struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
-func NewEventAPI(hmy *hmy.Harmony) *EventAPI {
-	return &EventAPI{hmy: hmy}
+func NewEventAPI(itc *itc.Intelchain) *EventAPI {
+	return &EventAPI{itc: itc}
 }
 
 // EventsBlocks implements the /events/blocks endpoint
@@ -28,7 +28,7 @@ func (e *EventAPI) EventsBlocks(ctx context.Context, request *types.EventsBlocks
 		}
 	}
 
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, e.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, e.itc.ShardID); err != nil {
 		return nil, err
 	}
 
@@ -50,11 +50,11 @@ func (e *EventAPI) EventsBlocks(ctx context.Context, request *types.EventsBlocks
 	}
 
 	resp = &types.EventsBlocksResponse{
-		MaxSequence: e.hmy.BlockChain.CurrentHeader().Number().Int64(),
+		MaxSequence: e.itc.BlockChain.CurrentHeader().Number().Int64(),
 	}
 
 	for i := offset; i < offset+limit; i++ {
-		block := e.hmy.BlockChain.GetBlockByNumber(uint64(i))
+		block := e.itc.BlockChain.GetBlockByNumber(uint64(i))
 		if block == nil {
 			break
 		}
@@ -65,7 +65,7 @@ func (e *EventAPI) EventsBlocks(ctx context.Context, request *types.EventsBlocks
 	return resp, nil
 }
 
-func buildFromBlock(block *hmyTypes.Block) *types.BlockEvent {
+func buildFromBlock(block *itcTypes.Block) *types.BlockEvent {
 	return &types.BlockEvent{
 		Sequence: block.Number().Int64(),
 		BlockIdentifier: &types.BlockIdentifier{

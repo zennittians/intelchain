@@ -104,7 +104,7 @@ type DB struct {
 	// The refund counter, also used by state transitioning.
 	refund uint64
 
-	thash, bhash common.Hash // thash means hmy tx hash
+	thash, bhash common.Hash // thash means itc tx hash
 	ethTxHash    common.Hash // ethTxHash is eth tx hash, use by tracer
 	txIndex      int
 	logs         map[common.Hash][]*types2.Log

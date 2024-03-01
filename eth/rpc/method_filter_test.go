@@ -7,18 +7,18 @@ import (
 func TestRpcMethodFilter(t *testing.T) {
 	method_filters_toml := `
 		Allow = [ 
-			"hmy_method1",
-			"wildcard:hmyv2_method?",
+			"itc_method1",
+			"wildcard:itcv2_method?",
 			"eth*",
-			"hmy_getNetworkInfo",
-			"regex:^hmy_send[a-zA-Z]+"
+			"itc_getNetworkInfo",
+			"regex:^itc_send[a-zA-Z]+"
 		]
 
 		Deny = [ 
 			"*staking*",
 			"eth_get*",
-			"hmy_getNetworkInfo",
-			"exact:hmy_sendTx"
+			"itc_getNetworkInfo",
+			"exact:itc_sendTx"
 		]
 	`
 	b := []byte(method_filters_toml)
@@ -30,18 +30,18 @@ func TestRpcMethodFilter(t *testing.T) {
 		name     string
 		exposure bool
 	}{
-		0:  {"hmy_method1", true},         // auto detected exact match which exists (case-insensitive)
-		1:  {"hmy_MeThoD1", true},         // check case-insensitive
-		2:  {"hmy_method2", false},        // not exist in allows
-		3:  {"hmyv2_method5", true},       // wildcard
-		4:  {"hmyv2_method", false},       // false case for wild card
+		0:  {"itc_method1", true},         // auto detected exact match which exists (case-insensitive)
+		1:  {"itc_MeThoD1", true},         // check case-insensitive
+		2:  {"itc_method2", false},        // not exist in allows
+		3:  {"itcv2_method5", true},       // wildcard
+		4:  {"itcv2_method", false},       // false case for wild card
 		5:  {"eth_chainID", true},         // auto detected wild card in allow filters
 		6:  {"eth_getValidator", false},   // auto detected wild card in deny filters
-		7:  {"hmy_getStakingInfo", false}, // deny wild card
+		7:  {"itc_getStakingInfo", false}, // deny wild card
 		8:  {"abc", false},                // not exist pattern
-		9:  {"hmy_getNetworkInfo", false}, // case-insensitive normal word match
-		10: {"hmy_sendTx", false},         // exact match (case-sensitive)
-		11: {"hmy_sendtx", true},          // exact match (case-sensitive)
+		9:  {"itc_getNetworkInfo", false}, // case-insensitive normal word match
+		10: {"itc_sendTx", false},         // exact match (case-sensitive)
+		11: {"itc_sendtx", true},          // exact match (case-sensitive)
 	}
 
 	for i, test := range tests {
@@ -63,7 +63,7 @@ func TestRpcMethodAllowAllFilter(t *testing.T) {
 			"mtd1",
 			"*staking*",
 			"eth_get*",
-			"^hmy_[a-z]+"
+			"^itc_[a-z]+"
 		]
 	`
 	b := []byte(method_filters_toml)
@@ -76,14 +76,14 @@ func TestRpcMethodAllowAllFilter(t *testing.T) {
 		exposure bool
 	}{
 		0: {"mtd1", false},
-		1: {"hmy_method1", false},
-		2: {"hmyv2_method5", true},
-		3: {"hmyv2_method", true},
+		1: {"itc_method1", false},
+		2: {"itcv2_method5", true},
+		3: {"itcv2_method", true},
 		4: {"eth_chainID", true},
 		5: {"eth_getValidator", false},
-		6: {"hmy_getStakingInfo", false},
+		6: {"itc_getStakingInfo", false},
 		7: {"abc", true},
-		8: {"hmy_getStakingNetworkInfo", false},
+		8: {"itc_getStakingNetworkInfo", false},
 	}
 
 	for i, test := range tests {
@@ -101,7 +101,7 @@ func TestRpcMethodDenyAllFilter(t *testing.T) {
 			"mtd1",
 			"*staking*",
 			"eth_get*",
-			"regex:^hmy_[a-z]+"
+			"regex:^itc_[a-z]+"
 		]
 
 		Deny = [ 
@@ -118,14 +118,14 @@ func TestRpcMethodDenyAllFilter(t *testing.T) {
 		exposure bool
 	}{
 		0: {"mtd1", false},
-		1: {"hmy_method1", false},
-		2: {"hmyv2_method5", false},
-		3: {"hmyv2_method", false},
+		1: {"itc_method1", false},
+		2: {"itcv2_method5", false},
+		3: {"itcv2_method", false},
 		4: {"eth_chainID", false},
 		5: {"eth_getValidator", false},
-		6: {"hmy_getStakingInfo", false},
+		6: {"itc_getStakingInfo", false},
 		7: {"abc", false},
-		8: {"hmy_getStakingNetworkInfo", false},
+		8: {"itc_getStakingNetworkInfo", false},
 	}
 
 	for i, test := range tests {
@@ -147,15 +147,15 @@ func TestEmptyRpcMethodFilter(t *testing.T) {
 		name     string
 		exposure bool
 	}{
-		0: {"hmy_method1", true},
-		1: {"hmy_method2", true},
-		2: {"hmyv2_method5", true},
-		3: {"hmyv2_method", true},
+		0: {"itc_method1", true},
+		1: {"itc_method2", true},
+		2: {"itcv2_method5", true},
+		3: {"itcv2_method", true},
 		4: {"eth_chainID", true},
 		5: {"eth_getValidator", true},
-		6: {"hmy_getStakingInfo", true},
+		6: {"itc_getStakingInfo", true},
 		7: {"abc", true},
-		8: {"hmy_getNetworkInfo", true},
+		8: {"itc_getNetworkInfo", true},
 	}
 
 	for i, test := range tests {

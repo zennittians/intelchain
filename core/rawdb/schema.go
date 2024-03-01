@@ -112,7 +112,7 @@ var (
 	validatorListKey        = []byte("validator-list")     // key for all validators list
 	// epochBlockNumberPrefix + epoch (big.Int.Bytes())
 	// -> epoch block number (big.Int.Bytes())
-	epochBlockNumberPrefix = []byte("harmony-epoch-block-number")
+	epochBlockNumberPrefix = []byte("intelchain-epoch-block-number")
 	// epochVrfBlockNumbersPrefix  + epoch (big.Int.Bytes())
 	epochVrfBlockNumbersPrefix = []byte("epoch-vrf-block-numbers")
 	// epochVdfBlockNumberPrefix  + epoch (big.Int.Bytes())

@@ -21,7 +21,7 @@ import (
 	"github.com/zennittians/taggedrlp"
 )
 
-// Header represents a block header in the Harmony blockchain.
+// Header represents a block header in the intelchain blockchain.
 type Header struct {
 	blockif.Header
 }

@@ -31,11 +31,10 @@ import (
 	"github.com/zennittians/intelchain/consensus"
 	"github.com/zennittians/intelchain/consensus/quorum"
 	"github.com/zennittians/intelchain/core"
-	"github.com/zennittians/intelchain/hmy/downloader"
 	"github.com/zennittians/intelchain/internal/chain"
 	"github.com/zennittians/intelchain/internal/cli"
 	"github.com/zennittians/intelchain/internal/common"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
 	"github.com/zennittians/intelchain/internal/genesis"
@@ -46,6 +45,7 @@ import (
 	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
 	"github.com/zennittians/intelchain/internal/tikv/statedb_cache"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/itc/downloader"
 	"github.com/zennittians/intelchain/multibls"
 	"github.com/zennittians/intelchain/node"
 	"github.com/zennittians/intelchain/numeric"
@@ -63,28 +63,28 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "harmony",
-	Short: "harmony is the Harmony node binary file",
-	Long: `harmony is the Harmony node binary file
+	Use:   "intelchain",
+	Short: "intelchain is the intelchain node binary file",
+	Long: `intelchain is the intelchain node binary file
 
 Examples usage:
 
-# start a validator node with default bls folder (default bls key files in ./.hmy/blskeys)
-    ./harmony
+# start a validator node with default bls folder (default bls key files in ./.itc/blskeys)
+    ./intelchain
 
 # start a validator node with customized bls key folder
-    ./harmony --bls.dir [bls_folder]
+    ./intelchain --bls.dir [bls_folder]
 
 # start a validator node with open RPC endpoints and customized ports
-    ./harmony --http.ip=0.0.0.0 --http.port=[http_port] --ws.ip=0.0.0.0 --ws.port=[ws_port]
+    ./intelchain --http.ip=0.0.0.0 --http.port=[http_port] --ws.ip=0.0.0.0 --ws.port=[ws_port]
 
 # start an explorer node
-    ./harmony --run=explorer --run.shard=[shard_id]
+    ./intelchain --run=explorer --run.shard=[shard_id]
 
-# start a harmony internal node on testnet
-    ./harmony --run.legacy --network testnet
+# start a intelchain internal node on testnet
+    ./intelchain --run.legacy --network testnet
 `,
-	Run: runHarmonyNode,
+	Run: runIntelchainNode,
 }
 
 var configFlag = cli.StringFlag{
@@ -131,7 +131,7 @@ func registerRootCmdFlags() error {
 	return cli.RegisterFlags(rootCmd, flags)
 }
 
-func runHarmonyNode(cmd *cobra.Command, args []string) {
+func runIntelchainNode(cmd *cobra.Command, args []string) {
 	if cli.GetBoolFlagValue(cmd, versionFlag) {
 		printVersion()
 		os.Exit(0)
@@ -141,7 +141,7 @@ func runHarmonyNode(cmd *cobra.Command, args []string) {
 		fmt.Fprint(os.Stderr, err)
 		os.Exit(128)
 	}
-	cfg, err := getHarmonyConfig(cmd)
+	cfg, err := getIntelchainConfig(cmd)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
 		os.Exit(128)
@@ -174,9 +174,9 @@ func raiseFdLimits() error {
 	return nil
 }
 
-func getHarmonyConfig(cmd *cobra.Command) (harmonyconfig.HarmonyConfig, error) {
+func getIntelchainConfig(cmd *cobra.Command) (intelchainconfig.IntelchainConfig, error) {
 	var (
-		config         harmonyconfig.HarmonyConfig
+		config         intelchainconfig.IntelchainConfig
 		err            error
 		migratedFrom   string
 		configFile     string
@@ -184,14 +184,14 @@ func getHarmonyConfig(cmd *cobra.Command) (harmonyconfig.HarmonyConfig, error) {
 	)
 	if cli.IsFlagChanged(cmd, configFlag) {
 		configFile = cli.GetStringFlagValue(cmd, configFlag)
-		config, migratedFrom, err = loadHarmonyConfig(configFile)
+		config, migratedFrom, err = loadIntelchainConfig(configFile)
 	} else {
 		nt := getNetworkType(cmd)
-		config = getDefaultHmyConfigCopy(nt)
+		config = getDefaultItcConfigCopy(nt)
 		isUsingDefault = true
 	}
 	if err != nil {
-		return harmonyconfig.HarmonyConfig{}, err
+		return intelchainconfig.IntelchainConfig{}, err
 	}
 	if migratedFrom != defaultConfig.Version && !isUsingDefault {
 		fmt.Printf("Old config version detected %s\n",
@@ -203,25 +203,25 @@ func getHarmonyConfig(cmd *cobra.Command) (harmonyconfig.HarmonyConfig, error) {
 				err := updateConfigFile(configFile)
 				if err != nil {
 					fmt.Printf("Could not update config - %s", err.Error())
-					fmt.Println("Update config manually with `./harmony config update [config_file]`")
+					fmt.Println("Update config manually with `./intelchain config update [config_file]`")
 				}
 			}
 
 		} else {
-			fmt.Println("Update saved config with `./harmony config update [config_file]`")
+			fmt.Println("Update saved config with `./intelchain config update [config_file]`")
 		}
 	}
 
 	applyRootFlags(cmd, &config)
 
-	if err := validateHarmonyConfig(config); err != nil {
-		return harmonyconfig.HarmonyConfig{}, err
+	if err := validateIntelchainConfig(config); err != nil {
+		return intelchainconfig.IntelchainConfig{}, err
 	}
-	sanityFixHarmonyConfig(&config)
+	sanityFixIntelchainConfig(&config)
 	return config, nil
 }
 
-func applyRootFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyRootFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	// Misc flags shall be applied first since legacy ip / port is overwritten
 	// by new ip / port flags
 	applyLegacyMiscFlags(cmd, config)
@@ -248,7 +248,7 @@ func applyRootFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 	applyCacheFlags(cmd, config)
 }
 
-func setupNodeLog(config harmonyconfig.HarmonyConfig) {
+func setupNodeLog(config intelchainconfig.IntelchainConfig) {
 	logPath := filepath.Join(config.Log.Folder, config.Log.FileName)
 	verbosity := config.Log.Verbosity
 
@@ -264,7 +264,7 @@ func setupNodeLog(config harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func revert(chain core.BlockChain, hc harmonyconfig.HarmonyConfig) {
+func revert(chain core.BlockChain, hc intelchainconfig.IntelchainConfig) {
 	curNum := chain.CurrentBlock().NumberU64()
 	if curNum < uint64(hc.Revert.RevertBefore) && curNum >= uint64(hc.Revert.RevertTo) {
 		// Remove invalid blocks
@@ -287,12 +287,12 @@ func revert(chain core.BlockChain, hc harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func setupNodeAndRun(hc harmonyconfig.HarmonyConfig) {
+func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 	var err error
 
 	nodeconfigSetShardSchedule(hc)
 	nodeconfig.SetShardingSchedule(shard.Schedule)
-	nodeconfig.SetVersion(getHarmonyVersion())
+	nodeconfig.SetVersion(getIntelchainVersion())
 
 	if hc.General.NodeType == "validator" {
 		var err error
@@ -426,7 +426,7 @@ func setupNodeAndRun(hc harmonyconfig.HarmonyConfig) {
 		os.Exit(0)
 	}
 
-	startMsg := "==== New Harmony Node ===="
+	startMsg := "==== New Intelchain Node ===="
 	if hc.General.NodeType == nodeTypeExplorer {
 		startMsg = "==== New Explorer Node ===="
 	}
@@ -438,7 +438,7 @@ func setupNodeAndRun(hc harmonyconfig.HarmonyConfig) {
 		Str("BeaconGroupID", nodeConfig.GetBeaconGroupID().String()).
 		Str("ClientGroupID", nodeConfig.GetClientGroupID().String()).
 		Str("Role", currentNode.NodeConfig.Role().String()).
-		Str("Version", getHarmonyVersion()).
+		Str("Version", getIntelchainVersion()).
 		Str("multiaddress",
 			fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", hc.P2P.IP, hc.P2P.Port, myHost.GetID().Pretty()),
 		).
@@ -448,9 +448,9 @@ func setupNodeAndRun(hc harmonyconfig.HarmonyConfig) {
 
 	if hc.Log.VerbosePrints.Config {
 		utils.Logger().Info().Interface("config", rpc_common.Config{
-			HarmonyConfig: hc,
-			NodeConfig:    *nodeConfig,
-			ChainConfig:   *currentNode.Blockchain().Config(),
+			IntelchainConfig: hc,
+			NodeConfig:       *nodeConfig,
+			ChainConfig:      *currentNode.Blockchain().Config(),
 		}).Msg("verbose prints config")
 	}
 
@@ -533,7 +533,7 @@ func setupNodeAndRun(hc harmonyconfig.HarmonyConfig) {
 	select {}
 }
 
-func nodeconfigSetShardSchedule(config harmonyconfig.HarmonyConfig) {
+func nodeconfigSetShardSchedule(config intelchainconfig.IntelchainConfig) {
 	switch config.Network.NetworkType {
 	case nodeconfig.Mainnet:
 		shard.Schedule = shardingconfig.MainnetSchedule
@@ -548,7 +548,7 @@ func nodeconfigSetShardSchedule(config harmonyconfig.HarmonyConfig) {
 	case nodeconfig.Stressnet:
 		shard.Schedule = shardingconfig.StressNetSchedule
 	case nodeconfig.Devnet:
-		var dnConfig harmonyconfig.DevnetConfig
+		var dnConfig intelchainconfig.DevnetConfig
 		if config.Devnet != nil {
 			dnConfig = *config.Devnet
 		} else {
@@ -557,8 +557,8 @@ func nodeconfigSetShardSchedule(config harmonyconfig.HarmonyConfig) {
 
 		devnetConfig, err := shardingconfig.NewInstance(
 			uint32(dnConfig.NumShards), dnConfig.ShardSize,
-			dnConfig.HmyNodeSize, dnConfig.SlotsLimit,
-			numeric.OneDec(), genesis.HarmonyAccounts,
+			dnConfig.ItcNodeSize, dnConfig.SlotsLimit,
+			numeric.OneDec(), genesis.IntelchainAccounts,
 			genesis.FoundationalNodeAccounts, shardingconfig.Allowlist{},
 			nil, numeric.ZeroDec(), ethCommon.Address{},
 			nil, shardingconfig.VLBPE,
@@ -582,7 +582,7 @@ func findAccountsByPubKeys(config shardingconfig.Instance, pubKeys multibls.Publ
 	}
 }
 
-func setupLegacyNodeAccount(hc harmonyconfig.HarmonyConfig) error {
+func setupLegacyNodeAccount(hc intelchainconfig.IntelchainConfig) error {
 	genesisShardingConfig := shard.Schedule.InstanceForEpoch(big.NewInt(core.GenesisEpoch))
 	multiBLSPubKey := setupConsensusKeys(hc, nodeconfig.GetDefaultConfig())
 
@@ -614,7 +614,7 @@ func setupLegacyNodeAccount(hc harmonyconfig.HarmonyConfig) error {
 	return nil
 }
 
-func setupStakingNodeAccount(hc harmonyconfig.HarmonyConfig) error {
+func setupStakingNodeAccount(hc intelchainconfig.IntelchainConfig) error {
 	pubKeys := setupConsensusKeys(hc, nodeconfig.GetDefaultConfig())
 	shardID, err := nodeconfig.GetDefaultConfig().ShardIDFromConsensusKey()
 	if err != nil {
@@ -635,7 +635,7 @@ func setupStakingNodeAccount(hc harmonyconfig.HarmonyConfig) error {
 	return nil
 }
 
-func createGlobalConfig(hc harmonyconfig.HarmonyConfig) (*nodeconfig.ConfigType, error) {
+func createGlobalConfig(hc intelchainconfig.IntelchainConfig) (*nodeconfig.ConfigType, error) {
 	var err error
 
 	if len(initialAccounts) == 0 {
@@ -727,7 +727,7 @@ func createGlobalConfig(hc harmonyconfig.HarmonyConfig) (*nodeconfig.ConfigType,
 	return nodeConfig, nil
 }
 
-func setupChain(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *registry.Registry {
+func setupChain(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *registry.Registry {
 
 	// Current node.
 	var chainDBFactory shardchain.DBFactory
@@ -783,10 +783,10 @@ func setupChain(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfig.ConfigTyp
 	return registry
 }
 
-func setupConsensusAndNode(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *node.Node {
+func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *node.Node {
 	decider := quorum.NewDecider(quorum.SuperMajorityVote, uint32(hc.General.ShardID))
 
-	// Parse minPeers from harmonyconfig.HarmonyConfig
+	// Parse minPeers from intelchainconfig.IntelchainConfig
 	var minPeers int
 	var aggregateSig bool
 	if hc.Consensus != nil {
@@ -884,7 +884,7 @@ func setupConsensusAndNode(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfi
 	return currentNode
 }
 
-func setupTiKV(hc harmonyconfig.HarmonyConfig) shardchain.DBFactory {
+func setupTiKV(hc intelchainconfig.IntelchainConfig) shardchain.DBFactory {
 	err := redis_helper.Init(hc.TiKV.StateDBRedisServerAddr)
 	if err != nil {
 		panic("can not connect to redis: " + err.Error())
@@ -906,7 +906,7 @@ func setupTiKV(hc harmonyconfig.HarmonyConfig) shardchain.DBFactory {
 	return factory
 }
 
-func processNodeType(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfig.ConfigType) {
+func processNodeType(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType) {
 	switch hc.General.NodeType {
 	case nodeTypeExplorer:
 		nodeconfig.SetDefaultRole(nodeconfig.ExplorerNode)
@@ -918,7 +918,7 @@ func processNodeType(hc harmonyconfig.HarmonyConfig, nodeConfig *nodeconfig.Conf
 	}
 }
 
-func isBackup(hc harmonyconfig.HarmonyConfig) (isBackup bool) {
+func isBackup(hc intelchainconfig.IntelchainConfig) (isBackup bool) {
 	switch hc.General.NodeType {
 	case nodeTypeExplorer:
 
@@ -928,7 +928,7 @@ func isBackup(hc harmonyconfig.HarmonyConfig) (isBackup bool) {
 	return false
 }
 
-func setupPprofService(node *node.Node, hc harmonyconfig.HarmonyConfig) {
+func setupPprofService(node *node.Node, hc intelchainconfig.IntelchainConfig) {
 	pprofConfig := pprof.Config{
 		Enabled:            hc.Pprof.Enabled,
 		ListenAddr:         hc.Pprof.ListenAddr,
@@ -941,7 +941,7 @@ func setupPprofService(node *node.Node, hc harmonyconfig.HarmonyConfig) {
 	node.RegisterService(service.Pprof, s)
 }
 
-func setupPrometheusService(node *node.Node, hc harmonyconfig.HarmonyConfig, sid uint32) {
+func setupPrometheusService(node *node.Node, hc intelchainconfig.IntelchainConfig, sid uint32) {
 	prometheusConfig := prometheus.Config{
 		Enabled:    hc.Prometheus.Enabled,
 		IP:         hc.Prometheus.IP,
@@ -963,7 +963,7 @@ func setupPrometheusService(node *node.Node, hc harmonyconfig.HarmonyConfig, sid
 	node.RegisterService(service.Prometheus, p)
 }
 
-func setupSyncService(node *node.Node, host p2p.Host, hc harmonyconfig.HarmonyConfig) {
+func setupSyncService(node *node.Node, host p2p.Host, hc intelchainconfig.IntelchainConfig) {
 	blockchains := []core.BlockChain{node.Blockchain()}
 	if node.Blockchain().ShardID() != shard.BeaconChainShardID {
 		blockchains = append(blockchains, node.EpochChain())
@@ -998,7 +998,7 @@ func setupSyncService(node *node.Node, host p2p.Host, hc harmonyconfig.HarmonyCo
 	}
 }
 
-func setupStagedSyncService(node *node.Node, host p2p.Host, hc harmonyconfig.HarmonyConfig) {
+func setupStagedSyncService(node *node.Node, host p2p.Host, hc intelchainconfig.IntelchainConfig) {
 	blockchains := []core.BlockChain{node.Blockchain()}
 	if node.Blockchain().ShardID() != shard.BeaconChainShardID {
 		blockchains = append(blockchains, node.EpochChain())
@@ -1040,7 +1040,7 @@ func setupStagedSyncService(node *node.Node, host p2p.Host, hc harmonyconfig.Har
 	}
 }
 
-func setupBlacklist(hc harmonyconfig.HarmonyConfig) (map[ethCommon.Address]struct{}, error) {
+func setupBlacklist(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address]struct{}, error) {
 	rosetta_common.InitRosettaFile(hc.TxPool.RosettaFixFile)
 
 	utils.Logger().Debug().Msgf("Using blacklist file at `%s`", hc.TxPool.BlacklistFile)
@@ -1093,7 +1093,7 @@ func parseAllowedTxs(data []byte) (map[ethCommon.Address][]core.AllowedTxData, e
 	return allowedTxs, nil
 }
 
-func setupAllowedTxs(hc harmonyconfig.HarmonyConfig) (map[ethCommon.Address][]core.AllowedTxData, error) {
+func setupAllowedTxs(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address][]core.AllowedTxData, error) {
 	utils.Logger().Debug().Msgf("Using AllowedTxs file at `%s`", hc.TxPool.AllowedTxsFile)
 	data, err := os.ReadFile(hc.TxPool.AllowedTxsFile)
 	if err != nil {
@@ -1102,7 +1102,7 @@ func setupAllowedTxs(hc harmonyconfig.HarmonyConfig) (map[ethCommon.Address][]co
 	return parseAllowedTxs(data)
 }
 
-func setupLocalAccounts(hc harmonyconfig.HarmonyConfig, blacklist map[ethCommon.Address]struct{}) ([]ethCommon.Address, error) {
+func setupLocalAccounts(hc intelchainconfig.IntelchainConfig, blacklist map[ethCommon.Address]struct{}) ([]ethCommon.Address, error) {
 	file := hc.TxPool.LocalAccountsFile
 	// check if file exist
 	var fileData string

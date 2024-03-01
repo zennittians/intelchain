@@ -53,7 +53,7 @@ import (
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/core/vm"
 	"github.com/zennittians/intelchain/crypto/bls"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/internal/tikv"
 	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
@@ -62,7 +62,7 @@ import (
 	"github.com/zennittians/intelchain/shard"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/zennittians/intelchain/hmy/tracers"
+	"github.com/zennittians/intelchain/itc/tracers"
 	"github.com/zennittians/intelchain/shard/committee"
 	"github.com/zennittians/intelchain/staking/apr"
 	"github.com/zennittians/intelchain/staking/effective"
@@ -3564,7 +3564,7 @@ func (bc *BlockChainImpl) IsTikvWriterMaster() bool {
 }
 
 // InitTiKV used for tikv mode, init the tikv mode
-func (bc *BlockChainImpl) InitTiKV(conf *harmonyconfig.TiKVConfig) {
+func (bc *BlockChainImpl) InitTiKV(conf *intelchainconfig.TiKVConfig) {
 	bc.cleanCacheChan = make(chan uint64, 10)
 
 	if conf.Role == tikv.RoleWriter {

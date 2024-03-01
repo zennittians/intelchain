@@ -81,21 +81,21 @@ var stressnetReshardingEpoch = []*big.Int{
 
 var stressnetV0 = MustNewInstance(
 	2, 10, 10, 0,
-	numeric.OneDec(), genesis.TNHarmonyAccounts,
+	numeric.OneDec(), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 	numeric.ZeroDec(), ethCommon.Address{},
 	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),
 )
 var stressnetV1 = MustNewInstance(
 	2, 30, 10, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNHarmonyAccounts,
+	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 	numeric.ZeroDec(), ethCommon.Address{},
 	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),
 )
 var stressnetV2 = MustNewInstance(
 	2, 30, 10, 0,
-	numeric.MustNewDecFromStr("0.6"), genesis.TNHarmonyAccounts,
+	numeric.MustNewDecFromStr("0.6"), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 	numeric.ZeroDec(), ethCommon.Address{},
 	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),

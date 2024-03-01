@@ -93,21 +93,21 @@ var partnerReshardingEpoch = []*big.Int{
 
 var partnerV0 = MustNewInstance(
 	2, 5, 5, 0,
-	numeric.OneDec(), genesis.TNHarmonyAccounts,
+	numeric.OneDec(), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 	numeric.ZeroDec(), ethCommon.Address{},
 	partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch(),
 )
 var partnerV1 = MustNewInstance(
 	2, 15, 4, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNHarmonyAccounts,
+	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 	numeric.ZeroDec(), ethCommon.Address{},
 	partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch(),
 )
 var partnerV2 = MustNewInstance(
 	2, 20, 4, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNHarmonyAccounts,
+	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist,
 	feeCollectorsDevnet[1], numeric.MustNewDecFromStr("0.25"),
 	hip30CollectionAddressTestnet, partnerReshardingEpoch,
@@ -115,7 +115,7 @@ var partnerV2 = MustNewInstance(
 )
 var partnerV3 = MustNewInstance(
 	2, 20, 0, 0,
-	numeric.MustNewDecFromStr("0.0"), genesis.TNHarmonyAccounts,
+	numeric.MustNewDecFromStr("0.0"), genesis.TNIntelchainAccounts,
 	genesis.TNFoundationalAccounts, emptyAllowlist,
 	feeCollectorsDevnet[1], numeric.MustNewDecFromStr("0.25"),
 	hip30CollectionAddressTestnet, partnerReshardingEpoch,

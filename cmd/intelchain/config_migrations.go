@@ -11,7 +11,7 @@ import (
 	"github.com/pelletier/go-toml" // TODO support go-toml/v2
 
 	"github.com/zennittians/intelchain/api/service/legacysync"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
@@ -43,31 +43,31 @@ func doMigrations(confVersion string, confTree *toml.Tree) error {
 	return nil
 }
 
-func migrateConf(confBytes []byte) (harmonyconfig.HarmonyConfig, string, error) {
+func migrateConf(confBytes []byte) (intelchainconfig.IntelchainConfig, string, error) {
 	var (
 		migratedFrom string
 	)
 	confTree, err := toml.LoadBytes(confBytes)
 	if err != nil {
-		return harmonyconfig.HarmonyConfig{}, "", fmt.Errorf("config file parse error - %s", err.Error())
+		return intelchainconfig.IntelchainConfig{}, "", fmt.Errorf("config file parse error - %s", err.Error())
 	}
 	confVersion, found := confTree.Get("Version").(string)
 	if !found {
-		return harmonyconfig.HarmonyConfig{}, "", errors.New("config file invalid - no version entry found")
+		return intelchainconfig.IntelchainConfig{}, "", errors.New("config file invalid - no version entry found")
 	}
 	migratedFrom = confVersion
 	if confVersion != tomlConfigVersion {
 		err = doMigrations(confVersion, confTree)
 		if err != nil {
-			return harmonyconfig.HarmonyConfig{}, "", err
+			return intelchainconfig.IntelchainConfig{}, "", err
 		}
 	}
 
 	// At this point we must be at current config version so
 	// we can safely unmarshal it
-	var config harmonyconfig.HarmonyConfig
+	var config intelchainconfig.IntelchainConfig
 	if err := confTree.Unmarshal(&config); err != nil {
-		return harmonyconfig.HarmonyConfig{}, "", err
+		return intelchainconfig.IntelchainConfig{}, "", err
 	}
 	return config, migratedFrom, nil
 }

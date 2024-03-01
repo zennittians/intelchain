@@ -58,16 +58,16 @@ func (a threadSafeDeciderImpl) NthNextValidator(slotList shard.SlotList, pubKey 
 	return a.decider.NthNextValidator(slotList, pubKey, next)
 }
 
-func (a threadSafeDeciderImpl) NthNextHmy(instance shardingconfig.Instance, pubkey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
+func (a threadSafeDeciderImpl) NthNextItc(instance shardingconfig.Instance, pubkey *bls.PublicKeyWrapper, next int) (bool, *bls.PublicKeyWrapper) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.decider.NthNextHmy(instance, pubkey, next)
+	return a.decider.NthNextItc(instance, pubkey, next)
 }
 
-func (a threadSafeDeciderImpl) NthNextHmyExt(instance shardingconfig.Instance, wrapper *bls.PublicKeyWrapper, i int) (bool, *bls.PublicKeyWrapper) {
+func (a threadSafeDeciderImpl) NthNextItcExt(instance shardingconfig.Instance, wrapper *bls.PublicKeyWrapper, i int) (bool, *bls.PublicKeyWrapper) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.decider.NthNextHmyExt(instance, wrapper, i)
+	return a.decider.NthNextItcExt(instance, wrapper, i)
 }
 
 func (a threadSafeDeciderImpl) FirstParticipant(instance shardingconfig.Instance) *bls.PublicKeyWrapper {

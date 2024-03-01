@@ -161,17 +161,17 @@ var (
 	localnetReshardingEpoch = []*big.Int{
 		big.NewInt(0), big.NewInt(localnetV1Epoch), params.LocalnetChainConfig.StakingEpoch, params.LocalnetChainConfig.TwoSecondsEpoch,
 	}
-	// Number of shards, how many slots on each , how many slots owned by Harmony
+	// Number of shards, how many slots on each , how many slots owned by Intelchain
 	localnetV0 = MustNewInstance(
 		2, 7, 5, 0,
-		numeric.OneDec(), genesis.LocalHarmonyAccounts,
+		numeric.OneDec(), genesis.LocalIntelchainAccounts,
 		genesis.LocalFnAccounts, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
 	)
 	localnetV1 = MustNewInstance(
 		2, 8, 5, 0,
-		numeric.OneDec(), genesis.LocalHarmonyAccountsV1,
+		numeric.OneDec(), genesis.LocalIntelchainAccountsV1,
 		genesis.LocalFnAccountsV1, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
@@ -179,7 +179,7 @@ var (
 	localnetV2 = MustNewInstance(
 		2, 9, 6, 0,
 		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalHarmonyAccountsV2, genesis.LocalFnAccountsV2,
+		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
 		emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
@@ -187,7 +187,7 @@ var (
 	localnetV3 = MustNewInstance(
 		2, 9, 6, 0,
 		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalHarmonyAccountsV2, genesis.LocalFnAccountsV2,
+		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
 		emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
@@ -195,7 +195,7 @@ var (
 	localnetV3_1 = MustNewInstance(
 		2, 9, 6, 0,
 		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalHarmonyAccountsV2, genesis.LocalFnAccountsV2,
+		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
 		emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
@@ -203,14 +203,14 @@ var (
 	localnetV3_2 = MustNewInstance(
 		2, 9, 6, 0,
 		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalHarmonyAccountsV2, genesis.LocalFnAccountsV2,
+		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
 		emptyAllowlist, feeCollectorsLocalnet,
 		numeric.ZeroDec(), ethCommon.Address{},
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
 	)
 	localnetV4 = MustNewInstance(
 		2, 9, 6, 0, numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalHarmonyAccountsV2, genesis.LocalFnAccountsV2,
+		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
 		emptyAllowlist, feeCollectorsLocalnet,
 		numeric.MustNewDecFromStr("0.25"), hip30CollectionAddressLocalnet,
 		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),

@@ -5,26 +5,26 @@ import (
 	"math/big"
 
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	internal_common "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/itc"
 )
 
-// PublicLegacyService provides an API to access the Harmony blockchain.
+// PublicLegacyService provides an API to access the Intelchain blockchain.
 // Services here are legacy methods, specific to the V1 RPC that can be deprecated in the future.
 type PublicLegacyService struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
 // NewPublicLegacyAPI creates a new API for the RPC interface
-func NewPublicLegacyAPI(hmy *hmy.Harmony, namespace string) rpc.API {
+func NewPublicLegacyAPI(itc *itc.Intelchain, namespace string) rpc.API {
 	if namespace == "" {
-		namespace = "hmyv2"
+		namespace = "itcv2"
 	}
 
 	return rpc.API{
 		Namespace: namespace,
 		Version:   "1.0",
-		Service:   &PublicLegacyService{hmy},
+		Service:   &PublicLegacyService{itc},
 		Public:    true,
 	}
 }
@@ -38,7 +38,7 @@ func (s *PublicLegacyService) GetBalance(
 	if err != nil {
 		return nil, err
 	}
-	balance, err := s.hmy.GetBalance(ctx, addr, rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber))
+	balance, err := s.itc.GetBalance(ctx, addr, rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber))
 	if err != nil {
 		return nil, err
 	}

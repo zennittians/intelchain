@@ -219,7 +219,7 @@ func (h *Header) SetExtra(newExtra []byte) {
 
 // MixDigest is the mixhash.
 //
-// This field is a remnant from Ethereum, and Harmony does not use it and always
+// This field is a remnant from Ethereum, and Intelchain does not use it and always
 // zeroes it out.
 func (h *Header) MixDigest() common.Hash {
 	return h.fields.MixDigest

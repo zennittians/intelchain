@@ -16,7 +16,7 @@ const (
 
 	// syncStatusExpirationNonValidator is the expiration of sync cache for non-validators.
 	// Compared with non-validator, the sync check is not as strict as validator nodes.
-	// TODO: add this field to harmony config
+	// TODO: add this field to intelchain config
 	syncStatusExpirationNonValidator = 12 * time.Second
 )
 

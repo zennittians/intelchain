@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package hmy
+package itc
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/common/denominations"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/internal/configs/harmony"
+	"github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/utils"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -42,7 +42,7 @@ type OracleBackend interface {
 
 // Oracle recommends gas prices based on the content of recent blocks.
 type Oracle struct {
-	backend   *Harmony
+	backend   *Intelchain
 	lastHead  common.Hash
 	lastPrice *big.Int
 	maxPrice  *big.Int
@@ -57,19 +57,19 @@ type Oracle struct {
 	defaultPrice      *big.Int
 }
 
-var DefaultGPOConfig = harmony.GasPriceOracleConfig{
+var DefaultGPOConfig = intelchain.GasPriceOracleConfig{
 	Blocks:            20,
 	Transactions:      3,
 	Percentile:        60,
-	DefaultPrice:      100 * denominations.Nano,  // 100 gwei
-	MaxPrice:          1000 * denominations.Nano, // 1000 gwei
+	DefaultPrice:      100 * denominations.Intello,  // 100 gwei
+	MaxPrice:          1000 * denominations.Intello, // 1000 gwei
 	LowUsageThreshold: 50,
 	BlockGasLimit:     0, // TODO should we set default to 30M?
 }
 
 // NewOracle returns a new gasprice oracle which can recommend suitable
 // gasprice for newly created transaction.
-func NewOracle(backend *Harmony, params *harmony.GasPriceOracleConfig) *Oracle {
+func NewOracle(backend *Intelchain, params *intelchain.GasPriceOracleConfig) *Oracle {
 	blocks := params.Blocks
 	if blocks < 1 {
 		blocks = DefaultGPOConfig.Blocks

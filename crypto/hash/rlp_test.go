@@ -67,7 +67,7 @@ func fromRLPNoPool(x interface{}) (h common.Hash) {
 }
 
 var testObj = testStruct{
-	field1: "harmony",
+	field1: "intelchain",
 	field2: 1024,
 }
 

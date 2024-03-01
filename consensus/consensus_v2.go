@@ -743,7 +743,7 @@ func (consensus *Consensus) rotateLeader(epoch *big.Int, defaultKey *bls.PublicK
 		if bc.Config().IsLeaderRotationExternalValidatorsAllowed(epoch) {
 			wasFound, next = consensus.decider.NthNextValidator(committee.Slots, leader, offset)
 		} else {
-			wasFound, next = consensus.decider.NthNextHmy(shard.Schedule.InstanceForEpoch(epoch), leader, offset)
+			wasFound, next = consensus.decider.NthNextItc(shard.Schedule.InstanceForEpoch(epoch), leader, offset)
 		}
 		if !wasFound {
 			utils.Logger().Error().Msg("Failed to get next leader")

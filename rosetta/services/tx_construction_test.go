@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmyTypes "github.com/zennittians/intelchain/core/types"
+	itcTypes "github.com/zennittians/intelchain/core/types"
 	internalCommon "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/rosetta/common"
 )
@@ -48,7 +48,7 @@ func TestConstructPlainTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok := generalTx.(*hmyTypes.Transaction)
+	tx, ok := generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -84,7 +84,7 @@ func TestConstructPlainTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok = generalTx.(*hmyTypes.Transaction)
+	tx, ok = generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -203,7 +203,7 @@ func TestConstructCrossShardTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok := generalTx.(*hmyTypes.Transaction)
+	tx, ok := generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -360,7 +360,7 @@ func TestConstructContractCreationTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok := generalTx.(*hmyTypes.Transaction)
+	tx, ok := generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -450,7 +450,7 @@ func TestConstructTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok := generalTx.(*hmyTypes.Transaction)
+	tx, ok := generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -475,7 +475,7 @@ func TestConstructTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok = generalTx.(*hmyTypes.Transaction)
+	tx, ok = generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}
@@ -501,7 +501,7 @@ func TestConstructTransaction(t *testing.T) {
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
-	tx, ok = generalTx.(*hmyTypes.Transaction)
+	tx, ok = generalTx.(*itcTypes.Transaction)
 	if !ok {
 		t.Fatal("invalid transaction")
 	}

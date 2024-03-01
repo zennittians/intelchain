@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	versionFormat = "Harmony (C) 2023. %v, version %v-%v (%v %v)"
+	versionFormat = "Intelchain (C) 2023. %v, version %v-%v (%v %v)"
 )
 
 // Version string variables
@@ -28,8 +28,8 @@ var versionFlag = cli.BoolFlag{
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "print version of the harmony binary",
-	Long:  "print version of the harmony binary",
+	Short: "print version of the intelchain binary",
+	Long:  "print version of the intelchain binary",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		printVersion()
@@ -37,10 +37,10 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-func getHarmonyVersion() string {
-	return fmt.Sprintf(versionFormat, "harmony", version, commit, builtBy, builtAt)
+func getIntelchainVersion() string {
+	return fmt.Sprintf(versionFormat, "Intelchain", version, commit, builtBy, builtAt)
 }
 
 func printVersion() {
-	fmt.Println(getHarmonyVersion())
+	fmt.Println(getIntelchainVersion())
 }

@@ -1,23 +1,23 @@
 #!/bin/sh
 
 after_install() {
-   mkdir -p /home/harmony/.hmy/blskeys
-   mkdir -p /home/harmony/.config/rclone
-   chown -R harmony.harmony /home/harmony
+   mkdir -p /home/intelchain/.itc/blskeys
+   mkdir -p /home/intelchain/.config/rclone
+   chown -R intelchain.intelchain /home/intelchain
 
-   systemctl enable harmony
-   systemctl start harmony
+   systemctl enable intelchain
+   systemctl start intelchain
 }
 
 after_upgrade() {
-   systemctl enable harmony
-   systemctl restart harmony
+   systemctl enable intelchain
+   systemctl restart intelchain
 }
 
 
 # Setup system users and groups
-getent group harmony >/dev/null || addgroup --quiet --system harmony
-getent passwd harmony >/dev/null || adduser --quiet --system --ingroup harmony --gecos "harmony validator account" harmony
+getent group intelchain >/dev/null || addgroup --quiet --system intelchain
+getent passwd intelchain >/dev/null || adduser --quiet --system --ingroup intelchain --gecos "intelchain validator account" intelchain
 
 if [ "${1}" = "configure" -a -z "${2}" ] || \
    [ "${1}" = "abort-remove" ]

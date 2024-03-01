@@ -72,8 +72,8 @@ func (v *stakedVoteWeight) AddNewVote(
 		} else {
 			// Aggregated signature should not contain signatures from keys belonging to different accounts,
 			// to avoid malicious node catching other people's signatures and merge with their own to cause problems.
-			// Harmony nodes are excluded from this rule.
-			if bytes.Compare(signerAddr.Bytes(), voter.EarningAccount[:]) != 0 && !voter.IsHarmonyNode {
+			// Intelchain nodes are excluded from this rule.
+			if bytes.Compare(signerAddr.Bytes(), voter.EarningAccount[:]) != 0 && !voter.IsIntelchainNode {
 				return nil, errors.Errorf("Multiple signer accounts used in multi-sig: %x, %x", signerAddr.Bytes(), voter.EarningAccount)
 			}
 		}
@@ -230,7 +230,7 @@ func (v *stakedVoteWeight) SetRawStake(key bls.SerializedPublicKey, d numeric.De
 func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 	voterCount := len(v.roster.Voters)
 	type u struct {
-		IsHarmony      bool   `json:"is-harmony-slot"`
+		IsIntelchain   bool   `json:"is-intelchain-slot"`
 		EarningAccount string `json:"earning-account"`
 		Identity       string `json:"bls-public-key"`
 		RawPercent     string `json:"voting-power-unnormalized"`
@@ -244,7 +244,7 @@ func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 		Count               int    `json:"count"`
 		Externals           int    `json:"external-validator-slot-count"`
 		Participants        []u    `json:"committee-members"`
-		HmyVotingPower      string `json:"hmy-voting-power"`
+		ItcVotingPower      string `json:"itc-voting-power"`
 		StakedVotingPower   string `json:"staked-voting-power"`
 		TotalRawStake       string `json:"total-raw-stake"`
 		TotalEffectiveStake string `json:"total-effective-stake"`
@@ -258,7 +258,7 @@ func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 		identity := slot
 		voter := v.roster.Voters[slot]
 		member := u{
-			voter.IsHarmonyNode,
+			voter.IsIntelchainNode,
 			common2.MustAddressToBech32(voter.EarningAccount),
 			identity.Hex(),
 			voter.GroupPercent.String(),
@@ -266,7 +266,7 @@ func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 			"",
 			"",
 		}
-		if !voter.IsHarmonyNode {
+		if !voter.IsIntelchainNode {
 			externalCount++
 			member.EffectiveStake = voter.EffectiveStake.String()
 			member.RawStake = voter.RawStake.String()

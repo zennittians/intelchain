@@ -5,17 +5,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
 	internal_common "github.com/zennittians/intelchain/internal/common"
+	"github.com/zennittians/intelchain/itc"
 )
 
-// PublicEthService provides an API to access to the Eth endpoints for the Harmony blockchain.
+// PublicEthService provides an API to access to the Eth endpoints for the Intelchain blockchain.
 type PublicEthService struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
 // NewPublicEthService creates a new API for the RPC interface
-func NewPublicEthService(hmy *hmy.Harmony, namespace string) rpc.API {
+func NewPublicEthService(itc *itc.Intelchain, namespace string) rpc.API {
 	if namespace == "" {
 		namespace = "eth"
 	}
@@ -23,7 +23,7 @@ func NewPublicEthService(hmy *hmy.Harmony, namespace string) rpc.API {
 	return rpc.API{
 		Namespace: namespace,
 		Version:   "1.0",
-		Service:   &PublicEthService{hmy},
+		Service:   &PublicEthService{itc},
 		Public:    true,
 	}
 }
@@ -38,7 +38,7 @@ func (s *PublicEthService) GetBalance(
 	if err != nil {
 		return nil, err
 	}
-	balance, err := s.hmy.GetBalance(ctx, addr, blockNrOrHash)
+	balance, err := s.itc.GetBalance(ctx, addr, blockNrOrHash)
 	if err != nil {
 		return nil, err
 	}

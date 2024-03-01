@@ -128,42 +128,42 @@ var testnetReshardingEpoch = []*big.Int{
 var (
 	testnetV0 = MustNewInstance(
 		4, 8, 8, 0,
-		numeric.OneDec(), genesis.TNHarmonyAccounts,
+		numeric.OneDec(), genesis.TNIntelchainAccounts,
 		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
 	)
 	testnetV1 = MustNewInstance(
 		4, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.70"), genesis.TNHarmonyAccounts,
+		numeric.MustNewDecFromStr("0.70"), genesis.TNIntelchainAccounts,
 		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
 	)
 	testnetV2 = MustNewInstance(
 		4, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNHarmonyAccounts,
+		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccounts,
 		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
 	)
 	testnetV3 = MustNewInstance(
 		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNHarmonyAccountsV1,
+		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
 		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
 		numeric.ZeroDec(), ethCommon.Address{},
 		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
 	)
 	testnetV4 = MustNewInstance(
 		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNHarmonyAccountsV1,
+		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
 		genesis.TNFoundationalAccounts, emptyAllowlist,
 		feeCollectorsTestnet, numeric.ZeroDec(), ethCommon.Address{},
 		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
 	)
 	testnetV5 = MustNewInstance(
 		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNHarmonyAccountsV1,
+		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
 		genesis.TNFoundationalAccounts, emptyAllowlist,
 		feeCollectorsTestnet, numeric.MustNewDecFromStr("0.25"),
 		hip30CollectionAddressTestnet, testnetReshardingEpoch,

@@ -1,25 +1,25 @@
-package hmy
+package itc
 
 import (
+	"github.com/libp2p/go-libp2p/core/peer"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	commonRPC "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/staking/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // GetCurrentUtilityMetrics ..
-func (hmy *Harmony) GetCurrentUtilityMetrics() (*network.UtilityMetric, error) {
-	return network.NewUtilityMetricSnapshot(hmy.BlockChain)
+func (itc *Intelchain) GetCurrentUtilityMetrics() (*network.UtilityMetric, error) {
+	return network.NewUtilityMetricSnapshot(itc.BlockChain)
 }
 
 // GetPeerInfo returns the peer info to the node, including blocked peer, connected peer, number of peers
-func (hmy *Harmony) GetPeerInfo() commonRPC.NodePeerInfo {
+func (itc *Intelchain) GetPeerInfo() commonRPC.NodePeerInfo {
 
-	topics := hmy.NodeAPI.ListTopic()
+	topics := itc.NodeAPI.ListTopic()
 	p := make([]commonRPC.P, len(topics))
 
 	for i, t := range topics {
-		topicPeer := hmy.NodeAPI.ListPeer(t)
+		topicPeer := itc.NodeAPI.ListPeer(t)
 		p[i].Topic = t
 		p[i].Peers = make([]peer.ID, len(topicPeer))
 		copy(p[i].Peers, topicPeer)
@@ -27,7 +27,7 @@ func (hmy *Harmony) GetPeerInfo() commonRPC.NodePeerInfo {
 
 	return commonRPC.NodePeerInfo{
 		PeerID:       nodeconfig.GetPeerID(),
-		BlockedPeers: hmy.NodeAPI.ListBlockedPeer(),
+		BlockedPeers: itc.NodeAPI.ListBlockedPeer(),
 		P:            p,
 	}
 }

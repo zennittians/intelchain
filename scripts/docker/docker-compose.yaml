@@ -11,7 +11,7 @@ services:
     volumes:
       - data:/data
 
-  harmony:
+  intelchain:
     build:
       context: ../../
       dockerfile: ./scripts/docker/Dockerfile
@@ -28,7 +28,7 @@ services:
       timeout: 3s
     volumes:
       - data:/data
-      - config:/harmony
+      - config:/intelchain
 
 volumes:
   config:
@@ -36,10 +36,10 @@ volumes:
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '/tmp/harmony/config/testnet'
+      device: '/tmp/intelchain/config/testnet'
   data:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '/tmp/harmony/data/testnet'
+      device: '/tmp/intelchain/data/testnet'

@@ -210,7 +210,7 @@ func (w *Worker) CommitTransactions(
 		}
 	}
 
-	// HARMONY TXNS
+	// Intelchain TXNS
 	normalTxns := types.NewTransactionsByPriceAndNonce(w.current.signer, w.current.ethSigner, pendingNormal)
 
 	w.CommitSortedTransactions(normalTxns, coinbase)

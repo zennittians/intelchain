@@ -19,7 +19,7 @@ import (
 var (
 	quorumNodes   = 100
 	msg           = "Testing"
-	hmy           = "Harmony"
+	itc           = "Intelchain"
 	reg           = "Stakers"
 	basicDecider  Decider
 	maxAccountGen = int64(98765654323123134)
@@ -48,11 +48,11 @@ func generateRandomSlot() (shard.Slot, bls_core.SecretKey) {
 	return shard.Slot{EcdsaAddress: addr, BLSPublicKey: key, EffectiveStake: &stake}, secretKey
 }
 
-// 50 Harmony Nodes, 50 Staked Nodes
+// 50 Intelchain Nodes, 50 Staked Nodes
 func setupBaseCase() (Decider, *TallyResult, shard.SlotList, map[string]secretKeyMap) {
 	slotList := shard.SlotList{}
 	sKeys := map[string]secretKeyMap{}
-	sKeys[hmy] = secretKeyMap{}
+	sKeys[itc] = secretKeyMap{}
 	sKeys[reg] = secretKeyMap{}
 	pubKeys := []bls.PublicKeyWrapper{}
 
@@ -60,7 +60,7 @@ func setupBaseCase() (Decider, *TallyResult, shard.SlotList, map[string]secretKe
 		newSlot, sKey := generateRandomSlot()
 		if i < 50 {
 			newSlot.EffectiveStake = nil
-			sKeys[hmy][newSlot.BLSPublicKey] = sKey
+			sKeys[itc][newSlot.BLSPublicKey] = sKey
 		} else {
 			sKeys[reg][newSlot.BLSPublicKey] = sKey
 		}
@@ -81,7 +81,7 @@ func setupBaseCase() (Decider, *TallyResult, shard.SlotList, map[string]secretKe
 	return decider, tally, slotList, sKeys
 }
 
-// 33 Harmony Nodes, 67 Staked Nodes
+// 33 Intelchain Nodes, 67 Staked Nodes
 func setupEdgeCase() (Decider, *TallyResult, shard.SlotList, secretKeyMap) {
 	slotList := shard.SlotList{}
 	sKeys := secretKeyMap{}
@@ -136,10 +136,10 @@ func TestQuorumThreshold(t *testing.T) {
 
 func TestEvenNodes(t *testing.T) {
 	stakedVote, result, _, sKeys := setupBaseCase()
-	// Check HarmonyPercent + StakePercent == 1
+	// Check IntelchainPercent + StakePercent == 1
 	sum := result.ourPercent.Add(result.theirPercent)
 	if !sum.Equal(numeric.OneDec()) {
-		t.Errorf("Total voting power does not equal 1. Harmony voting power: %s, Staked voting power: %s, Sum: %s",
+		t.Errorf("Total voting power does not equal 1. Intelchain voting power: %s, Staked voting power: %s, Sum: %s",
 			result.ourPercent, result.theirPercent, sum)
 		t.FailNow()
 	}
@@ -172,22 +172,22 @@ func TestEvenNodes(t *testing.T) {
 			strconv.FormatBool(rewarded))
 	}
 
-	// Sign all Harmony Nodes
-	sign(stakedVote, sKeys[hmy], Prepare)
+	// Sign all Intelchain Nodes
+	sign(stakedVote, sKeys[itc], Prepare)
 	achieved = stakedVote.IsQuorumAchieved(Prepare)
 	if !achieved {
 		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All nodes = 100%%)",
 			Prepare, strconv.FormatBool(achieved))
 	}
 	// Commit
-	sign(stakedVote, sKeys[hmy], Commit)
+	sign(stakedVote, sKeys[itc], Commit)
 	achieved = stakedVote.IsQuorumAchieved(Commit)
 	if !achieved {
 		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All nodes = 100%%)",
 			Commit, strconv.FormatBool(achieved))
 	}
 	// ViewChange
-	sign(stakedVote, sKeys[hmy], ViewChange)
+	sign(stakedVote, sKeys[itc], ViewChange)
 	achieved = stakedVote.IsQuorumAchieved(ViewChange)
 	if !achieved {
 		t.Errorf("[IsQuorumAchieved] Phase: %s, Got: %s, Expected: true (All nodes = 100%%)",
@@ -201,41 +201,41 @@ func TestEvenNodes(t *testing.T) {
 	}
 }
 
-func Test33HarmonyNodes(t *testing.T) {
+func Test33IntelchainNodes(t *testing.T) {
 	stakedVote, result, _, sKeys := setupEdgeCase()
-	// Check HarmonyPercent + StakePercent == 1
+	// Check IntelchainPercent + StakePercent == 1
 	sum := result.ourPercent.Add(result.theirPercent)
 	if !sum.Equal(numeric.OneDec()) {
-		t.Errorf("Total voting power does not equal 1. Harmony voting power: %s, Staked voting power: %s, Sum: %s",
+		t.Errorf("Total voting power does not equal 1. Intelchain voting power: %s, Staked voting power: %s, Sum: %s",
 			result.ourPercent, result.theirPercent, sum)
 		t.FailNow()
 	}
-	// Sign all Harmony Nodes, 0 Staker Nodes
+	// Sign all Intelchain Nodes, 0 Staker Nodes
 	// Prepare
 	sign(stakedVote, sKeys, Prepare)
 	achieved := stakedVote.IsQuorumAchieved(Prepare)
 	if !achieved {
-		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All Harmony nodes = 68%%)",
+		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All Intelchain nodes = 68%%)",
 			Prepare, strconv.FormatBool(achieved))
 	}
 	// Commit
 	sign(stakedVote, sKeys, Commit)
 	achieved = stakedVote.IsQuorumAchieved(Commit)
 	if !achieved {
-		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All Harmony nodes = 68%%)",
+		t.Errorf("[IsQuorumAchieved] Phase: %s, QuorumAchieved: %s, Expected: true (All Intelchain nodes = 68%%)",
 			Commit, strconv.FormatBool(achieved))
 	}
 	// ViewChange
 	sign(stakedVote, sKeys, ViewChange)
 	achieved = stakedVote.IsQuorumAchieved(ViewChange)
 	if !achieved {
-		t.Errorf("[IsQuorumAchieved] Phase: %s, Got: %s, Expected: true (All Harmony nodes = 68%%)",
+		t.Errorf("[IsQuorumAchieved] Phase: %s, Got: %s, Expected: true (All Intelchain nodes = 68%%)",
 			ViewChange, strconv.FormatBool(achieved))
 	}
 	// RewardThreshold
 	rewarded := stakedVote.IsAllSigsCollected()
 	if rewarded {
-		t.Errorf("[IsAllSigsCollected] Got: %s, Expected: false (All Harmony nodes = 68%%)",
+		t.Errorf("[IsAllSigsCollected] Got: %s, Expected: false (All Intelchain nodes = 68%%)",
 			strconv.FormatBool(rewarded))
 	}
 }

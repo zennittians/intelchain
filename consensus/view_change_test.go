@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
-	harmony_bls "github.com/zennittians/intelchain/crypto/bls"
+	intelchain_bls "github.com/zennittians/intelchain/crypto/bls"
 )
 
 func TestBasicViewChanging(t *testing.T) {
@@ -101,7 +101,7 @@ func TestGetNextLeaderKeyShouldSucceed(t *testing.T) {
 
 	keyCount := int64(5)
 	for i := int64(0); i < keyCount; i++ {
-		blsKey := harmony_bls.RandPrivateKey()
+		blsKey := intelchain_bls.RandPrivateKey()
 		blsPubKey := blsKey.GetPublicKey()
 		bytes := bls.SerializedPublicKey{}
 		bytes.FromLibBLSPublicKey(blsPubKey)

@@ -79,7 +79,7 @@ var (
 		DevnetExternalEpoch:                   EpochTBD,
 	}
 
-	// TestnetChainConfig contains the chain parameters to run a node on the harmony test network.
+	// TestnetChainConfig contains the chain parameters to run a node on the Intelchain test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:                               TestnetChainID,
 		EthCompatibleChainID:                  EthTestnetShard0ChainID,

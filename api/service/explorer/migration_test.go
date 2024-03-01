@@ -63,7 +63,7 @@ func (f *migrationDBFactory) makeDB(numAddr int) database {
 
 func (f *migrationDBFactory) newAddress() oneAddress {
 	f.curAddrIndex++
-	return makeOneAddress(f.curAddrIndex)
+	return makeItcAddress(f.curAddrIndex)
 }
 
 func (f *migrationDBFactory) newLegTx() *LegTxRecord {

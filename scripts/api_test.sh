@@ -57,7 +57,7 @@ while getopts "lbvp" OPTION; do
 		declare -A PORT=( [POST]="http://s0.b.hmny.io:9500/" [GET]="http://e0.b.hmny.io:5000/" )
 		BLOCK_0_HASH=$(curl --location --request POST "http://l0.b.hmny.io:9500" \
 			  --header "Content-Type: application/json" \
-			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_getBlockByNumber\",\"params\":[\"0x1\", true],\"id\":1}" | jq -r '.result.hash')
+			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_getBlockByNumber\",\"params\":[\"0x1\", true],\"id\":1}" | jq -r '.result.hash')
 		echo "BLOCK0HASH:"
 		echo "$BLOCK_0_HASH"
 
@@ -66,13 +66,13 @@ while getopts "lbvp" OPTION; do
 		echo "$SIGNED_RAW_TRANSACTION"
 		TRANSACTION_HASH=$(curl  --location --request POST "http://l0.b.hmny.io:9500" \
 			  --header "Content-Type: application/json" \
-			    --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_sendRawTransaction\",\"params\":[\""$SIGNED_RAW_TRANSACTION"\"],\"id\":1}" | jq -r '.result')
+			    --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_sendRawTransaction\",\"params\":[\""$SIGNED_RAW_TRANSACTION"\"],\"id\":1}" | jq -r '.result')
 		echo "TRANSACTION_HASH:"
 		echo $TRANSACTION_HASH
 		sleep 20s
 		TRANSACTION=$(curl --location --request POST "http://l0.b.hmny.io:9500" \
 			  --header "Content-Type: application/json" \
-			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"],\"id\":1}")
+			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"],\"id\":1}")
 
 		echo "TRANSACTION:"
 		echo "$TRANSACTION"
@@ -100,7 +100,7 @@ while getopts "lbvp" OPTION; do
 		declare -A PORT=( [POST]="localhost:9500/" [GET]="localhost:5099/" )
 		BLOCK_0_HASH=$(curl -s --location --request POST "localhost:9500" \
 			  --header "Content-Type: application/json" \
-			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_getBlockByNumber\",\"params\":[\"0x1\", true],\"id\":1}" | jq -r '.result.hash')
+			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_getBlockByNumber\",\"params\":[\"0x1\", true],\"id\":1}" | jq -r '.result.hash')
 
 		echo "BLOCK0HASH:"
 		echo "$BLOCK_0_HASH"
@@ -110,13 +110,13 @@ while getopts "lbvp" OPTION; do
 		echo "$SIGNED_RAW_TRANSACTION"
 		TRANSACTION_HASH=$(curl  --location --request POST "localhost:9500" \
 			  --header "Content-Type: application/json" \
-			    --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_sendRawTransaction\",\"params\":[\""$SIGNED_RAW_TRANSACTION"\"],\"id\":1}" | jq -r '.result')
+			    --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_sendRawTransaction\",\"params\":[\""$SIGNED_RAW_TRANSACTION"\"],\"id\":1}" | jq -r '.result')
 		echo "TRANSACTION_HASH:"
 		echo $TRANSACTION_HASH
 		sleep 20s
 		TRANSACTION=$(curl --location --request POST "http://localhost:9500" \
 			  --header "Content-Type: application/json" \
-			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"hmy_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"],\"id\":1}")
+			  --data "{\"jsonrpc\":\"2.0\",\"method\":\"itc_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"],\"id\":1}")
 
 		echo "TRANSACTION:"
 		echo "$TRANSACTION"
@@ -152,59 +152,59 @@ declare -A GETDATA=( [GET_blocks]="blocks?from=$TRANSACTION_BLOCK_ID&to=$TRANSAC
 declare -A POSTDATA
 
 if [ "$NETWORK" == "localnet" ]; then
-	POSTDATA[hmy_getBlockByHash]="hmy_getBlockByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", true]"
-	POSTDATA[hmy_getBlockByNumber]="hmy_getBlockByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", true]"
-	POSTDATA[hmy_getBlockTransactionCountByHash]="hmy_getBlockTransactionCountByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\"]"
-	POSTDATA[hmy_getBlockTransactionCountByNumber]="hmy_getBlockTransactionCountByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\"]"
-	POSTDATA[hmy_getCode]="hmy_getCode\",\"params\":[\"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\", \"latest\"]"
-	POSTDATA[hmy_getTransactionByBlockHashAndIndex]="hmy_getTransactionByBlockHashAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", \"$TRANSACTION_INDEX\"]"
-	POSTDATA[hmy_getTransactionByBlockNumberAndIndex]="hmy_getTransactionByBlockNumberAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", \"$TRANSACTION_INDEX\"]"
-	POSTDATA[hmy_getTransactionByHash]="hmy_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"]"
-	POSTDATA[hmy_getTransactionReceipt]="hmy_getTransactionReceipt\",\"params\":[\"$TRANSACTION_HASH\"]"
-	POSTDATA[hmy_syncing]="hmy_syncing\",\"params\":[]"
+	POSTDATA[itc_getBlockByHash]="itc_getBlockByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", true]"
+	POSTDATA[itc_getBlockByNumber]="itc_getBlockByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", true]"
+	POSTDATA[itc_getBlockTransactionCountByHash]="itc_getBlockTransactionCountByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\"]"
+	POSTDATA[itc_getBlockTransactionCountByNumber]="itc_getBlockTransactionCountByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\"]"
+	POSTDATA[itc_getCode]="itc_getCode\",\"params\":[\"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\", \"latest\"]"
+	POSTDATA[itc_getTransactionByBlockHashAndIndex]="itc_getTransactionByBlockHashAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", \"$TRANSACTION_INDEX\"]"
+	POSTDATA[itc_getTransactionByBlockNumberAndIndex]="itc_getTransactionByBlockNumberAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", \"$TRANSACTION_INDEX\"]"
+	POSTDATA[itc_getTransactionByHash]="itc_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"]"
+	POSTDATA[itc_getTransactionReceipt]="itc_getTransactionReceipt\",\"params\":[\"$TRANSACTION_HASH\"]"
+	POSTDATA[itc_syncing]="itc_syncing\",\"params\":[]"
 	POSTDATA[net_peerCount]="net_peerCount\",\"params\":[]"
-	POSTDATA[hmy_getBalance]="hmy_getBalance\",\"params\":[\"one18t4yj4fuutj83uwqckkvxp9gfa0568uc48ggj7\", \"latest\"]"
-	POSTDATA[hmy_getStorageAt]="hmy_getStorageAt\",\"params\":[\"0xD7Ff41CA29306122185A07d04293DdB35F24Cf2d\", \"0\", \"latest\"]"
-	POSTDATA[hmy_getAccountNonce]="hmy_getAccountNonce\",\"params\":[\"0x806171f95C5a74371a19e8a312c9e5Cb4E1D24f6\", \"latest\"]"
-	POSTDATA[hmy_sendRawTransaction]="hmy_sendRawTransaction\",\"params\":[\"$SIGNED_RAW_TRANSACTION\"]"
-	POSTDATA[hmy_getLogs]="hmy_getLogs\", \"params\":[{\"BlockHash\": \"$TRANSACTION_BLOCK_HASH\"}]"
-	POSTDATA[hmy_getFilterChanges]="hmy_getFilterChanges\", \"params\":[\"0x58010795a282878ed0d61da72a14b8b0\"]"
-	POSTDATA[hmy_newPendingTransactionFilter]="hmy_newPendingTransactionFilter\", \"params\":[]"
-	POSTDATA[hmy_newBlockFilter]="hmy_newBlockFilter\", \"params\":[]"
-	POSTDATA[hmy_newFilter]="hmy_newFilter\", \"params\":[{\"BlockHash\": \"0x5725b5b2ab28206e7256a78cda4f9050c2629fd85110ffa54eacd2a13ba68072\"}]"
-	POSTDATA[hmy_call]="hmy_call\", \"params\":[{\"to\": \"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\"}, \"latest\"]"
-	POSTDATA[hmy_gasPrice]="hmy_gasPrice\",\"params\":[]"
-	POSTDATA[hmy_blockNumber]="hmy_blockNumber\",\"params\":[]"
+	POSTDATA[itc_getBalance]="itc_getBalance\",\"params\":[\"one18t4yj4fuutj83uwqckkvxp9gfa0568uc48ggj7\", \"latest\"]"
+	POSTDATA[itc_getStorageAt]="itc_getStorageAt\",\"params\":[\"0xD7Ff41CA29306122185A07d04293DdB35F24Cf2d\", \"0\", \"latest\"]"
+	POSTDATA[itc_getAccountNonce]="itc_getAccountNonce\",\"params\":[\"0x806171f95C5a74371a19e8a312c9e5Cb4E1D24f6\", \"latest\"]"
+	POSTDATA[itc_sendRawTransaction]="itc_sendRawTransaction\",\"params\":[\"$SIGNED_RAW_TRANSACTION\"]"
+	POSTDATA[itc_getLogs]="itc_getLogs\", \"params\":[{\"BlockHash\": \"$TRANSACTION_BLOCK_HASH\"}]"
+	POSTDATA[itc_getFilterChanges]="itc_getFilterChanges\", \"params\":[\"0x58010795a282878ed0d61da72a14b8b0\"]"
+	POSTDATA[itc_newPendingTransactionFilter]="itc_newPendingTransactionFilter\", \"params\":[]"
+	POSTDATA[itc_newBlockFilter]="itc_newBlockFilter\", \"params\":[]"
+	POSTDATA[itc_newFilter]="itc_newFilter\", \"params\":[{\"BlockHash\": \"0x5725b5b2ab28206e7256a78cda4f9050c2629fd85110ffa54eacd2a13ba68072\"}]"
+	POSTDATA[itc_call]="itc_call\", \"params\":[{\"to\": \"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\"}, \"latest\"]"
+	POSTDATA[itc_gasPrice]="itc_gasPrice\",\"params\":[]"
+	POSTDATA[itc_blockNumber]="itc_blockNumber\",\"params\":[]"
 	POSTDATA[net_version]="net_version\",\"params\":[]"
-	POSTDATA[hmy_protocolVersion]="hmy_protocolVersion\",\"params\":[]"
+	POSTDATA[itc_protocolVersion]="itc_protocolVersion\",\"params\":[]"
 fi
 
 if [ "$NETWORK" == "betanet" ]; then
-	POSTDATA[hmy_getBlockByHash]="hmy_getBlockByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", true]"
-	POSTDATA[hmy_getBlockByNumber]="hmy_getBlockByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", true]"
-	POSTDATA[hmy_getBlockTransactionCountByHash]="hmy_getBlockTransactionCountByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\"]"
-	POSTDATA[hmy_getBlockTransactionCountByNumber]="hmy_getBlockTransactionCountByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\"]"
-	POSTDATA[hmy_getCode]="hmy_getCode\",\"params\":[\"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\", \"latest\"]"
-	POSTDATA[hmy_getTransactionByBlockHashAndIndex]="hmy_getTransactionByBlockHashAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", \"$TRANSACTION_INDEX\"]"
-	POSTDATA[hmy_getTransactionByBlockNumberAndIndex]="hmy_getTransactionByBlockNumberAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", \"$TRANSACTION_INDEX\"]"
-	POSTDATA[hmy_getTransactionByHash]="hmy_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"]"
-	POSTDATA[hmy_getTransactionReceipt]="hmy_getTransactionReceipt\",\"params\":[\"$TRANSACTION_HASH\"]"
-	POSTDATA[hmy_syncing]="hmy_syncing\",\"params\":[]"
+	POSTDATA[itc_getBlockByHash]="itc_getBlockByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", true]"
+	POSTDATA[itc_getBlockByNumber]="itc_getBlockByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", true]"
+	POSTDATA[itc_getBlockTransactionCountByHash]="itc_getBlockTransactionCountByHash\",\"params\":[\"$TRANSACTION_BLOCK_HASH\"]"
+	POSTDATA[itc_getBlockTransactionCountByNumber]="itc_getBlockTransactionCountByNumber\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\"]"
+	POSTDATA[itc_getCode]="itc_getCode\",\"params\":[\"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\", \"latest\"]"
+	POSTDATA[itc_getTransactionByBlockHashAndIndex]="itc_getTransactionByBlockHashAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_HASH\", \"$TRANSACTION_INDEX\"]"
+	POSTDATA[itc_getTransactionByBlockNumberAndIndex]="itc_getTransactionByBlockNumberAndIndex\",\"params\":[\"$TRANSACTION_BLOCK_NUMBER\", \"$TRANSACTION_INDEX\"]"
+	POSTDATA[itc_getTransactionByHash]="itc_getTransactionByHash\",\"params\":[\"$TRANSACTION_HASH\"]"
+	POSTDATA[itc_getTransactionReceipt]="itc_getTransactionReceipt\",\"params\":[\"$TRANSACTION_HASH\"]"
+	POSTDATA[itc_syncing]="itc_syncing\",\"params\":[]"
 	POSTDATA[net_peerCount]="net_peerCount\",\"params\":[]"
-	POSTDATA[hmy_getBalance]="hmy_getBalance\",\"params\":[\"one18t4yj4fuutj83uwqckkvxp9gfa0568uc48ggj7\", \"latest\"]"
-	POSTDATA[hmy_getStorageAt]="hmy_getStorageAt\",\"params\":[\"0xD7Ff41CA29306122185A07d04293DdB35F24Cf2d\", \"0\", \"latest\"]"
-	POSTDATA[hmy_getAccountNonce]="hmy_getAccountNonce\",\"params\":[\"0x806171f95C5a74371a19e8a312c9e5Cb4E1D24f6\", \"latest\"]"
-	POSTDATA[hmy_sendRawTransaction]="hmy_sendRawTransaction\",\"params\":[\"$SIGNED_RAW_TRANSACTION\"]"
-	POSTDATA[hmy_getLogs]="hmy_getLogs\", \"params\":[{\"BlockHash\": \"$TRANSACTION_BLOCK_HASH\"}]"
-	POSTDATA[hmy_getFilterChanges]="hmy_getFilterChanges\", \"params\":[\"0x58010795a282878ed0d61da72a14b8b0\"]"
-	POSTDATA[hmy_newPendingTransactionFilter]="hmy_newPendingTransactionFilter\", \"params\":[]"
-	POSTDATA[hmy_newBlockFilter]="hmy_newBlockFilter\", \"params\":[]"
-	POSTDATA[hmy_newFilter]="hmy_newFilter\", \"params\":[{\"BlockHash\": \"0x5725b5b2ab28206e7256a78cda4f9050c2629fd85110ffa54eacd2a13ba68072\"}]"
-	POSTDATA[hmy_call]="hmy_call\", \"params\":[{\"to\": \"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\"}, \"latest\"]"
-	POSTDATA[hmy_gasPrice]="hmy_gasPrice\",\"params\":[]"
-	POSTDATA[hmy_blockNumber]="hmy_blockNumber\",\"params\":[]"
+	POSTDATA[itc_getBalance]="itc_getBalance\",\"params\":[\"one18t4yj4fuutj83uwqckkvxp9gfa0568uc48ggj7\", \"latest\"]"
+	POSTDATA[itc_getStorageAt]="itc_getStorageAt\",\"params\":[\"0xD7Ff41CA29306122185A07d04293DdB35F24Cf2d\", \"0\", \"latest\"]"
+	POSTDATA[itc_getAccountNonce]="itc_getAccountNonce\",\"params\":[\"0x806171f95C5a74371a19e8a312c9e5Cb4E1D24f6\", \"latest\"]"
+	POSTDATA[itc_sendRawTransaction]="itc_sendRawTransaction\",\"params\":[\"$SIGNED_RAW_TRANSACTION\"]"
+	POSTDATA[itc_getLogs]="itc_getLogs\", \"params\":[{\"BlockHash\": \"$TRANSACTION_BLOCK_HASH\"}]"
+	POSTDATA[itc_getFilterChanges]="itc_getFilterChanges\", \"params\":[\"0x58010795a282878ed0d61da72a14b8b0\"]"
+	POSTDATA[itc_newPendingTransactionFilter]="itc_newPendingTransactionFilter\", \"params\":[]"
+	POSTDATA[itc_newBlockFilter]="itc_newBlockFilter\", \"params\":[]"
+	POSTDATA[itc_newFilter]="itc_newFilter\", \"params\":[{\"BlockHash\": \"0x5725b5b2ab28206e7256a78cda4f9050c2629fd85110ffa54eacd2a13ba68072\"}]"
+	POSTDATA[itc_call]="itc_call\", \"params\":[{\"to\": \"0x08AE1abFE01aEA60a47663bCe0794eCCD5763c19\"}, \"latest\"]"
+	POSTDATA[itc_gasPrice]="itc_gasPrice\",\"params\":[]"
+	POSTDATA[itc_blockNumber]="itc_blockNumber\",\"params\":[]"
 	POSTDATA[net_version]="net_version\",\"params\":[]"
-	POSTDATA[hmy_protocolVersion]="hmy_protocolVersion\",\"params\":[]"
+	POSTDATA[itc_protocolVersion]="itc_protocolVersion\",\"params\":[]"
 fi
 
 declare -A RESPONSES
@@ -215,31 +215,31 @@ RESPONSES[GET_address]=""
 RESPONSES[GET_node-count]=""
 RESPONSES[GET_shard]=""
 RESPONSES[GET_committee]=""
-RESPONSES[hmy_getBlockByHash]=""
-RESPONSES[hmy_getBlockByNumber]=""
-RESPONSES[hmy_getBlockTransactionCountByHash]=""
-RESPONSES[hmy_getBlockTransactionCountByNumber]=""
-RESPONSES[hmy_getCode]=""
-RESPONSES[hmy_getTransactionByBlockHashAndIndex]=""
-RESPONSES[hmy_getTransactionByBlockNumberAndIndex]=""
-RESPONSES[hmy_getTransactionByHash]=""
-RESPONSES[hmy_getTransactionReceipt]=""
-RESPONSES[hmy_syncing]=""
+RESPONSES[itc_getBlockByHash]=""
+RESPONSES[itc_getBlockByNumber]=""
+RESPONSES[itc_getBlockTransactionCountByHash]=""
+RESPONSES[itc_getBlockTransactionCountByNumber]=""
+RESPONSES[itc_getCode]=""
+RESPONSES[itc_getTransactionByBlockHashAndIndex]=""
+RESPONSES[itc_getTransactionByBlockNumberAndIndex]=""
+RESPONSES[itc_getTransactionByHash]=""
+RESPONSES[itc_getTransactionReceipt]=""
+RESPONSES[itc_syncing]=""
 RESPONSES[net_peerCount]=""
-RESPONSES[hmy_getBalance]=""
-RESPONSES[hmy_getStorageAt]=""
-RESPONSES[hmy_getAccountNonce]=""
-RESPONSES[hmy_sendRawTransaction]=""
-RESPONSES[hmy_getLogs]=""
-RESPONSES[hmy_getFilterChanges]=""
-RESPONSES[hmy_newPendingTransactionFilter]=""
-RESPONSES[hmy_newBlockFilter]=""
-RESPONSES[hmy_newFilter]=""
-RESPONSES[hmy_call]=""
-RESPONSES[hmy_gasPrice]=""
-RESPONSES[hmy_blockNumber]=""
+RESPONSES[itc_getBalance]=""
+RESPONSES[itc_getStorageAt]=""
+RESPONSES[itc_getAccountNonce]=""
+RESPONSES[itc_sendRawTransaction]=""
+RESPONSES[itc_getLogs]=""
+RESPONSES[itc_getFilterChanges]=""
+RESPONSES[itc_newPendingTransactionFilter]=""
+RESPONSES[itc_newBlockFilter]=""
+RESPONSES[itc_newFilter]=""
+RESPONSES[itc_call]=""
+RESPONSES[itc_gasPrice]=""
+RESPONSES[itc_blockNumber]=""
 RESPONSES[net_version]=""
-RESPONSES[hmy_protocolVersion]=""
+RESPONSES[itc_protocolVersion]=""
 
 ### Processes GET requests and stores reponses in RESPONSES ###
 function GET_requests() {
@@ -368,9 +368,9 @@ function Explorer_getCommitte_test() {
 
 function API_getBlockByNumber_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getBlockByNumber test:"
-	response_test ${RESPONSES[hmy_getBlockByNumber]}
-	BLOCKBYNUMBERHASH=$(echo ${RESPONSES[hmy_getBlockByNumber]} | jq -r '.result.hash')
+	echo "POST itc_getBlockByNumber test:"
+	response_test ${RESPONSES[itc_getBlockByNumber]}
+	BLOCKBYNUMBERHASH=$(echo ${RESPONSES[itc_getBlockByNumber]} | jq -r '.result.hash')
 
 	if [ "$BLOCKBLOCKBYNUMBERHASH" != "null" ]; then
 		if [ "$BLOCKBYNUMBERHASH" == "$TRANSACTION_BLOCK_HASH" ]; then
@@ -386,9 +386,9 @@ function API_getBlockByNumber_test() {
 
 function API_getBlockByHash_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getBlockByHash test:"
-	response_test ${RESPONSES[hmy_getBlockByHash]}
-	BLOCKBYHASHHASH=$(echo ${RESPONSES[hmy_getBlockByHash]} | jq -r '.result.hash')
+	echo "POST itc_getBlockByHash test:"
+	response_test ${RESPONSES[itc_getBlockByHash]}
+	BLOCKBYHASHHASH=$(echo ${RESPONSES[itc_getBlockByHash]} | jq -r '.result.hash')
 	if [ "$BLOCKBYHASHBYHASH" != "null" ]; then
 		if [ "$BLOCKBYHASHHASH" == "$TRANSACTION_BLOCK_HASH" ]; then
 			TESTS_PASSED=$(( TESTS_PASSED + 1 ))
@@ -403,9 +403,9 @@ function API_getBlockByHash_test() {
 
 function API_getBlockTransactionCountByHash_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getBlockTransactionCountByHash test:"
-	response_test ${RESPONSES[hmy_getBlockTransactionCountByHash]}
-	TRANSACTIONCOUNTBYHASH=$(echo ${RESPONSES[hmy_getBlockTransactionCountByHash]} | jq -r '.result')
+	echo "POST itc_getBlockTransactionCountByHash test:"
+	response_test ${RESPONSES[itc_getBlockTransactionCountByHash]}
+	TRANSACTIONCOUNTBYHASH=$(echo ${RESPONSES[itc_getBlockTransactionCountByHash]} | jq -r '.result')
 	TRANSACTIONCOUNTBYHASH=$(( TRANSACTIONCOUNTBYHASH ))
 	if [ "$TRANSACTIONCOUNTBYHASH" != "null" ]; then
 		if [ $TRANSACTIONCOUNTBYHASH -gt 0 ]; then
@@ -421,9 +421,9 @@ function API_getBlockTransactionCountByHash_test() {
 
 function API_getBlockTransactionCountByNumber_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getBlockTransactionCountByNumber test:"
-	response_test ${RESPONSES[hmy_getBlockTransactionCountByNumber]}
-	TRANSACTIONCOUNTBYNUMBER=$(echo ${RESPONSES[hmy_getBlockTransactionCountByNumber]} | jq -r '.result')
+	echo "POST itc_getBlockTransactionCountByNumber test:"
+	response_test ${RESPONSES[itc_getBlockTransactionCountByNumber]}
+	TRANSACTIONCOUNTBYNUMBER=$(echo ${RESPONSES[itc_getBlockTransactionCountByNumber]} | jq -r '.result')
 	TRANSACTIONCOUNTBYNUMBER=$(( TRANSACTIONCOUNTBYNUMBER ))
 	if [ "$BLOCKBYHASH" != "null" ]; then
 		if [ $TRANSACTIONCOUNTBYNUMBER -gt 0 ]; then
@@ -439,17 +439,17 @@ function API_getBlockTransactionCountByNumber_test() {
 
 function API_getCode_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getCode test:"
-	response_test ${RESPONSES[hmy_getCode]}
+	echo "POST itc_getCode test:"
+	response_test ${RESPONSES[itc_getCode]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_getTransactionByBlockHashAndIndex_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getTransactionByBlockHashAndIndex test:"
-	response_test ${RESPONSES[hmy_getTransactionByBlockHashAndIndex]}
-	TRANSACTIONHASHBYHASHANDINDEX=$(echo ${RESPONSES[hmy_getTransactionByBlockHashAndIndex]} | jq -r '.result.hash')
+	echo "POST itc_getTransactionByBlockHashAndIndex test:"
+	response_test ${RESPONSES[itc_getTransactionByBlockHashAndIndex]}
+	TRANSACTIONHASHBYHASHANDINDEX=$(echo ${RESPONSES[itc_getTransactionByBlockHashAndIndex]} | jq -r '.result.hash')
 	if [ "$TRANSACTIONHASHBYHASHANDINDEX" != "null" ]; then
 		if [ "$TRANSACTIONHASHBYHASHANDINDEX" == "$TRANSACTION_HASH" ]; then
 			TESTS_PASSED=$(( TESTS_PASSED + 1 ))
@@ -464,9 +464,9 @@ function API_getTransactionByBlockHashAndIndex_test() {
 
 function API_getTransactionByBlockNumberAndIndex_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getTransactionByBlockNumberAndIndex test:"
-	response_test ${RESPONSES[hmy_getTransactionByBlockNumberAndIndex]}
-	TRANSACTIONHASHBYNUMBERANDINDEX=$(echo ${RESPONSES[hmy_getTransactionByBlockNumberAndIndex]} | jq -r '.result.hash')
+	echo "POST itc_getTransactionByBlockNumberAndIndex test:"
+	response_test ${RESPONSES[itc_getTransactionByBlockNumberAndIndex]}
+	TRANSACTIONHASHBYNUMBERANDINDEX=$(echo ${RESPONSES[itc_getTransactionByBlockNumberAndIndex]} | jq -r '.result.hash')
 	if [ "$TRANSACTIONHASHBYNUMBERANDINDEX" != "null" ]; then
 		if [ "$TRANSACTIONHASHBYNUMBERANDINDEX" == "$TRANSACTION_HASH" ]; then
 			TESTS_PASSED=$(( TESTS_PASSED + 1 ))
@@ -481,9 +481,9 @@ function API_getTransactionByBlockNumberAndIndex_test() {
 
 function API_getTransactionByHash_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getTransactionByHash test:"
-	TX_HASH=$(echo ${RESPONSES[hmy_getTransactionByHash]} | jq -r '.result.hash')
-	response_test ${RESPONSES[hmy_getTransactionByHash]}
+	echo "POST itc_getTransactionByHash test:"
+	TX_HASH=$(echo ${RESPONSES[itc_getTransactionByHash]} | jq -r '.result.hash')
+	response_test ${RESPONSES[itc_getTransactionByHash]}
 	if [ "$TX_HASH" != "null" ]; then
 		if [ "$TX_HASH" == "$TRANSACTION_HASH" ]; then
 			TESTS_PASSED=$(( TESTS_PASSED + 1 ))
@@ -498,9 +498,9 @@ function API_getTransactionByHash_test() {
 
 function API_getTransactionReceipt_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getTransactionReceipt test:"
-	TX_HASH=$(echo ${RESPONSES[hmy_getTransactionReceipt]} | jq -r '.result.transactionHash')
-	response_test ${RESPONSES[hmy_getTransactionReceipt]}
+	echo "POST itc_getTransactionReceipt test:"
+	TX_HASH=$(echo ${RESPONSES[itc_getTransactionReceipt]} | jq -r '.result.transactionHash')
+	response_test ${RESPONSES[itc_getTransactionReceipt]}
 	if [ "$TX_HASH" != "null" ]; then
 		if [ "$TX_HASH" == "$TRANSACTION_HASH" ]; then
 			TESTS_PASSED=$(( TESTS_PASSED + 1 ))
@@ -515,8 +515,8 @@ function API_getTransactionReceipt_test() {
 
 function API_syncing_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_syncing test:"
-	response_test ${RESPONSES[hmy_syncing]}
+	echo "POST itc_syncing test:"
+	response_test ${RESPONSES[itc_syncing]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
@@ -531,90 +531,90 @@ function API_netPeerCount_test() {
 
 function API_getBalance_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getBalance test:"
-	response_test ${RESPONSES[hmy_getBalance]}
+	echo "POST itc_getBalance test:"
+	response_test ${RESPONSES[itc_getBalance]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_getStorageAt_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getStorageAt test:"
-	response_test ${RESPONSES[hmy_getStorageAt]}
+	echo "POST itc_getStorageAt test:"
+	response_test ${RESPONSES[itc_getStorageAt]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_getAccountNonce_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getAccountNonce test:"
-	response_test ${RESPONSES[hmy_getAccountNonce]}
+	echo "POST itc_getAccountNonce test:"
+	response_test ${RESPONSES[itc_getAccountNonce]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_sendRawTransaction_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_sendRawTransaction test:"
-	response_test ${RESPONSES[hmy_sendRawTransaction]}
+	echo "POST itc_sendRawTransaction test:"
+	response_test ${RESPONSES[itc_sendRawTransaction]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_getLogs_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getLogs test:"
-	response_test ${RESPONSES[hmy_getLogs]}
+	echo "POST itc_getLogs test:"
+	response_test ${RESPONSES[itc_getLogs]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_getFilterChanges_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_getFilterChanges test:"
-	response_test ${RESPONSES[hmy_getFilterChanges]}
+	echo "POST itc_getFilterChanges test:"
+	response_test ${RESPONSES[itc_getFilterChanges]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_newPendingTransactionFilter_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_sendRawTransaction test:"
-	response_test ${RESPONSES[hmy_newPendingTransactionFilter]}
+	echo "POST itc_sendRawTransaction test:"
+	response_test ${RESPONSES[itc_newPendingTransactionFilter]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_newBlockFilter_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_newBlockFilter test:"
-	response_test ${RESPONSES[hmy_newBlockFilter]}
+	echo "POST itc_newBlockFilter test:"
+	response_test ${RESPONSES[itc_newBlockFilter]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_newFilter_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_newFilter test:"
-	response_test ${RESPONSES[hmy_newFilter]}
+	echo "POST itc_newFilter test:"
+	response_test ${RESPONSES[itc_newFilter]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_call_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_call test:"
-	response_test ${RESPONSES[hmy_call]}
+	echo "POST itc_call test:"
+	response_test ${RESPONSES[itc_call]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }
 
 function API_gasPrice_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_gasPrice test:"
-	response_test ${RESPONSES[hmy_gasPrice]}
+	echo "POST itc_gasPrice test:"
+	response_test ${RESPONSES[itc_gasPrice]}
 	if [ "$?" == "1" ]; then
-		RESULT=$(echo ${RESPONSES[hmy_gasPrice]} | jq -r '.result')
+		RESULT=$(echo ${RESPONSES[itc_gasPrice]} | jq -r '.result')
 		isHexTest $RESULT
 		[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	fi
@@ -622,10 +622,10 @@ function API_gasPrice_test() {
 
 function API_blockNumber_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_blockNumber test:"
-	response_test ${RESPONSES[hmy_blockNumber]}
+	echo "POST itc_blockNumber test:"
+	response_test ${RESPONSES[itc_blockNumber]}
 	if [ "$?" == "1" ]; then
-		RESULT=$(echo ${RESPONSES[hmy_blockNumber]} | jq -r '.result')
+		RESULT=$(echo ${RESPONSES[itc_blockNumber]} | jq -r '.result')
 		isHexTest $RESULT
 		[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	fi
@@ -641,8 +641,8 @@ function API_net_version_test() {
 
 function API_protocolVersion_test() {
 	TESTS_RAN=$(( TESTS_RAN + 1 ))
-	echo "POST hmy_protocolVersion test:"
-	response_test ${RESPONSES[hmy_protocolVersion]}
+	echo "POST itc_protocolVersion test:"
+	response_test ${RESPONSES[itc_protocolVersion]}
 	[ "$?" == "1" ] && TESTS_PASSED=$(( TESTS_PASSED + 1 ))
 	echo
 }

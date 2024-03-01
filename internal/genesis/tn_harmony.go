@@ -1,7 +1,7 @@
 package genesis
 
-// TNHarmonyAccounts are the accounts for the initial genesis nodes hosted by Harmony for testnet.
-var TNHarmonyAccounts = []DeployAccount{
+// TNIntelchainAccounts are the accounts for the initial genesis nodes hosted by Intelchain for testnet.
+var TNIntelchainAccounts = []DeployAccount{
 	{Index: "0", Address: "one1yc06ghr2p8xnl2380kpfayweguuhxdtupkhqzw", BLSPublicKey: "e7f54994bc5c02edeeb178ce2d34db276a893bab5c59ac3d7eb9f077c893f9e31171de6236ba0e21be415d8631e45b91"},
 	{Index: "1", Address: "one1wh4p0kuc7unxez2z8f82zfnhsg4ty6dupqyjt2", BLSPublicKey: "4bf54264c1bfa68ca201f756e882f49e1e8aaa5ddf42deaf4690bc3977497e245af40f3ad4003d7a6121614f13033b0b"},
 	{Index: "2", Address: "one1shzkj8tty2wu230wsjc7lp9xqkwhch2ea7sjhc", BLSPublicKey: "e212c4c5cd8e078aedd34c300ae500c5bd5fd036231d1c9dcc8400337919a59ebd47523faa209fc0d873ead492621f88"},
@@ -1208,7 +1208,7 @@ var TNFoundationalAccounts = []DeployAccount{
 	{Index: " 399 ", Address: "one12j4augf8dc67rrknc9jsj25yr2yvk3ngq7er8k", BLSPublicKey: "0f88b6b65d40d37e16bd4a2be33559f401cb023f5cf0a92476d5c5dccf2d2285cc521726649b1aedf9b62688ab3c1606"},
 }
 
-var TNHarmonyAccountsV1 = []DeployAccount{
+var TNIntelchainAccountsV1 = []DeployAccount{
 	{Index: "0", Address: "one1yc06ghr2p8xnl2380kpfayweguuhxdtupkhqzw", BLSPublicKey: "e7f54994bc5c02edeeb178ce2d34db276a893bab5c59ac3d7eb9f077c893f9e31171de6236ba0e21be415d8631e45b91"},
 	{Index: "1", Address: "one1wh4p0kuc7unxez2z8f82zfnhsg4ty6dupqyjt2", BLSPublicKey: "4bf54264c1bfa68ca201f756e882f49e1e8aaa5ddf42deaf4690bc3977497e245af40f3ad4003d7a6121614f13033b0b"},
 	{Index: "4", Address: "one1puj38zamhlu89enzcdjw6rlhlqtyp2c675hjg5", BLSPublicKey: "99d0835797ca0683fb7b1d14a882879652ddcdcfe0d52385ffddf8012ee804d92e5c05a56c9d7fc663678e36a158a28c"},

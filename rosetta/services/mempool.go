@@ -7,21 +7,21 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/server"
 	"github.com/coinbase/rosetta-sdk-go/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	hmyTypes "github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy"
+	itcTypes "github.com/zennittians/intelchain/core/types"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
 	"github.com/zennittians/intelchain/staking"
 )
 
 // MempoolAPI implements the server.MempoolAPIServicer interface
 type MempoolAPI struct {
-	hmy *hmy.Harmony
+	itc *itc.Intelchain
 }
 
 // NewMempoolAPI creates a new instance of MempoolAPI
-func NewMempoolAPI(hmy *hmy.Harmony) server.MempoolAPIServicer {
+func NewMempoolAPI(itc *itc.Intelchain) server.MempoolAPIServicer {
 	return &MempoolAPI{
-		hmy: hmy,
+		itc: itc,
 	}
 }
 
@@ -29,11 +29,11 @@ func NewMempoolAPI(hmy *hmy.Harmony) server.MempoolAPIServicer {
 func (s *MempoolAPI) Mempool(
 	ctx context.Context, req *types.NetworkRequest,
 ) (*types.MempoolResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(req.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(req.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 
-	pool, err := s.hmy.GetPoolTransactions()
+	pool, err := s.itc.GetPoolTransactions()
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": "unable to fetch pool transactions",
@@ -54,31 +54,31 @@ func (s *MempoolAPI) Mempool(
 func (s *MempoolAPI) MempoolTransaction(
 	ctx context.Context, req *types.MempoolTransactionRequest,
 ) (*types.MempoolTransactionResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(req.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(req.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 
 	hash := ethCommon.HexToHash(req.TransactionIdentifier.Hash)
-	poolTx := s.hmy.GetPoolTransaction(hash)
+	poolTx := s.itc.GetPoolTransaction(hash)
 	if poolTx == nil {
 		return nil, &common.TransactionNotFoundError
 	}
 
 	senderAddr, _ := poolTx.SenderAddress()
-	estLog := &hmyTypes.Log{
+	estLog := &itcTypes.Log{
 		Address:     senderAddr,
 		Topics:      []ethCommon.Hash{staking.CollectRewardsTopic},
 		Data:        big.NewInt(0).Bytes(),
-		BlockNumber: s.hmy.CurrentBlock().NumberU64(),
+		BlockNumber: s.itc.CurrentBlock().NumberU64(),
 	}
 
 	// Contract related information for pending transactions is not reported
-	estReceipt := &hmyTypes.Receipt{
+	estReceipt := &itcTypes.Receipt{
 		PostState:         []byte{},
-		Status:            hmyTypes.ReceiptStatusSuccessful, // Assume transaction will succeed
+		Status:            itcTypes.ReceiptStatusSuccessful, // Assume transaction will succeed
 		CumulativeGasUsed: poolTx.GasLimit(),
 		Bloom:             [256]byte{},
-		Logs:              []*hmyTypes.Log{estLog},
+		Logs:              []*itcTypes.Log{estLog},
 		TxHash:            poolTx.Hash(),
 		ContractAddress:   ethCommon.Address{},
 		GasUsed:           poolTx.GasLimit(),

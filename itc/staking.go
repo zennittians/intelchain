@@ -1,4 +1,4 @@
-package hmy
+package itc
 
 import (
 	"context"
@@ -30,7 +30,7 @@ var (
 	bigZero = big.NewInt(0)
 )
 
-func (hmy *Harmony) readAndUpdateRawStakes(
+func (itc *Intelchain) readAndUpdateRawStakes(
 	epoch *big.Int,
 	decider quorum.Decider,
 	comm shard.Committee,
@@ -43,7 +43,7 @@ func (hmy *Harmony) readAndUpdateRawStakes(
 		slotKey := slot.BLSPublicKey
 		spread, ok := validatorSpreads[slotAddr]
 		if !ok {
-			snapshot, err := hmy.BlockChain.ReadValidatorSnapshotAtEpoch(epoch, slotAddr)
+			snapshot, err := itc.BlockChain.ReadValidatorSnapshotAtEpoch(epoch, slotAddr)
 			if err != nil {
 				continue
 			}
@@ -63,10 +63,10 @@ func (hmy *Harmony) readAndUpdateRawStakes(
 	return rawStakes
 }
 
-func (hmy *Harmony) getSuperCommittees() (*quorum.Transition, error) {
-	nowE := hmy.BlockChain.CurrentHeader().Epoch()
+func (itc *Intelchain) getSuperCommittees() (*quorum.Transition, error) {
+	nowE := itc.BlockChain.CurrentHeader().Epoch()
 
-	if hmy.BlockChain.CurrentHeader().IsLastBlockInEpoch() {
+	if itc.BlockChain.CurrentHeader().IsLastBlockInEpoch() {
 		// current epoch is current header epoch + 1 if the header was last block of prev epoch
 		nowE = new(big.Int).Add(nowE, common.Big1)
 	}
@@ -76,11 +76,11 @@ func (hmy *Harmony) getSuperCommittees() (*quorum.Transition, error) {
 		nowCommittee, prevCommittee *shard.State
 		err                         error
 	)
-	nowCommittee, err = hmy.BlockChain.ReadShardState(nowE)
+	nowCommittee, err = itc.BlockChain.ReadShardState(nowE)
 	if err != nil {
 		return nil, err
 	}
-	prevCommittee, err = hmy.BlockChain.ReadShardState(thenE)
+	prevCommittee, err = itc.BlockChain.ReadShardState(thenE)
 	if err != nil {
 		return nil, err
 	}
@@ -98,12 +98,12 @@ func (hmy *Harmony) getSuperCommittees() (*quorum.Transition, error) {
 	for _, comm := range prevCommittee.Shards {
 		decider := quorum.NewDecider(quorum.SuperMajorityStake, comm.ShardID)
 		// before staking skip computing
-		if hmy.BlockChain.Config().IsStaking(prevCommittee.Epoch) {
+		if itc.BlockChain.Config().IsStaking(prevCommittee.Epoch) {
 			if _, err := decider.SetVoters(&comm, prevCommittee.Epoch); err != nil {
 				return nil, err
 			}
 		}
-		rawStakes = hmy.readAndUpdateRawStakes(thenE, decider, comm, rawStakes, validatorSpreads)
+		rawStakes = itc.readAndUpdateRawStakes(thenE, decider, comm, rawStakes, validatorSpreads)
 		then.Deciders[fmt.Sprintf("shard-%d", comm.ShardID)] = decider
 	}
 	then.MedianStake = effective.Median(rawStakes)
@@ -116,11 +116,11 @@ func (hmy *Harmony) getSuperCommittees() (*quorum.Transition, error) {
 			return nil, errors.Wrapf(
 				err,
 				"committee is only available from staking epoch: %v, current epoch: %v",
-				hmy.BlockChain.Config().StakingEpoch,
-				hmy.BlockChain.CurrentHeader().Epoch(),
+				itc.BlockChain.Config().StakingEpoch,
+				itc.BlockChain.CurrentHeader().Epoch(),
 			)
 		}
-		rawStakes = hmy.readAndUpdateRawStakes(nowE, decider, comm, rawStakes, validatorSpreads)
+		rawStakes = itc.readAndUpdateRawStakes(nowE, decider, comm, rawStakes, validatorSpreads)
 		now.Deciders[fmt.Sprintf("shard-%d", comm.ShardID)] = decider
 	}
 	now.MedianStake = effective.Median(rawStakes)
@@ -129,65 +129,65 @@ func (hmy *Harmony) getSuperCommittees() (*quorum.Transition, error) {
 }
 
 // IsStakingEpoch ...
-func (hmy *Harmony) IsStakingEpoch(epoch *big.Int) bool {
-	return hmy.BlockChain.Config().IsStaking(epoch)
+func (itc *Intelchain) IsStakingEpoch(epoch *big.Int) bool {
+	return itc.BlockChain.Config().IsStaking(epoch)
 }
 
 // IsPreStakingEpoch ...
-func (hmy *Harmony) IsPreStakingEpoch(epoch *big.Int) bool {
-	return hmy.BlockChain.Config().IsPreStaking(epoch)
+func (itc *Intelchain) IsPreStakingEpoch(epoch *big.Int) bool {
+	return itc.BlockChain.Config().IsPreStaking(epoch)
 }
 
 // IsNoEarlyUnlockEpoch ...
-func (hmy *Harmony) IsNoEarlyUnlockEpoch(epoch *big.Int) bool {
-	return hmy.BlockChain.Config().IsNoEarlyUnlock(epoch)
+func (itc *Intelchain) IsNoEarlyUnlockEpoch(epoch *big.Int) bool {
+	return itc.BlockChain.Config().IsNoEarlyUnlock(epoch)
 }
 
 // IsMaxRate ...
-func (hmy *Harmony) IsMaxRate(epoch *big.Int) bool {
-	return hmy.BlockChain.Config().IsMaxRate(epoch)
+func (itc *Intelchain) IsMaxRate(epoch *big.Int) bool {
+	return itc.BlockChain.Config().IsMaxRate(epoch)
 }
 
 // IsCommitteeSelectionBlock checks if the given block is the committee selection block
-func (hmy *Harmony) IsCommitteeSelectionBlock(header *block.Header) bool {
-	return chain.IsCommitteeSelectionBlock(hmy.BlockChain, header)
+func (itc *Intelchain) IsCommitteeSelectionBlock(header *block.Header) bool {
+	return chain.IsCommitteeSelectionBlock(itc.BlockChain, header)
 }
 
 // GetDelegationLockingPeriodInEpoch ...
-func (hmy *Harmony) GetDelegationLockingPeriodInEpoch(epoch *big.Int) int {
-	return chain.GetLockPeriodInEpoch(hmy.BlockChain, epoch)
+func (itc *Intelchain) GetDelegationLockingPeriodInEpoch(epoch *big.Int) int {
+	return chain.GetLockPeriodInEpoch(itc.BlockChain, epoch)
 }
 
 // SendStakingTx adds a staking transaction
-func (hmy *Harmony) SendStakingTx(ctx context.Context, signedStakingTx *staking.StakingTransaction) error {
-	stx, _, _, _ := rawdb.ReadStakingTransaction(hmy.chainDb, signedStakingTx.Hash())
+func (itc *Intelchain) SendStakingTx(ctx context.Context, signedStakingTx *staking.StakingTransaction) error {
+	stx, _, _, _ := rawdb.ReadStakingTransaction(itc.chainDb, signedStakingTx.Hash())
 	if stx == nil {
-		return hmy.NodeAPI.AddPendingStakingTransaction(signedStakingTx)
+		return itc.NodeAPI.AddPendingStakingTransaction(signedStakingTx)
 	}
 	return ErrFinalizedTransaction
 }
 
 // GetStakingTransactionsHistory returns list of staking transactions hashes of address.
-func (hmy *Harmony) GetStakingTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
-	return hmy.NodeAPI.GetStakingTransactionsHistory(address, txType, order)
+func (itc *Intelchain) GetStakingTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
+	return itc.NodeAPI.GetStakingTransactionsHistory(address, txType, order)
 }
 
 // GetStakingTransactionsCount returns the number of staking transactions of address.
-func (hmy *Harmony) GetStakingTransactionsCount(address, txType string) (uint64, error) {
-	return hmy.NodeAPI.GetStakingTransactionsCount(address, txType)
+func (itc *Intelchain) GetStakingTransactionsCount(address, txType string) (uint64, error) {
+	return itc.NodeAPI.GetStakingTransactionsCount(address, txType)
 }
 
 // GetSuperCommittees ..
-func (hmy *Harmony) GetSuperCommittees() (*quorum.Transition, error) {
-	nowE := hmy.BlockChain.CurrentHeader().Epoch()
+func (itc *Intelchain) GetSuperCommittees() (*quorum.Transition, error) {
+	nowE := itc.BlockChain.CurrentHeader().Epoch()
 	key := fmt.Sprintf("sc-%s", nowE.String())
 
-	res, err := hmy.SingleFlightRequest(
+	res, err := itc.SingleFlightRequest(
 		key, func() (interface{}, error) {
 			thenE := new(big.Int).Sub(nowE, common.Big1)
 			thenKey := fmt.Sprintf("sc-%s", thenE.String())
-			hmy.group.Forget(thenKey)
-			return hmy.getSuperCommittees()
+			itc.group.Forget(thenKey)
+			return itc.getSuperCommittees()
 		})
 	if err != nil {
 		return nil, err
@@ -196,13 +196,13 @@ func (hmy *Harmony) GetSuperCommittees() (*quorum.Transition, error) {
 }
 
 // GetValidators returns validators for a particular epoch.
-func (hmy *Harmony) GetValidators(epoch *big.Int) (*shard.Committee, error) {
-	state, err := hmy.BlockChain.ReadShardState(epoch)
+func (itc *Intelchain) GetValidators(epoch *big.Int) (*shard.Committee, error) {
+	state, err := itc.BlockChain.ReadShardState(epoch)
 	if err != nil {
 		return nil, err
 	}
 	for _, cmt := range state.Shards {
-		if cmt.ShardID == hmy.ShardID {
+		if cmt.ShardID == itc.ShardID {
 			return &cmt, nil
 		}
 	}
@@ -210,8 +210,8 @@ func (hmy *Harmony) GetValidators(epoch *big.Int) (*shard.Committee, error) {
 }
 
 // GetValidatorSelfDelegation returns the amount of staking after applying all delegated stakes
-func (hmy *Harmony) GetValidatorSelfDelegation(addr common.Address) *big.Int {
-	wrapper, err := hmy.BlockChain.ReadValidatorInformation(addr)
+func (itc *Intelchain) GetValidatorSelfDelegation(addr common.Address) *big.Int {
+	wrapper, err := itc.BlockChain.ReadValidatorInformation(addr)
 	if err != nil || wrapper == nil {
 		return nil
 	}
@@ -222,26 +222,26 @@ func (hmy *Harmony) GetValidatorSelfDelegation(addr common.Address) *big.Int {
 }
 
 // GetElectedValidatorAddresses returns the address of elected validators for current epoch
-func (hmy *Harmony) GetElectedValidatorAddresses() []common.Address {
-	list, _ := hmy.BlockChain.ReadShardState(hmy.BlockChain.CurrentBlock().Epoch())
+func (itc *Intelchain) GetElectedValidatorAddresses() []common.Address {
+	list, _ := itc.BlockChain.ReadShardState(itc.BlockChain.CurrentBlock().Epoch())
 	return list.StakedValidators().Addrs
 }
 
 // GetAllValidatorAddresses returns the up to date validator candidates for next epoch
-func (hmy *Harmony) GetAllValidatorAddresses() []common.Address {
-	return hmy.BlockChain.ValidatorCandidates()
+func (itc *Intelchain) GetAllValidatorAddresses() []common.Address {
+	return itc.BlockChain.ValidatorCandidates()
 }
 
-func (hmy *Harmony) GetValidatorsStakeByBlockNumber(
+func (itc *Intelchain) GetValidatorsStakeByBlockNumber(
 	block *types.Block,
 ) (map[string]*big.Int, error) {
-	if cachedReward, ok := hmy.stakeByBlockNumberCache.Get(block.Hash()); ok {
+	if cachedReward, ok := itc.stakeByBlockNumberCache.Get(block.Hash()); ok {
 		return cachedReward.(map[string]*big.Int), nil
 	}
-	validatorAddresses := hmy.GetAllValidatorAddresses()
+	validatorAddresses := itc.GetAllValidatorAddresses()
 	stakes := make(map[string]*big.Int, len(validatorAddresses))
 	for _, validatorAddress := range validatorAddresses {
-		wrapper, err := hmy.BlockChain.ReadValidatorInformationAtRoot(validatorAddress, block.Root())
+		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validatorAddress, block.Root())
 		if err != nil {
 			if errors.Cause(err) != state.ErrAddressNotPresent {
 				return nil, errors.Errorf(
@@ -257,7 +257,7 @@ func (hmy *Harmony) GetValidatorsStakeByBlockNumber(
 		}
 		stakes[validatorAddress.Hex()] = wrapper.TotalDelegation()
 	}
-	hmy.stakeByBlockNumberCache.Add(block.Hash(), stakes)
+	itc.stakeByBlockNumberCache.Add(block.Hash(), stakes)
 	return stakes, nil
 }
 
@@ -266,7 +266,7 @@ var (
 	mapLock        = sync.Mutex{}
 )
 
-func (hmy *Harmony) getEpochSigning(epoch *big.Int, addr common.Address) (staking.EpochSigningEntry, error) {
+func (itc *Intelchain) getEpochSigning(epoch *big.Int, addr common.Address) (staking.EpochSigningEntry, error) {
 	entry := staking.EpochSigningEntry{}
 	mapLock.Lock()
 	defer mapLock.Unlock()
@@ -276,7 +276,7 @@ func (hmy *Harmony) getEpochSigning(epoch *big.Int, addr common.Address) (stakin
 		}
 	}
 
-	snapshot, err := hmy.BlockChain.ReadValidatorSnapshotAtEpoch(epoch, addr)
+	snapshot, err := itc.BlockChain.ReadValidatorSnapshotAtEpoch(epoch, addr)
 	if err != nil {
 		return entry, err
 	}
@@ -287,7 +287,7 @@ func (hmy *Harmony) getEpochSigning(epoch *big.Int, addr common.Address) (stakin
 	entry.Blocks = snapshot.Validator.Counters
 
 	// subtract previous epoch counters if exists
-	prevEpochSnap, err := hmy.BlockChain.ReadValidatorSnapshotAtEpoch(prevEpoch, addr)
+	prevEpochSnap, err := itc.BlockChain.ReadValidatorSnapshotAtEpoch(prevEpoch, addr)
 	if err == nil {
 		entry.Blocks.NumBlocksSigned.Sub(
 			entry.Blocks.NumBlocksSigned,
@@ -311,10 +311,10 @@ func (hmy *Harmony) getEpochSigning(epoch *big.Int, addr common.Address) (stakin
 }
 
 // GetValidatorInformation returns the information of validator
-func (hmy *Harmony) GetValidatorInformation(
+func (itc *Intelchain) GetValidatorInformation(
 	addr common.Address, block *types.Block,
 ) (*staking.ValidatorRPCEnhanced, error) {
-	bc := hmy.BlockChain
+	bc := itc.BlockChain
 	wrapper, err := bc.ReadValidatorInformationAtRoot(addr, block.Root())
 	if err != nil {
 		s, _ := internalCommon.AddressToBech32(addr)
@@ -356,15 +356,15 @@ func (hmy *Harmony) GetValidatorInformation(
 		snapshot.Validator, wrapper,
 	)
 
-	lastBlockOfEpoch := shard.Schedule.EpochLastBlock(hmy.BeaconChain.CurrentBlock().Header().Epoch().Uint64())
+	lastBlockOfEpoch := shard.Schedule.EpochLastBlock(itc.BeaconChain.CurrentBlock().Header().Epoch().Uint64())
 
-	computed.BlocksLeftInEpoch = lastBlockOfEpoch - hmy.BeaconChain.CurrentBlock().Header().Number().Uint64()
+	computed.BlocksLeftInEpoch = lastBlockOfEpoch - itc.BeaconChain.CurrentBlock().Header().Number().Uint64()
 
 	if defaultReply.CurrentlyInCommittee {
 		defaultReply.Performance = &staking.CurrentEpochPerformance{
 			CurrentSigningPercentage: *computed,
-			Epoch:                    hmy.BeaconChain.CurrentBlock().Header().Epoch().Uint64(),
-			Block:                    hmy.BeaconChain.CurrentBlock().Header().Number().Uint64(),
+			Epoch:                    itc.BeaconChain.CurrentBlock().Header().Epoch().Uint64(),
+			Block:                    itc.BeaconChain.CurrentBlock().Header().Number().Uint64(),
 		}
 	}
 
@@ -441,7 +441,7 @@ func (hmy *Harmony) GetValidatorInformation(
 	}
 	for i := now.Int64(); i > epochFrom.Int64(); i-- {
 		epoch := big.NewInt(i)
-		entry, err := hmy.getEpochSigning(epoch, addr)
+		entry, err := itc.getEpochSigning(epoch, addr)
 		if err != nil {
 			break
 		}
@@ -463,23 +463,23 @@ func (hmy *Harmony) GetValidatorInformation(
 }
 
 // GetMedianRawStakeSnapshot ..
-func (hmy *Harmony) GetMedianRawStakeSnapshot() (
+func (itc *Intelchain) GetMedianRawStakeSnapshot() (
 	*committee.CompletedEPoSRound, error,
 ) {
-	blockNum := hmy.CurrentBlock().NumberU64()
+	blockNum := itc.CurrentBlock().NumberU64()
 	key := fmt.Sprintf("median-%d", blockNum)
 
 	// delete cache for previous block
 	prevKey := fmt.Sprintf("median-%d", blockNum-1)
-	hmy.group.Forget(prevKey)
+	itc.group.Forget(prevKey)
 
-	res, err := hmy.SingleFlightRequest(
+	res, err := itc.SingleFlightRequest(
 		key,
 		func() (interface{}, error) {
 			// Compute for next epoch
-			epoch := big.NewInt(0).Add(hmy.CurrentBlock().Epoch(), big.NewInt(1))
+			epoch := big.NewInt(0).Add(itc.CurrentBlock().Epoch(), big.NewInt(1))
 			instance := shard.Schedule.InstanceForEpoch(epoch)
-			return committee.NewEPoSRound(epoch, hmy.BlockChain, hmy.BlockChain.Config().IsEPoSBound35(epoch), instance.SlotsLimit(), int(instance.NumShards()))
+			return committee.NewEPoSRound(epoch, itc.BlockChain, itc.BlockChain.Config().IsEPoSBound35(epoch), instance.SlotsLimit(), int(instance.NumShards()))
 		},
 	)
 	if err != nil {
@@ -489,8 +489,8 @@ func (hmy *Harmony) GetMedianRawStakeSnapshot() (
 }
 
 // GetDelegationsByValidator returns all delegation information of a validator
-func (hmy *Harmony) GetDelegationsByValidator(validator common.Address) []staking.Delegation {
-	wrapper, err := hmy.BlockChain.ReadValidatorInformation(validator)
+func (itc *Intelchain) GetDelegationsByValidator(validator common.Address) []staking.Delegation {
+	wrapper, err := itc.BlockChain.ReadValidatorInformation(validator)
 	if err != nil || wrapper == nil {
 		return nil
 	}
@@ -498,10 +498,10 @@ func (hmy *Harmony) GetDelegationsByValidator(validator common.Address) []stakin
 }
 
 // GetDelegationsByValidatorAtBlock returns all delegation information of a validator at the given block
-func (hmy *Harmony) GetDelegationsByValidatorAtBlock(
+func (itc *Intelchain) GetDelegationsByValidatorAtBlock(
 	validator common.Address, block *types.Block,
 ) []staking.Delegation {
-	wrapper, err := hmy.BlockChain.ReadValidatorInformationAtRoot(validator, block.Root())
+	wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validator, block.Root())
 	if err != nil || wrapper == nil {
 		return nil
 	}
@@ -509,18 +509,18 @@ func (hmy *Harmony) GetDelegationsByValidatorAtBlock(
 }
 
 // GetDelegationsByDelegator returns all delegation information of a delegator
-func (hmy *Harmony) GetDelegationsByDelegator(
+func (itc *Intelchain) GetDelegationsByDelegator(
 	delegator common.Address,
 ) ([]common.Address, []*staking.Delegation) {
-	block := hmy.BlockChain.CurrentBlock()
-	return hmy.GetDelegationsByDelegatorByBlock(delegator, block)
+	block := itc.BlockChain.CurrentBlock()
+	return itc.GetDelegationsByDelegatorByBlock(delegator, block)
 }
 
 // GetDelegationsByDelegatorByBlock returns all delegation information of a delegator
-func (hmy *Harmony) GetDelegationsByDelegatorByBlock(
+func (itc *Intelchain) GetDelegationsByDelegatorByBlock(
 	delegator common.Address, block *types.Block,
 ) ([]common.Address, []*staking.Delegation) {
-	delegationIndexes, err := hmy.BlockChain.
+	delegationIndexes, err := itc.BlockChain.
 		ReadDelegationsByDelegatorAt(delegator, block.Number())
 	if err != nil {
 		return nil, nil
@@ -530,7 +530,7 @@ func (hmy *Harmony) GetDelegationsByDelegatorByBlock(
 	delegations := make([]*staking.Delegation, 0, len(delegationIndexes))
 
 	for i := range delegationIndexes {
-		wrapper, err := hmy.BlockChain.ReadValidatorInformationAtRoot(
+		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(
 			delegationIndexes[i].ValidatorAddress, block.Root(),
 		)
 		if err != nil || wrapper == nil {
@@ -577,34 +577,34 @@ func (u *UndelegationPayouts) SetPayoutByDelegatorAddrAndValidatorAddr(
 // Due to in-memory caching, it is possible to get undelegation payouts for a state / epoch
 // that has been pruned but have it be lost (and unable to recompute) after the node restarts.
 // This not a problem if a full (archival) DB is used.
-func (hmy *Harmony) GetUndelegationPayouts(
+func (itc *Intelchain) GetUndelegationPayouts(
 	ctx context.Context, epoch *big.Int,
 ) (*UndelegationPayouts, error) {
-	if !hmy.IsPreStakingEpoch(epoch) {
+	if !itc.IsPreStakingEpoch(epoch) {
 		return nil, fmt.Errorf("not pre-staking epoch or later")
 	}
 
-	payouts, ok := hmy.undelegationPayoutsCache.Get(epoch.Uint64())
+	payouts, ok := itc.undelegationPayoutsCache.Get(epoch.Uint64())
 	if ok {
 		return payouts.(*UndelegationPayouts), nil
 	}
 	undelegationPayouts := NewUndelegationPayouts()
 	// require second to last block as saved undelegations are AFTER undelegations are payed out
 	blockNumber := shard.Schedule.EpochLastBlock(epoch.Uint64()) - 1
-	undelegationPayoutBlock, err := hmy.BlockByNumber(ctx, rpc.BlockNumber(blockNumber))
+	undelegationPayoutBlock, err := itc.BlockByNumber(ctx, rpc.BlockNumber(blockNumber))
 	if err != nil || undelegationPayoutBlock == nil {
 		// Block not found, so no undelegationPayouts (not an error)
 		return undelegationPayouts, nil
 	}
 
-	isMaxRate := hmy.IsMaxRate(epoch)
-	lockingPeriod := hmy.GetDelegationLockingPeriodInEpoch(undelegationPayoutBlock.Epoch())
-	for _, validator := range hmy.GetAllValidatorAddresses() {
-		wrapper, err := hmy.BlockChain.ReadValidatorInformationAtRoot(validator, undelegationPayoutBlock.Root())
+	isMaxRate := itc.IsMaxRate(epoch)
+	lockingPeriod := itc.GetDelegationLockingPeriodInEpoch(undelegationPayoutBlock.Epoch())
+	for _, validator := range itc.GetAllValidatorAddresses() {
+		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validator, undelegationPayoutBlock.Root())
 		if err != nil || wrapper == nil {
 			continue // Not a validator at this epoch or unable to fetch validator info because of pruned state.
 		}
-		noEarlyUnlock := hmy.IsNoEarlyUnlockEpoch(epoch)
+		noEarlyUnlock := itc.IsNoEarlyUnlockEpoch(epoch)
 		for _, delegation := range wrapper.Delegations {
 			withdraw := delegation.RemoveUnlockedUndelegations(epoch, wrapper.LastEpochInCommittee, lockingPeriod, noEarlyUnlock, isMaxRate)
 			if withdraw.Cmp(bigZero) == 1 {
@@ -613,26 +613,26 @@ func (hmy *Harmony) GetUndelegationPayouts(
 		}
 	}
 
-	hmy.undelegationPayoutsCache.Add(epoch.Uint64(), undelegationPayouts)
+	itc.undelegationPayoutsCache.Add(epoch.Uint64(), undelegationPayouts)
 	return undelegationPayouts, nil
 }
 
 // GetTotalStakingSnapshot ..
-func (hmy *Harmony) GetTotalStakingSnapshot() *big.Int {
-	if stake := hmy.totalStakeCache.pop(hmy.CurrentBlock().NumberU64()); stake != nil {
+func (itc *Intelchain) GetTotalStakingSnapshot() *big.Int {
+	if stake := itc.totalStakeCache.pop(itc.CurrentBlock().NumberU64()); stake != nil {
 		return stake
 	}
-	currHeight := hmy.CurrentBlock().NumberU64()
-	candidates := hmy.BlockChain.ValidatorCandidates()
+	currHeight := itc.CurrentBlock().NumberU64()
+	candidates := itc.BlockChain.ValidatorCandidates()
 	if len(candidates) == 0 {
 		stake := big.NewInt(0)
-		hmy.totalStakeCache.push(currHeight, stake)
+		itc.totalStakeCache.push(currHeight, stake)
 		return stake
 	}
 	stakes := big.NewInt(0)
 	for i := range candidates {
-		snapshot, _ := hmy.BlockChain.ReadValidatorSnapshot(candidates[i])
-		validator, _ := hmy.BlockChain.ReadValidatorInformation(candidates[i])
+		snapshot, _ := itc.BlockChain.ReadValidatorSnapshot(candidates[i])
+		validator, _ := itc.BlockChain.ReadValidatorInformation(candidates[i])
 		if !committee.IsEligibleForEPoSAuction(
 			snapshot, validator,
 		) {
@@ -642,13 +642,13 @@ func (hmy *Harmony) GetTotalStakingSnapshot() *big.Int {
 			stakes.Add(stakes, validator.Delegations[i].Amount)
 		}
 	}
-	hmy.totalStakeCache.push(currHeight, stakes)
+	itc.totalStakeCache.push(currHeight, stakes)
 	return stakes
 }
 
 // GetCurrentStakingErrorSink ..
-func (hmy *Harmony) GetCurrentStakingErrorSink() types.TransactionErrorReports {
-	return hmy.NodeAPI.ReportStakingErrorSink()
+func (itc *Intelchain) GetCurrentStakingErrorSink() types.TransactionErrorReports {
+	return itc.NodeAPI.ReportStakingErrorSink()
 }
 
 // totalStakeCache ..

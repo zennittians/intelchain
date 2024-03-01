@@ -8,15 +8,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
 
-type testCfgOpt func(config *harmonyconfig.HarmonyConfig)
+type testCfgOpt func(config *intelchainconfig.IntelchainConfig)
 
-func makeTestConfig(nt nodeconfig.NetworkType, opt testCfgOpt) harmonyconfig.HarmonyConfig {
-	cfg := getDefaultHmyConfigCopy(nt)
+func makeTestConfig(nt nodeconfig.NetworkType, opt testCfgOpt) intelchainconfig.IntelchainConfig {
+	cfg := getDefaultItcConfigCopy(nt)
 	if opt != nil {
 		opt(&cfg)
 	}
@@ -38,7 +38,7 @@ Version = "1.0.4"
   KMSConfigFile = ""
   KMSConfigSrcType = "shared"
   KMSEnabled = false
-  KeyDir = "./.hmy/blskeys"
+  KeyDir = "./.itc/blskeys"
   KeyFiles = []
   MaxKeys = 10
   PassEnabled = true
@@ -60,7 +60,7 @@ Version = "1.0.4"
 
 [Log]
   Console = false
-  FileName = "harmony.log"
+  FileName = "intelchain.log"
   Folder = "./latest"
   RotateSize = 100
   RotateCount = 0
@@ -75,7 +75,7 @@ Version = "1.0.4"
   NetworkType = "mainnet"
 
 [P2P]
-  KeyFile = "./.hmykey"
+  KeyFile = "./.itckey"
   Port = 9000
 
 [Pprof]
@@ -83,9 +83,9 @@ Version = "1.0.4"
   ListenAddr = "127.0.0.1:6060"
 
 [TxPool]
-  BlacklistFile = "./.hmy/blacklist.txt"
-  LocalAccountsFile = "./.hmy/locals.txt"
-  AllowedTxsFile = "./.hmy/allowedtxs.txt"
+  BlacklistFile = "./.itc/blacklist.txt"
+  LocalAccountsFile = "./.itc/locals.txt"
+  AllowedTxsFile = "./.itc/allowedtxs.txt"
   AccountQueue = 64
   GlobalQueue = 5120
   Lifetime = "30m"
@@ -123,11 +123,11 @@ Version = "1.0.4"
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, migratedFrom, err := loadHarmonyConfig(file)
+	config, migratedFrom, err := loadIntelchainConfig(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defConf := getDefaultHmyConfigCopy(nodeconfig.Mainnet)
+	defConf := getDefaultItcConfigCopy(nodeconfig.Mainnet)
 	if config.HTTP.RosettaEnabled {
 		t.Errorf("Expected rosetta http server to be disabled when loading old config")
 	}
@@ -150,7 +150,7 @@ func TestPersistConfig(t *testing.T) {
 	os.MkdirAll(testDir, 0777)
 
 	tests := []struct {
-		config harmonyconfig.HarmonyConfig
+		config intelchainconfig.IntelchainConfig
 	}{
 		{
 			config: makeTestConfig("mainnet", nil),
@@ -159,7 +159,7 @@ func TestPersistConfig(t *testing.T) {
 			config: makeTestConfig("devnet", nil),
 		},
 		{
-			config: makeTestConfig("mainnet", func(cfg *harmonyconfig.HarmonyConfig) {
+			config: makeTestConfig("mainnet", func(cfg *intelchainconfig.IntelchainConfig) {
 				consensus := getDefaultConsensusConfigCopy()
 				cfg.Consensus = &consensus
 
@@ -170,7 +170,7 @@ func TestPersistConfig(t *testing.T) {
 				cfg.Revert = &revert
 
 				webHook := "web hook"
-				cfg.Legacy = &harmonyconfig.LegacyConfig{
+				cfg.Legacy = &intelchainconfig.LegacyConfig{
 					WebHookConfig:         &webHook,
 					TPBroadcastInvalidTxn: &trueBool,
 				}
@@ -183,10 +183,10 @@ func TestPersistConfig(t *testing.T) {
 	for i, test := range tests {
 		file := filepath.Join(testDir, fmt.Sprintf("%d.conf", i))
 
-		if err := writeHarmonyConfigToFile(test.config, file); err != nil {
+		if err := writeIntelchainConfigToFile(test.config, file); err != nil {
 			t.Fatal(err)
 		}
-		config, _, err := loadHarmonyConfig(file)
+		config, _, err := loadIntelchainConfig(file)
 		if err != nil {
 			t.Fatal(err)
 		}

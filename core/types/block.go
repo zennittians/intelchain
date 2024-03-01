@@ -206,7 +206,7 @@ func init() {
 	BodyRegistry.MustRegister(blockV2, new(BodyV2))
 }
 
-// Block represents an entire block in the Harmony blockchain.
+// Block represents an entire block in the Intelchain blockchain.
 type Block struct {
 	header              *block.Header
 	uncles              []*block.Header

@@ -36,21 +36,21 @@ type ShardID uint32
 func getNetworkPrefix(shardID ShardID) (netPre string) {
 	switch GetShardConfig(uint32(shardID)).GetNetworkType() {
 	case Mainnet:
-		netPre = "harmony"
+		netPre = "intelchain"
 	case Testnet:
-		netPre = "hmy/testnet"
+		netPre = "itc/testnet"
 	case Pangaea:
-		netPre = "hmy/pangaea"
+		netPre = "itc/pangaea"
 	case Partner:
-		netPre = "hmy/partner"
+		netPre = "itc/partner"
 	case Stressnet:
-		netPre = "hmy/stressnet"
+		netPre = "itc/stressnet"
 	case Devnet:
-		netPre = "hmy/devnet"
+		netPre = "itc/devnet"
 	case Localnet:
-		netPre = "hmy/local"
+		netPre = "itc/local"
 	default:
-		netPre = "hmy/misc"
+		netPre = "itc/misc"
 	}
 	return
 }

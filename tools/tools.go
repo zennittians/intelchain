@@ -4,7 +4,7 @@
 //
 //go:build tools
 
-// Package tools provides build tools necessary for Harmony.
+// Package tools provides build tools necessary for intelchain.
 package tools
 
 // Put only installable tools into this list.

@@ -2164,67 +2164,67 @@ func file_msg_proto_rawDescGZIP() []byte {
 
 var file_msg_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_msg_proto_goTypes = []interface{}{
-	(*Message)(nil),                   // 0: harmony.stream.sync.message.Message
-	(*Request)(nil),                   // 1: harmony.stream.sync.message.Request
-	(*GetBlockNumberRequest)(nil),     // 2: harmony.stream.sync.message.GetBlockNumberRequest
-	(*GetBlockHashesRequest)(nil),     // 3: harmony.stream.sync.message.GetBlockHashesRequest
-	(*GetBlocksByNumRequest)(nil),     // 4: harmony.stream.sync.message.GetBlocksByNumRequest
-	(*GetBlocksByHashesRequest)(nil),  // 5: harmony.stream.sync.message.GetBlocksByHashesRequest
-	(*GetNodeDataRequest)(nil),        // 6: harmony.stream.sync.message.GetNodeDataRequest
-	(*GetReceiptsRequest)(nil),        // 7: harmony.stream.sync.message.GetReceiptsRequest
-	(*GetAccountRangeRequest)(nil),    // 8: harmony.stream.sync.message.GetAccountRangeRequest
-	(*GetStorageRangesRequest)(nil),   // 9: harmony.stream.sync.message.GetStorageRangesRequest
-	(*GetByteCodesRequest)(nil),       // 10: harmony.stream.sync.message.GetByteCodesRequest
-	(*TrieNodePathSet)(nil),           // 11: harmony.stream.sync.message.TrieNodePathSet
-	(*GetTrieNodesRequest)(nil),       // 12: harmony.stream.sync.message.GetTrieNodesRequest
-	(*Response)(nil),                  // 13: harmony.stream.sync.message.Response
-	(*ErrorResponse)(nil),             // 14: harmony.stream.sync.message.ErrorResponse
-	(*GetBlockNumberResponse)(nil),    // 15: harmony.stream.sync.message.GetBlockNumberResponse
-	(*GetBlockHashesResponse)(nil),    // 16: harmony.stream.sync.message.GetBlockHashesResponse
-	(*GetBlocksByNumResponse)(nil),    // 17: harmony.stream.sync.message.GetBlocksByNumResponse
-	(*GetBlocksByHashesResponse)(nil), // 18: harmony.stream.sync.message.GetBlocksByHashesResponse
-	(*GetNodeDataResponse)(nil),       // 19: harmony.stream.sync.message.GetNodeDataResponse
-	(*Receipts)(nil),                  // 20: harmony.stream.sync.message.Receipts
-	(*GetReceiptsResponse)(nil),       // 21: harmony.stream.sync.message.GetReceiptsResponse
-	(*AccountData)(nil),               // 22: harmony.stream.sync.message.AccountData
-	(*GetAccountRangeResponse)(nil),   // 23: harmony.stream.sync.message.GetAccountRangeResponse
-	(*StorageData)(nil),               // 24: harmony.stream.sync.message.StorageData
-	(*StoragesData)(nil),              // 25: harmony.stream.sync.message.StoragesData
-	(*GetStorageRangesResponse)(nil),  // 26: harmony.stream.sync.message.GetStorageRangesResponse
-	(*GetByteCodesResponse)(nil),      // 27: harmony.stream.sync.message.GetByteCodesResponse
-	(*GetTrieNodesResponse)(nil),      // 28: harmony.stream.sync.message.GetTrieNodesResponse
-	nil,                               // 29: harmony.stream.sync.message.GetReceiptsResponse.ReceiptsEntry
+	(*Message)(nil),                   // 0: intelchain.stream.sync.message.Message
+	(*Request)(nil),                   // 1: intelchain.stream.sync.message.Request
+	(*GetBlockNumberRequest)(nil),     // 2: intelchain.stream.sync.message.GetBlockNumberRequest
+	(*GetBlockHashesRequest)(nil),     // 3: intelchain.stream.sync.message.GetBlockHashesRequest
+	(*GetBlocksByNumRequest)(nil),     // 4: intelchain.stream.sync.message.GetBlocksByNumRequest
+	(*GetBlocksByHashesRequest)(nil),  // 5: intelchain.stream.sync.message.GetBlocksByHashesRequest
+	(*GetNodeDataRequest)(nil),        // 6: intelchain.stream.sync.message.GetNodeDataRequest
+	(*GetReceiptsRequest)(nil),        // 7: intelchain.stream.sync.message.GetReceiptsRequest
+	(*GetAccountRangeRequest)(nil),    // 8: intelchain.stream.sync.message.GetAccountRangeRequest
+	(*GetStorageRangesRequest)(nil),   // 9: intelchain.stream.sync.message.GetStorageRangesRequest
+	(*GetByteCodesRequest)(nil),       // 10: intelchain.stream.sync.message.GetByteCodesRequest
+	(*TrieNodePathSet)(nil),           // 11: intelchain.stream.sync.message.TrieNodePathSet
+	(*GetTrieNodesRequest)(nil),       // 12: intelchain.stream.sync.message.GetTrieNodesRequest
+	(*Response)(nil),                  // 13: intelchain.stream.sync.message.Response
+	(*ErrorResponse)(nil),             // 14: intelchain.stream.sync.message.ErrorResponse
+	(*GetBlockNumberResponse)(nil),    // 15: intelchain.stream.sync.message.GetBlockNumberResponse
+	(*GetBlockHashesResponse)(nil),    // 16: intelchain.stream.sync.message.GetBlockHashesResponse
+	(*GetBlocksByNumResponse)(nil),    // 17: intelchain.stream.sync.message.GetBlocksByNumResponse
+	(*GetBlocksByHashesResponse)(nil), // 18: intelchain.stream.sync.message.GetBlocksByHashesResponse
+	(*GetNodeDataResponse)(nil),       // 19: intelchain.stream.sync.message.GetNodeDataResponse
+	(*Receipts)(nil),                  // 20: intelchain.stream.sync.message.Receipts
+	(*GetReceiptsResponse)(nil),       // 21: intelchain.stream.sync.message.GetReceiptsResponse
+	(*AccountData)(nil),               // 22: intelchain.stream.sync.message.AccountData
+	(*GetAccountRangeResponse)(nil),   // 23: intelchain.stream.sync.message.GetAccountRangeResponse
+	(*StorageData)(nil),               // 24: intelchain.stream.sync.message.StorageData
+	(*StoragesData)(nil),              // 25: intelchain.stream.sync.message.StoragesData
+	(*GetStorageRangesResponse)(nil),  // 26: intelchain.stream.sync.message.GetStorageRangesResponse
+	(*GetByteCodesResponse)(nil),      // 27: intelchain.stream.sync.message.GetByteCodesResponse
+	(*GetTrieNodesResponse)(nil),      // 28: intelchain.stream.sync.message.GetTrieNodesResponse
+	nil,                               // 29: intelchain.stream.sync.message.GetReceiptsResponse.ReceiptsEntry
 }
 var file_msg_proto_depIdxs = []int32{
-	1,  // 0: harmony.stream.sync.message.Message.req:type_name -> harmony.stream.sync.message.Request
-	13, // 1: harmony.stream.sync.message.Message.resp:type_name -> harmony.stream.sync.message.Response
-	2,  // 2: harmony.stream.sync.message.Request.get_block_number_request:type_name -> harmony.stream.sync.message.GetBlockNumberRequest
-	3,  // 3: harmony.stream.sync.message.Request.get_block_hashes_request:type_name -> harmony.stream.sync.message.GetBlockHashesRequest
-	4,  // 4: harmony.stream.sync.message.Request.get_blocks_by_num_request:type_name -> harmony.stream.sync.message.GetBlocksByNumRequest
-	5,  // 5: harmony.stream.sync.message.Request.get_blocks_by_hashes_request:type_name -> harmony.stream.sync.message.GetBlocksByHashesRequest
-	6,  // 6: harmony.stream.sync.message.Request.get_node_data_request:type_name -> harmony.stream.sync.message.GetNodeDataRequest
-	7,  // 7: harmony.stream.sync.message.Request.get_receipts_request:type_name -> harmony.stream.sync.message.GetReceiptsRequest
-	8,  // 8: harmony.stream.sync.message.Request.get_account_range_request:type_name -> harmony.stream.sync.message.GetAccountRangeRequest
-	9,  // 9: harmony.stream.sync.message.Request.get_storage_ranges_request:type_name -> harmony.stream.sync.message.GetStorageRangesRequest
-	10, // 10: harmony.stream.sync.message.Request.get_byte_codes_request:type_name -> harmony.stream.sync.message.GetByteCodesRequest
-	12, // 11: harmony.stream.sync.message.Request.get_trie_nodes_request:type_name -> harmony.stream.sync.message.GetTrieNodesRequest
-	11, // 12: harmony.stream.sync.message.GetTrieNodesRequest.paths:type_name -> harmony.stream.sync.message.TrieNodePathSet
-	14, // 13: harmony.stream.sync.message.Response.error_response:type_name -> harmony.stream.sync.message.ErrorResponse
-	15, // 14: harmony.stream.sync.message.Response.get_block_number_response:type_name -> harmony.stream.sync.message.GetBlockNumberResponse
-	16, // 15: harmony.stream.sync.message.Response.get_block_hashes_response:type_name -> harmony.stream.sync.message.GetBlockHashesResponse
-	17, // 16: harmony.stream.sync.message.Response.get_blocks_by_num_response:type_name -> harmony.stream.sync.message.GetBlocksByNumResponse
-	18, // 17: harmony.stream.sync.message.Response.get_blocks_by_hashes_response:type_name -> harmony.stream.sync.message.GetBlocksByHashesResponse
-	19, // 18: harmony.stream.sync.message.Response.get_node_data_response:type_name -> harmony.stream.sync.message.GetNodeDataResponse
-	21, // 19: harmony.stream.sync.message.Response.get_receipts_response:type_name -> harmony.stream.sync.message.GetReceiptsResponse
-	23, // 20: harmony.stream.sync.message.Response.get_account_range_response:type_name -> harmony.stream.sync.message.GetAccountRangeResponse
-	26, // 21: harmony.stream.sync.message.Response.get_storage_ranges_response:type_name -> harmony.stream.sync.message.GetStorageRangesResponse
-	27, // 22: harmony.stream.sync.message.Response.get_byte_codes_response:type_name -> harmony.stream.sync.message.GetByteCodesResponse
-	28, // 23: harmony.stream.sync.message.Response.get_trie_nodes_response:type_name -> harmony.stream.sync.message.GetTrieNodesResponse
-	29, // 24: harmony.stream.sync.message.GetReceiptsResponse.receipts:type_name -> harmony.stream.sync.message.GetReceiptsResponse.ReceiptsEntry
-	22, // 25: harmony.stream.sync.message.GetAccountRangeResponse.accounts:type_name -> harmony.stream.sync.message.AccountData
-	24, // 26: harmony.stream.sync.message.StoragesData.data:type_name -> harmony.stream.sync.message.StorageData
-	25, // 27: harmony.stream.sync.message.GetStorageRangesResponse.slots:type_name -> harmony.stream.sync.message.StoragesData
-	20, // 28: harmony.stream.sync.message.GetReceiptsResponse.ReceiptsEntry.value:type_name -> harmony.stream.sync.message.Receipts
+	1,  // 0: intelchain.stream.sync.message.Message.req:type_name -> intelchain.stream.sync.message.Request
+	13, // 1: intelchain.stream.sync.message.Message.resp:type_name -> intelchain.stream.sync.message.Response
+	2,  // 2: intelchain.stream.sync.message.Request.get_block_number_request:type_name -> intelchain.stream.sync.message.GetBlockNumberRequest
+	3,  // 3: intelchain.stream.sync.message.Request.get_block_hashes_request:type_name -> intelchain.stream.sync.message.GetBlockHashesRequest
+	4,  // 4: intelchain.stream.sync.message.Request.get_blocks_by_num_request:type_name -> intelchain.stream.sync.message.GetBlocksByNumRequest
+	5,  // 5: intelchain.stream.sync.message.Request.get_blocks_by_hashes_request:type_name -> intelchain.stream.sync.message.GetBlocksByHashesRequest
+	6,  // 6: intelchain.stream.sync.message.Request.get_node_data_request:type_name -> intelchain.stream.sync.message.GetNodeDataRequest
+	7,  // 7: intelchain.stream.sync.message.Request.get_receipts_request:type_name -> intelchain.stream.sync.message.GetReceiptsRequest
+	8,  // 8: intelchain.stream.sync.message.Request.get_account_range_request:type_name -> intelchain.stream.sync.message.GetAccountRangeRequest
+	9,  // 9: intelchain.stream.sync.message.Request.get_storage_ranges_request:type_name -> intelchain.stream.sync.message.GetStorageRangesRequest
+	10, // 10: intelchain.stream.sync.message.Request.get_byte_codes_request:type_name -> intelchain.stream.sync.message.GetByteCodesRequest
+	12, // 11: intelchain.stream.sync.message.Request.get_trie_nodes_request:type_name -> intelchain.stream.sync.message.GetTrieNodesRequest
+	11, // 12: intelchain.stream.sync.message.GetTrieNodesRequest.paths:type_name -> intelchain.stream.sync.message.TrieNodePathSet
+	14, // 13: intelchain.stream.sync.message.Response.error_response:type_name -> intelchain.stream.sync.message.ErrorResponse
+	15, // 14: intelchain.stream.sync.message.Response.get_block_number_response:type_name -> intelchain.stream.sync.message.GetBlockNumberResponse
+	16, // 15: intelchain.stream.sync.message.Response.get_block_hashes_response:type_name -> intelchain.stream.sync.message.GetBlockHashesResponse
+	17, // 16: intelchain.stream.sync.message.Response.get_blocks_by_num_response:type_name -> intelchain.stream.sync.message.GetBlocksByNumResponse
+	18, // 17: intelchain.stream.sync.message.Response.get_blocks_by_hashes_response:type_name -> intelchain.stream.sync.message.GetBlocksByHashesResponse
+	19, // 18: intelchain.stream.sync.message.Response.get_node_data_response:type_name -> intelchain.stream.sync.message.GetNodeDataResponse
+	21, // 19: intelchain.stream.sync.message.Response.get_receipts_response:type_name -> intelchain.stream.sync.message.GetReceiptsResponse
+	23, // 20: intelchain.stream.sync.message.Response.get_account_range_response:type_name -> intelchain.stream.sync.message.GetAccountRangeResponse
+	26, // 21: intelchain.stream.sync.message.Response.get_storage_ranges_response:type_name -> intelchain.stream.sync.message.GetStorageRangesResponse
+	27, // 22: intelchain.stream.sync.message.Response.get_byte_codes_response:type_name -> intelchain.stream.sync.message.GetByteCodesResponse
+	28, // 23: intelchain.stream.sync.message.Response.get_trie_nodes_response:type_name -> intelchain.stream.sync.message.GetTrieNodesResponse
+	29, // 24: intelchain.stream.sync.message.GetReceiptsResponse.receipts:type_name -> intelchain.stream.sync.message.GetReceiptsResponse.ReceiptsEntry
+	22, // 25: intelchain.stream.sync.message.GetAccountRangeResponse.accounts:type_name -> intelchain.stream.sync.message.AccountData
+	24, // 26: intelchain.stream.sync.message.StoragesData.data:type_name -> intelchain.stream.sync.message.StorageData
+	25, // 27: intelchain.stream.sync.message.GetStorageRangesResponse.slots:type_name -> intelchain.stream.sync.message.StoragesData
+	20, // 28: intelchain.stream.sync.message.GetReceiptsResponse.ReceiptsEntry.value:type_name -> intelchain.stream.sync.message.Receipts
 	29, // [29:29] is the sub-list for method output_type
 	29, // [29:29] is the sub-list for method input_type
 	29, // [29:29] is the sub-list for extension type_name

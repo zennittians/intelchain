@@ -1,4 +1,4 @@
-package hmy
+package itc
 
 import (
 	"context"
@@ -9,32 +9,32 @@ import (
 )
 
 // GetPoolStats returns the number of pending and queued transactions
-func (hmy *Harmony) GetPoolStats() (pendingCount, queuedCount int) {
-	return hmy.TxPool.Stats()
+func (itc *Intelchain) GetPoolStats() (pendingCount, queuedCount int) {
+	return itc.TxPool.Stats()
 }
 
 // GetPoolNonce ...
-func (hmy *Harmony) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	return hmy.TxPool.State().GetNonce(addr), nil
+func (itc *Intelchain) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
+	return itc.TxPool.State().GetNonce(addr), nil
 }
 
 // GetPoolTransaction ...
-func (hmy *Harmony) GetPoolTransaction(hash common.Hash) types.PoolTransaction {
-	return hmy.TxPool.Get(hash)
+func (itc *Intelchain) GetPoolTransaction(hash common.Hash) types.PoolTransaction {
+	return itc.TxPool.Get(hash)
 }
 
 // GetPendingCXReceipts ..
-func (hmy *Harmony) GetPendingCXReceipts() []*types.CXReceiptsProof {
-	return hmy.NodeAPI.PendingCXReceipts()
+func (itc *Intelchain) GetPendingCXReceipts() []*types.CXReceiptsProof {
+	return itc.NodeAPI.PendingCXReceipts()
 }
 
 // GetPoolTransactions returns pool transactions.
-func (hmy *Harmony) GetPoolTransactions() (types.PoolTransactions, error) {
-	pending, err := hmy.TxPool.Pending()
+func (itc *Intelchain) GetPoolTransactions() (types.PoolTransactions, error) {
+	pending, err := itc.TxPool.Pending()
 	if err != nil {
 		return nil, err
 	}
-	queued, err := hmy.TxPool.Queued()
+	queued, err := itc.TxPool.Queued()
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,6 @@ func (hmy *Harmony) GetPoolTransactions() (types.PoolTransactions, error) {
 	return txs, nil
 }
 
-func (hmy *Harmony) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return hmy.gpo.SuggestPrice(ctx)
+func (itc *Intelchain) SuggestPrice(ctx context.Context) (*big.Int, error) {
+	return itc.gpo.SuggestPrice(ctx)
 }

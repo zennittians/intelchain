@@ -19,9 +19,9 @@ import (
 
 var (
 	blsPubSigPairs = makeBLSPubSigPairs(5)
-	hmyBLSPub      bls.SerializedPublicKey
+	itcBLSPub      bls.SerializedPublicKey
 
-	hmyBLSPubStr     = "c2962419d9999a87daa134f6d177f9ccabfe168a470587b13dd02ce91d1690a92170e5949d3dbdfc1b13fd7327dbef8c"
+	itcBLSPubStr     = "c2962419d9999a87daa134f6d177f9ccabfe168a470587b13dd02ce91d1690a92170e5949d3dbdfc1b13fd7327dbef8c"
 	validatorAddr, _ = common2.Bech32ToAddress("one1pdv9lrdwl0rg5vglh4xtyrv3wjk3wsqket7zxy")
 )
 
@@ -47,17 +47,17 @@ var (
 var (
 	validDescription = Description{
 		Name:            "Jacky Wang",
-		Identity:        "jacky@harmony.one",
-		Website:         "harmony.one/jacky",
-		SecurityContact: "jacky@harmony.one",
+		Identity:        "jacky@intelchain.org",
+		Website:         "intelchain.org/jacky",
+		SecurityContact: "jacky@intelchain.org",
 		Details:         "Details of jacky",
 	}
 
 	invalidDescription = Description{
 		Name:            "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongname",
-		Identity:        "jacky@harmony.one",
-		Website:         "harmony.one/jacky",
-		SecurityContact: "jacky@harmony.one",
+		Identity:        "jacky@intelchain.org",
+		Website:         "intelchain.org/jacky",
+		SecurityContact: "jacky@intelchain.org",
 		Details:         "Details of jacky",
 	}
 
@@ -69,8 +69,8 @@ var (
 )
 
 func init() {
-	// set bls pub keys for hmy
-	copy(hmyBLSPub[:], common.Hex2Bytes(hmyBLSPubStr))
+	// set bls pub keys for itc
+	copy(itcBLSPub[:], common.Hex2Bytes(itcBLSPubStr))
 }
 
 func TestNewEmptyStats(t *testing.T) {
@@ -262,22 +262,22 @@ func TestUpdateDescription(t *testing.T) {
 			raw: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "wenDetails",
 			},
 			update: Description{
 				Name:            "Jacky",
 				Identity:        "jw",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of Jacky",
 			},
 			expect: Description{
 				Name:            "Jacky",
 				Identity:        "jw",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of Jacky",
 			},
 		},
@@ -285,7 +285,7 @@ func TestUpdateDescription(t *testing.T) {
 			raw: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "wenDetails",
 			},
@@ -293,7 +293,7 @@ func TestUpdateDescription(t *testing.T) {
 			expect: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "wenDetails",
 			},
@@ -302,7 +302,7 @@ func TestUpdateDescription(t *testing.T) {
 			raw: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "wenDetails",
 			},
@@ -312,7 +312,7 @@ func TestUpdateDescription(t *testing.T) {
 			expect: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "new details",
 			},
@@ -321,7 +321,7 @@ func TestUpdateDescription(t *testing.T) {
 			raw: Description{
 				Name:            "Wayne",
 				Identity:        "wen",
-				Website:         "harmony.one.wen",
+				Website:         "intelchain.org.wen",
 				SecurityContact: "wenSecurity",
 				Details:         "wenDetails",
 			},
@@ -353,9 +353,9 @@ func TestDescription_EnsureLength(t *testing.T) {
 		{
 			desc: Description{
 				Name:            "Jacky Wang",
-				Identity:        "jacky@harmony.one",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Identity:        "jacky@intelchain.org",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of jacky",
 			},
 			expErr: nil,
@@ -367,9 +367,9 @@ func TestDescription_EnsureLength(t *testing.T) {
 		{
 			desc: Description{
 				Name:            "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongname",
-				Identity:        "jacky@harmony.one",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Identity:        "jacky@intelchain.org",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of jacky",
 			},
 			expErr: errors.New("exceed maximum name length"),
@@ -378,8 +378,8 @@ func TestDescription_EnsureLength(t *testing.T) {
 			desc: Description{
 				Name:            "Jacky Wang",
 				Identity:        "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongidentity",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of jacky",
 			},
 			expErr: errors.New("exceed Maximum Length identity"),
@@ -387,9 +387,9 @@ func TestDescription_EnsureLength(t *testing.T) {
 		{
 			desc: Description{
 				Name:            "Jacky Wang",
-				Identity:        "jacky@harmony.one",
+				Identity:        "jacky@intelchain.org",
 				Website:         "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongwebsite",
-				SecurityContact: "jacky@harmony.one",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "Details of jacky",
 			},
 			expErr: errors.New("exceed Maximum Length website"),
@@ -397,8 +397,8 @@ func TestDescription_EnsureLength(t *testing.T) {
 		{
 			desc: Description{
 				Name:            "Jacky Wang",
-				Identity:        "jacky@harmony.one",
-				Website:         "harmony.one/jacky",
+				Identity:        "jacky@intelchain.org",
+				Website:         "intelchain.org/jacky",
 				SecurityContact: "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongcontact",
 				Details:         "Details of jacky",
 			},
@@ -407,9 +407,9 @@ func TestDescription_EnsureLength(t *testing.T) {
 		{
 			desc: Description{
 				Name:            "Jacky Wang",
-				Identity:        "jacky@harmony.one",
-				Website:         "harmony.one/jacky",
-				SecurityContact: "jacky@harmony.one",
+				Identity:        "jacky@intelchain.org",
+				Website:         "intelchain.org/jacky",
+				SecurityContact: "jacky@intelchain.org",
 				Details:         "thisisaverylonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongdetail",
 			},
 			expErr: errors.New("exceed Maximum Length for details"),
@@ -454,7 +454,7 @@ func TestVerifyBLSKeys(t *testing.T) {
 	}
 }
 
-func TestContainsHarmonyBLSKeys(t *testing.T) {
+func TestContainsIntelchainBLSKeys(t *testing.T) {
 	pairs := makeBLSPubSigPairs(10)
 	tests := []struct {
 		pubIndexes    []int
@@ -474,7 +474,7 @@ func TestContainsHarmonyBLSKeys(t *testing.T) {
 		dPubs := getPubsFromPairs(pairs, test.deployIndexes)
 		das := makeDeployAccountsFromBLSPubs(dPubs)
 
-		err := containsHarmonyBLSKeys(pubs, das, big.NewInt(0))
+		err := containsIntelchainBLSKeys(pubs, das, big.NewInt(0))
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
 		}
@@ -499,7 +499,7 @@ func TestCreateValidatorFromNewMsg(t *testing.T) {
 	}{
 		{func(cv *CreateValidator) {}, nil},
 		{func(cv *CreateValidator) { cv.Description = invalidDescription }, errors.New("exceed maximum name length")},
-		{func(cv *CreateValidator) { cv.SlotPubKeys[0] = hmyBLSPub }, errDuplicateSlotKeys},
+		{func(cv *CreateValidator) { cv.SlotPubKeys[0] = itcBLSPub }, errDuplicateSlotKeys},
 		{func(cv *CreateValidator) { cv.SlotKeySigs[0] = blsPubSigPairs[2].sig }, errBLSKeysNotMatchSigs},
 	}
 	for i, test := range tests {
@@ -533,9 +533,9 @@ func TestUpdateValidatorFromEditMsg(t *testing.T) {
 			// update Description.Name
 			editValidator: EditValidator{
 				ValidatorAddress: validatorAddr,
-				Description:      Description{Name: "jacky@harmony.one"},
+				Description:      Description{Name: "jacky@intelchain.org"},
 			},
-			editExpValidator: func(v *Validator) { v.Name = "jacky@harmony.one" },
+			editExpValidator: func(v *Validator) { v.Name = "jacky@intelchain.org" },
 		},
 		{
 			// Update CommissionRate
@@ -644,10 +644,10 @@ func TestUpdateValidatorFromEditMsg(t *testing.T) {
 			expErr: errSlotKeyToRemoveNotFound,
 		},
 		{
-			// add pub collide with hmy bls account
+			// add pub collide with itc bls account
 			editValidator: EditValidator{
 				ValidatorAddress: validatorAddr,
-				SlotKeyToAdd:     &hmyBLSPub,
+				SlotKeyToAdd:     &itcBLSPub,
 			},
 			expErr: errDuplicateSlotKeys,
 		},
@@ -741,7 +741,7 @@ func makeValidValidator() Validator {
 	d := Description{
 		Name:     "Wayne",
 		Identity: "wen",
-		Website:  "harmony.one.wen",
+		Website:  "intelchain.org.wen",
 		Details:  "best",
 	}
 	v := Validator{

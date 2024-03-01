@@ -19,8 +19,8 @@ import (
 	"github.com/zennittians/intelchain/core/rawdb"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/hmy"
 	"github.com/zennittians/intelchain/internal/cli"
+	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/shard"
 
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
@@ -40,7 +40,7 @@ var dumpDBCmd = &cobra.Command{
 	Use:     "dumpdb srcdb destdb",
 	Short:   "dump a snapshot db.",
 	Long:    "dump a snapshot db.",
-	Example: "harmony dumpdb /srcDir/harmony_db_0 /destDir/harmony_db_0",
+	Example: "intelchain dumpdb /srcDir/intelchain_db_0 /destDir/intelchain_db_0",
 	Args:    cobra.RangeArgs(2, 6),
 	Run: func(cmd *cobra.Command, args []string) {
 		srcDBDir, destDBDir := args[0], args[1]
@@ -253,7 +253,7 @@ func (db *KakashiDB) GetBlockByNumber(number uint64) *types.Block {
 
 func (db *KakashiDB) indexerDataDump(block *types.Block) {
 	fmt.Println("indexerDataDump:")
-	bloomIndexer := hmy.NewBloomIndexer(db, params.BloomBitsBlocks, params.BloomConfirms)
+	bloomIndexer := itc.NewBloomIndexer(db, params.BloomBitsBlocks, params.BloomConfirms)
 	bloomIndexer.Close() // just stop event loop
 	section, blkno, blkhash := bloomIndexer.Sections()
 	bloomIndexer.AddCheckpoint(section-1, blkhash)

@@ -15,20 +15,20 @@ import (
 	"github.com/zennittians/intelchain/common/denominations"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
-	hmyCommon "github.com/zennittians/intelchain/internal/common"
+	itcCommon "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/itc"
 )
 
 const (
-	defaultGasPrice    = denominations.Nano
+	defaultGasPrice    = denominations.Intello
 	defaultFromAddress = "0x0000000000000000000000000000000000000000"
 )
 
-// PublicContractService provides an API to access Harmony's contract services.
+// PublicContractService provides an API to access Intelchain's contract services.
 // It offers only methods that operate on public data that is freely available to anyone.
 type PublicContractService struct {
-	hmy     *hmy.Harmony
+	itc     *itc.Intelchain
 	version Version
 	// TEMP SOLUTION to rpc node spamming issue
 	limiterCall    *rate.Limiter
@@ -37,7 +37,7 @@ type PublicContractService struct {
 
 // NewPublicContractAPI creates a new API for the RPC interface
 func NewPublicContractAPI(
-	hmy *hmy.Harmony,
+	itc *itc.Intelchain,
 	version Version,
 	limiterEnable bool,
 	limit int,
@@ -52,7 +52,7 @@ func NewPublicContractAPI(
 		Namespace: version.Namespace(),
 		Version:   APIVersion,
 		Service: &PublicContractService{
-			hmy:            hmy,
+			itc:            itc,
 			version:        version,
 			limiterCall:    limiter,
 			evmCallTimeout: evmCallTimeout,
@@ -92,7 +92,7 @@ func (s *PublicContractService) Call(
 	}
 
 	// Execute call
-	result, err := DoEVMCall(ctx, s.hmy, args, blockNrOrHash, s.evmCallTimeout)
+	result, err := DoEVMCall(ctx, s.itc, args, blockNrOrHash, s.evmCallTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +113,12 @@ func (s *PublicContractService) GetCode(
 	defer DoRPCRequestDuration(GetCode, timer)
 
 	// Fetch state
-	address, err := hmyCommon.ParseAddr(addr)
+	address, err := itcCommon.ParseAddr(addr)
 	if err != nil {
 		DoMetricRPCQueryInfo(GetCode, FailedNumber)
 		return nil, err
 	}
-	state, _, err := s.hmy.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	state, _, err := s.itc.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		DoMetricRPCQueryInfo(GetCode, FailedNumber)
 		return nil, err
@@ -139,12 +139,12 @@ func (s *PublicContractService) GetStorageAt(
 	defer DoRPCRequestDuration(GetStorageAt, timer)
 
 	// Fetch state
-	state, _, err := s.hmy.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	state, _, err := s.itc.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		DoMetricRPCQueryInfo(GetStorageAt, FailedNumber)
 		return nil, err
 	}
-	address, err := hmyCommon.ParseAddr(addr)
+	address, err := itcCommon.ParseAddr(addr)
 	if err != nil {
 		DoMetricRPCQueryInfo(GetStorageAt, FailedNumber)
 		return nil, err
@@ -157,7 +157,7 @@ func (s *PublicContractService) GetStorageAt(
 
 // DoEVMCall executes an EVM call
 func DoEVMCall(
-	ctx context.Context, hmy *hmy.Harmony, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash,
+	ctx context.Context, itc *itc.Intelchain, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash,
 	timeout time.Duration,
 ) (core.ExecutionResult, error) {
 	defer func(start time.Time) {
@@ -167,14 +167,14 @@ func DoEVMCall(
 	}(time.Now())
 
 	// Fetch state
-	state, header, err := hmy.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	state, header, err := itc.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		DoMetricRPCQueryInfo(DoEvmCall, FailedNumber)
 		return core.ExecutionResult{}, err
 	}
 
 	// Create new call message
-	msg := args.ToMessage(hmy.RPCGasCap)
+	msg := args.ToMessage(itc.RPCGasCap)
 
 	// Setup context so it may be cancelled the call has completed
 	// or, in case of unmetered gas, setup a context with a timeout.
@@ -190,7 +190,7 @@ func DoEVMCall(
 	defer cancel()
 
 	// Get a new instance of the EVM.
-	evm, err := hmy.GetEVM(ctx, msg, state, header)
+	evm, err := itc.GetEVM(ctx, msg, state, header)
 	if err != nil {
 		DoMetricRPCQueryInfo(DoEvmCall, FailedNumber)
 		return core.ExecutionResult{}, err

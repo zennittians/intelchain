@@ -1,4 +1,4 @@
-package hmy
+package itc
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 )
 
 // SendTx ...
-func (hmy *Harmony) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	tx, _, _, _ := rawdb.ReadTransaction(hmy.chainDb, signedTx.Hash())
+func (itc *Intelchain) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	tx, _, _, _ := rawdb.ReadTransaction(itc.chainDb, signedTx.Hash())
 	if tx == nil {
-		return hmy.NodeAPI.AddPendingTransaction(signedTx)
+		return itc.NodeAPI.AddPendingTransaction(signedTx)
 	}
 	return ErrFinalizedTransaction
 }
@@ -22,13 +22,13 @@ func (hmy *Harmony) SendTx(ctx context.Context, signedTx *types.Transaction) err
 // ResendCx retrieve blockHash from txID and add blockHash to CxPool for resending
 // Note that cross shard txn is only for regular txns, not for staking txns, so the input txn hash
 // is expected to be regular txn hash
-func (hmy *Harmony) ResendCx(ctx context.Context, txID common.Hash) (uint64, bool) {
-	blockHash, blockNum, index := hmy.BlockChain.ReadTxLookupEntry(txID)
+func (itc *Intelchain) ResendCx(ctx context.Context, txID common.Hash) (uint64, bool) {
+	blockHash, blockNum, index := itc.BlockChain.ReadTxLookupEntry(txID)
 	if blockHash == (common.Hash{}) {
 		return 0, false
 	}
 
-	blk := hmy.BlockChain.GetBlockByHash(blockHash)
+	blk := itc.BlockChain.GetBlockByHash(blockHash)
 	if blk == nil {
 		return 0, false
 	}
@@ -45,24 +45,24 @@ func (hmy *Harmony) ResendCx(ctx context.Context, txID common.Hash) (uint64, boo
 		return 0, false
 	}
 	entry := core.CxEntry{BlockHash: blockHash, ToShardID: tx.ToShardID()}
-	success := hmy.CxPool.Add(entry)
+	success := itc.CxPool.Add(entry)
 	return blockNum, success
 }
 
 // GetReceipts ...
-func (hmy *Harmony) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-	return hmy.BlockChain.GetReceiptsByHash(hash), nil
+func (itc *Intelchain) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
+	return itc.BlockChain.GetReceiptsByHash(hash), nil
 }
 
 // GetTransactionsHistory returns list of transactions hashes of address.
-func (hmy *Harmony) GetTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
-	return hmy.NodeAPI.GetTransactionsHistory(address, txType, order)
+func (itc *Intelchain) GetTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
+	return itc.NodeAPI.GetTransactionsHistory(address, txType, order)
 }
 
 // GetAccountNonce returns the nonce value of the given address for the given block number
-func (hmy *Harmony) GetAccountNonce(
+func (itc *Intelchain) GetAccountNonce(
 	ctx context.Context, address common.Address, blockNum rpc.BlockNumber) (uint64, error) {
-	state, _, err := hmy.StateAndHeaderByNumber(ctx, blockNum)
+	state, _, err := itc.StateAndHeaderByNumber(ctx, blockNum)
 	if state == nil || err != nil {
 		return 0, err
 	}
@@ -70,11 +70,11 @@ func (hmy *Harmony) GetAccountNonce(
 }
 
 // GetTransactionsCount returns the number of regular transactions of address.
-func (hmy *Harmony) GetTransactionsCount(address, txType string) (uint64, error) {
-	return hmy.NodeAPI.GetTransactionsCount(address, txType)
+func (itc *Intelchain) GetTransactionsCount(address, txType string) (uint64, error) {
+	return itc.NodeAPI.GetTransactionsCount(address, txType)
 }
 
 // GetCurrentTransactionErrorSink ..
-func (hmy *Harmony) GetCurrentTransactionErrorSink() types.TransactionErrorReports {
-	return hmy.NodeAPI.ReportPlainErrorSink()
+func (itc *Intelchain) GetCurrentTransactionErrorSink() types.TransactionErrorReports {
+	return itc.NodeAPI.ReportPlainErrorSink()
 }

@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/hmy"
-	"github.com/zennittians/intelchain/internal/configs/harmony"
+	"github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/itc"
 	eth "github.com/zennittians/intelchain/rpc/eth"
 	v1 "github.com/zennittians/intelchain/rpc/v1"
 	v2 "github.com/zennittians/intelchain/rpc/v2"
@@ -42,9 +42,9 @@ const (
 
 var (
 	// HTTPModules ..
-	HTTPModules = []string{"hmy", "hmyv2", "eth", "debug", "trace", netNamespace, netV1Namespace, netV2Namespace, web3Namespace, "explorer", "preimages"}
+	HTTPModules = []string{"itc", "itcv2", "eth", "debug", "trace", netNamespace, netV1Namespace, netV2Namespace, web3Namespace, "explorer", "preimages"}
 	// WSModules ..
-	WSModules = []string{"hmy", "hmyv2", "eth", "debug", "trace", netNamespace, netV1Namespace, netV2Namespace, web3Namespace, "web3"}
+	WSModules = []string{"itc", "itcv2", "eth", "debug", "trace", netNamespace, netV1Namespace, netV2Namespace, web3Namespace, "web3"}
 
 	httpListener     net.Listener
 	httpHandler      *rpc.Server
@@ -68,11 +68,11 @@ func (n Version) Namespace() string {
 }
 
 // StartServers starts the http & ws servers
-func StartServers(hmy *hmy.Harmony, apis []rpc.API, config nodeconfig.RPCServerConfig, rpcOpt harmony.RpcOptConfig) error {
-	apis = append(apis, getAPIs(hmy, config)...)
-	authApis := append(apis, getAuthAPIs(hmy, config.DebugEnabled, config.RateLimiterEnabled, config.RequestsPerSecond)...)
+func StartServers(itc *itc.Intelchain, apis []rpc.API, config nodeconfig.RPCServerConfig, rpcOpt intelchain.RpcOptConfig) error {
+	apis = append(apis, getAPIs(itc, config)...)
+	authApis := append(apis, getAuthAPIs(itc, config.DebugEnabled, config.RateLimiterEnabled, config.RequestsPerSecond)...)
 	if rpcOpt.PreimagesEnabled {
-		authApis = append(authApis, NewPreimagesAPI(hmy, "preimages"))
+		authApis = append(authApis, NewPreimagesAPI(itc, "preimages"))
 	}
 	// load method filter from file (if exist)
 	var rmf rpc.RpcMethodFilter
@@ -147,64 +147,64 @@ func StopServers() error {
 	return nil
 }
 
-func getAuthAPIs(hmy *hmy.Harmony, debugEnable bool, rateLimiterEnable bool, ratelimit int) []rpc.API {
+func getAuthAPIs(itc *itc.Intelchain, debugEnable bool, rateLimiterEnable bool, ratelimit int) []rpc.API {
 	return []rpc.API{
-		NewPublicTraceAPI(hmy, Debug), // Debug version means geth trace rpc
-		NewPublicTraceAPI(hmy, Trace), // Trace version means parity trace rpc
+		NewPublicTraceAPI(itc, Debug), // Debug version means geth trace rpc
+		NewPublicTraceAPI(itc, Trace), // Trace version means parity trace rpc
 	}
 }
 
 // getAPIs returns all the API methods for the RPC interface
-func getAPIs(hmy *hmy.Harmony, config nodeconfig.RPCServerConfig) []rpc.API {
+func getAPIs(itc *itc.Intelchain, config nodeconfig.RPCServerConfig) []rpc.API {
 	publicAPIs := []rpc.API{
 		// Public methods
-		NewPublicHarmonyAPI(hmy, V1),
-		NewPublicHarmonyAPI(hmy, V2),
-		NewPublicBlockchainAPI(hmy, V1, config.RateLimiterEnabled, config.RequestsPerSecond),
-		NewPublicBlockchainAPI(hmy, V2, config.RateLimiterEnabled, config.RequestsPerSecond),
-		NewPublicContractAPI(hmy, V1, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
-		NewPublicContractAPI(hmy, V2, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
-		NewPublicTransactionAPI(hmy, V1),
-		NewPublicTransactionAPI(hmy, V2),
-		NewPublicPoolAPI(hmy, V1, config.RateLimiterEnabled, config.RequestsPerSecond),
-		NewPublicPoolAPI(hmy, V2, config.RateLimiterEnabled, config.RequestsPerSecond),
+		NewPublicIntelchainAPI(itc, V1),
+		NewPublicIntelchainAPI(itc, V2),
+		NewPublicBlockchainAPI(itc, V1, config.RateLimiterEnabled, config.RequestsPerSecond),
+		NewPublicBlockchainAPI(itc, V2, config.RateLimiterEnabled, config.RequestsPerSecond),
+		NewPublicContractAPI(itc, V1, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
+		NewPublicContractAPI(itc, V2, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
+		NewPublicTransactionAPI(itc, V1),
+		NewPublicTransactionAPI(itc, V2),
+		NewPublicPoolAPI(itc, V1, config.RateLimiterEnabled, config.RequestsPerSecond),
+		NewPublicPoolAPI(itc, V2, config.RateLimiterEnabled, config.RequestsPerSecond),
 	}
 
 	// Legacy methods (subject to removal)
 	if config.LegacyRPCsEnabled {
 		publicAPIs = append(publicAPIs,
-			v1.NewPublicLegacyAPI(hmy, "hmy"),
-			v2.NewPublicLegacyAPI(hmy, "hmyv2"),
+			v1.NewPublicLegacyAPI(itc, "itc"),
+			v2.NewPublicLegacyAPI(itc, "itcv2"),
 		)
 	}
 
 	if config.StakingRPCsEnabled {
 		publicAPIs = append(publicAPIs,
-			NewPublicStakingAPI(hmy, V1),
-			NewPublicStakingAPI(hmy, V2),
+			NewPublicStakingAPI(itc, V1),
+			NewPublicStakingAPI(itc, V2),
 		)
 	}
 
 	if config.EthRPCsEnabled {
 		publicAPIs = append(publicAPIs,
-			NewPublicHarmonyAPI(hmy, Eth),
-			NewPublicBlockchainAPI(hmy, Eth, config.RateLimiterEnabled, config.RequestsPerSecond),
-			NewPublicContractAPI(hmy, Eth, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
-			NewPublicTransactionAPI(hmy, Eth),
-			NewPublicPoolAPI(hmy, Eth, config.RateLimiterEnabled, config.RequestsPerSecond),
-			eth.NewPublicEthService(hmy, "eth"),
+			NewPublicIntelchainAPI(itc, Eth),
+			NewPublicBlockchainAPI(itc, Eth, config.RateLimiterEnabled, config.RequestsPerSecond),
+			NewPublicContractAPI(itc, Eth, config.RateLimiterEnabled, config.RequestsPerSecond, config.EvmCallTimeout),
+			NewPublicTransactionAPI(itc, Eth),
+			NewPublicPoolAPI(itc, Eth, config.RateLimiterEnabled, config.RequestsPerSecond),
+			eth.NewPublicEthService(itc, "eth"),
 		)
 	}
 
 	publicDebugAPIs := []rpc.API{
 		//Public debug API
-		NewPublicDebugAPI(hmy, V1),
-		NewPublicDebugAPI(hmy, V2),
+		NewPublicDebugAPI(itc, V1),
+		NewPublicDebugAPI(itc, V2),
 	}
 
 	privateAPIs := []rpc.API{
-		NewPrivateDebugAPI(hmy, V1),
-		NewPrivateDebugAPI(hmy, V2),
+		NewPrivateDebugAPI(itc, V1),
+		NewPrivateDebugAPI(itc, V2),
 	}
 
 	if config.DebugEnabled {

@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/zennittians/intelchain/core/state"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/shardchain/tikv_manage"
 
 	"github.com/zennittians/intelchain/shard"
@@ -37,14 +37,14 @@ type Collection interface {
 // CollectionImpl is the main implementation of the shard chain collection.
 // See the Collection interface for details.
 type CollectionImpl struct {
-	dbFactory     DBFactory
-	dbInit        DBInitializer
-	engine        engine.Engine
-	mtx           sync.Mutex
-	pool          map[uint32]core.BlockChain
-	disableCache  map[uint32]bool
-	chainConfig   *params.ChainConfig
-	harmonyconfig *harmonyconfig.HarmonyConfig
+	dbFactory        DBFactory
+	dbInit           DBInitializer
+	engine           engine.Engine
+	mtx              sync.Mutex
+	pool             map[uint32]core.BlockChain
+	disableCache     map[uint32]bool
+	chainConfig      *params.ChainConfig
+	intelchainconfig *intelchainconfig.IntelchainConfig
 }
 
 // NewCollection creates and returns a new shard chain collection.
@@ -54,18 +54,18 @@ type CollectionImpl struct {
 // dbInit is the shard chain initializer to use when the database returned by
 // the factory is brand new (empty).
 func NewCollection(
-	harmonyconfig *harmonyconfig.HarmonyConfig,
+	intelchainconfig *intelchainconfig.IntelchainConfig,
 	dbFactory DBFactory, dbInit DBInitializer, engine engine.Engine,
 	chainConfig *params.ChainConfig,
 ) *CollectionImpl {
 	return &CollectionImpl{
-		harmonyconfig: harmonyconfig,
-		dbFactory:     dbFactory,
-		dbInit:        dbInit,
-		engine:        engine,
-		pool:          make(map[uint32]core.BlockChain),
-		disableCache:  make(map[uint32]bool),
-		chainConfig:   chainConfig,
+		intelchainconfig: intelchainconfig,
+		dbFactory:        dbFactory,
+		dbInit:           dbInit,
+		engine:           engine,
+		pool:             make(map[uint32]core.BlockChain),
+		disableCache:     make(map[uint32]bool),
+		chainConfig:      chainConfig,
 	}
 }
 
@@ -109,7 +109,7 @@ func (sc *CollectionImpl) ShardChain(shardID uint32, options ...core.Options) (c
 			Uint32("shardID", shardID).
 			Msg("disable cache, running in archival mode")
 	} else {
-		hc := sc.harmonyconfig
+		hc := sc.intelchainconfig
 		if hc != nil {
 			cacheConfig = &core.CacheConfig{
 				Disabled:      hc.Cache.Disabled,
@@ -165,16 +165,16 @@ func (sc *CollectionImpl) ShardChain(shardID uint32, options ...core.Options) (c
 	db = nil // don't close
 	sc.pool[shardID] = bc
 
-	if sc.harmonyconfig != nil && sc.harmonyconfig.General.RunElasticMode {
+	if sc.intelchainconfig != nil && sc.intelchainconfig.General.RunElasticMode {
 		// init the tikv mode
-		bc.InitTiKV(sc.harmonyconfig.TiKV)
+		bc.InitTiKV(sc.intelchainconfig.TiKV)
 	}
 
 	return bc, nil
 }
 
 func initStateCache(db ethdb.Database, sc *CollectionImpl, shardID uint32) (state.Database, error) {
-	if sc.harmonyconfig != nil && sc.harmonyconfig.General.RunElasticMode {
+	if sc.intelchainconfig != nil && sc.intelchainconfig.General.RunElasticMode {
 		// used for tikv mode, init state db using tikv storage
 		stateDB, err := tikv_manage.GetDefaultTiKVFactory().NewStateDB(shardID)
 		if err != nil {

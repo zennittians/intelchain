@@ -50,7 +50,7 @@ func (m *ConstructMetadataOptions) UnmarshalFromInterface(metadata interface{}) 
 func (s *ConstructAPI) ConstructionPreprocess(
 	ctx context.Context, request *types.ConstructionPreprocessRequest,
 ) (*types.ConstructionPreprocessResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 	txMetadata := &TransactionMetadata{}
@@ -61,9 +61,9 @@ func (s *ConstructAPI) ConstructionPreprocess(
 			})
 		}
 	}
-	if txMetadata.FromShardID != nil && *txMetadata.FromShardID != s.hmy.ShardID {
+	if txMetadata.FromShardID != nil && *txMetadata.FromShardID != s.itc.ShardID {
 		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
-			"message": fmt.Sprintf("expect from shard ID to be %v", s.hmy.ShardID),
+			"message": fmt.Sprintf("expect from shard ID to be %v", s.itc.ShardID),
 		})
 	}
 
@@ -162,7 +162,7 @@ func (m *ConstructMetadata) UnmarshalFromInterface(blockArgs interface{}) error 
 func (s *ConstructAPI) ConstructionMetadata(
 	ctx context.Context, request *types.ConstructionMetadataRequest,
 ) (*types.ConstructionMetadataResponse, *types.Error) {
-	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.hmy.ShardID); err != nil {
+	if err := assertValidNetworkIdentifier(request.NetworkIdentifier, s.itc.ShardID); err != nil {
 		return nil, err
 	}
 	options := &ConstructMetadataOptions{}
@@ -181,14 +181,14 @@ func (s *ConstructAPI) ConstructionMetadata(
 	if rosettaError != nil {
 		return nil, rosettaError
 	}
-	nonce, err := s.hmy.GetPoolNonce(ctx, *senderAddr)
+	nonce, err := s.itc.GetPoolNonce(ctx, *senderAddr)
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": err.Error(),
 		})
 	}
 
-	currBlock, err := s.hmy.BlockByNumber(ctx, ethRpc.LatestBlockNumber)
+	currBlock, err := s.itc.BlockByNumber(ctx, ethRpc.LatestBlockNumber)
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": err.Error(),
@@ -196,7 +196,7 @@ func (s *ConstructAPI) ConstructionMetadata(
 	}
 
 	if options.OperationType == common.NativeCrossShardTransferOperation &&
-		!s.hmy.BlockChain.Config().AcceptsCrossTx(currBlock.Epoch()) {
+		!s.itc.BlockChain.Config().AcceptsCrossTx(currBlock.Epoch()) {
 		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
 			"message": "cross-shard transaction is not accepted yet",
 		})
@@ -221,7 +221,7 @@ func (s *ConstructAPI) ConstructionMetadata(
 			})
 		}
 	}
-	state, _, err := s.hmy.StateAndHeaderByNumber(ctx, ethRpc.LatestBlockNumber)
+	state, _, err := s.itc.StateAndHeaderByNumber(ctx, ethRpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, common.NewError(common.BlockNotFoundError, map[string]interface{}{
 			"message": "block state not found for latest block",
@@ -232,11 +232,11 @@ func (s *ConstructAPI) ConstructionMetadata(
 	var estGasUsed uint64
 	if !isStakingOperation(options.OperationType) {
 		if options.OperationType == common.ContractCreationOperation {
-			estGasUsed, err = rpc.EstimateGas(ctx, s.hmy, rpc.CallArgs{From: senderAddr, Data: &data}, latest, nil)
+			estGasUsed, err = rpc.EstimateGas(ctx, s.itc, rpc.CallArgs{From: senderAddr, Data: &data}, latest, nil)
 			estGasUsed *= 2 // HACK to account for imperfect contract creation estimation
 		} else {
 			estGasUsed, err = rpc.EstimateGas(
-				ctx, s.hmy, rpc.CallArgs{From: senderAddr, To: &contractAddress, Data: &data}, latest, nil,
+				ctx, s.itc, rpc.CallArgs{From: senderAddr, To: &contractAddress, Data: &data}, latest, nil,
 			)
 		}
 	} else {
@@ -270,7 +270,7 @@ func (s *ConstructAPI) ConstructionMetadata(
 			callArgs.To = &contractAddress
 		}
 		evmExe, err := rpc.DoEVMCall(
-			ctx, s.hmy, callArgs, latest, s.evmCallTimeout,
+			ctx, s.itc, callArgs, latest, s.evmCallTimeout,
 		)
 		if err != nil {
 			return nil, common.NewError(common.CatchAllError, map[string]interface{}{

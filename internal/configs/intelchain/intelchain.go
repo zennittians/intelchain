@@ -1,4 +1,4 @@
-package harmony
+package intelchain
 
 import (
 	"fmt"
@@ -10,10 +10,10 @@ import (
 	"github.com/zennittians/intelchain/internal/utils"
 )
 
-// HarmonyConfig contains all the configs user can set for running harmony binary. Served as the bridge
+// IntelchainConfig contains all the configs user can set for running Intelchain binary. Served as the bridge
 // from user set flags to internal node configs. Also user can persist this structure to a toml file
 // to avoid inputting all arguments.
-type HarmonyConfig struct {
+type IntelchainConfig struct {
 	Version    string
 	General    GeneralConfig
 	Network    NetworkConfig
@@ -40,7 +40,7 @@ type HarmonyConfig struct {
 	Cache      CacheConfig
 }
 
-func (hc HarmonyConfig) ToRPCServerConfig() nodeconfig.RPCServerConfig {
+func (hc IntelchainConfig) ToRPCServerConfig() nodeconfig.RPCServerConfig {
 	readTimeout, err := time.ParseDuration(hc.HTTP.ReadTimeout)
 	if err != nil {
 		readTimeout, _ = time.ParseDuration(nodeconfig.DefaultHTTPTimeoutRead)
@@ -295,7 +295,7 @@ type RpcOptConfig struct {
 type DevnetConfig struct {
 	NumShards   int
 	ShardSize   int
-	HmyNodeSize int
+	ItcNodeSize int
 	SlotsLimit  int // HIP-16: The absolute number of maximum effective slots per shard limit for each validator. 0 means no limit.
 }
 

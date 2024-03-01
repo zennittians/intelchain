@@ -28,7 +28,7 @@ var inspectDBCmd = &cobra.Command{
 	Use:     "inspectdb srcdb prefix startKey",
 	Short:   "inspect a db.",
 	Long:    "inspect a db.",
-	Example: "harmony inspectdb /srcDir/harmony_db_0",
+	Example: "intelchain inspectdb /srcDir/intelchain_db_0",
 	Args:    cobra.RangeArgs(1, 3),
 	Run: func(cmd *cobra.Command, args []string) {
 		srcDBDir := args[0]

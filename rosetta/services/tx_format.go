@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/zennittians/intelchain/hmy/tracers"
+	"github.com/zennittians/intelchain/itc/tracers"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	hmytypes "github.com/zennittians/intelchain/core/types"
+	itctypes "github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/rosetta/common"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
@@ -31,7 +31,7 @@ type ContractInfo struct {
 
 // FormatTransaction for staking, cross-shard sender, and plain transactions
 func FormatTransaction(
-	tx hmytypes.PoolTransaction, receipt *hmytypes.Receipt, contractInfo *ContractInfo, signed bool,
+	tx itctypes.PoolTransaction, receipt *itctypes.Receipt, contractInfo *ContractInfo, signed bool,
 ) (fmtTx *types.Transaction, rosettaError *types.Error) {
 	var operations []*types.Operation
 	var isCrossShard, isStaking, isContractCreation bool
@@ -47,9 +47,9 @@ func FormatTransaction(
 		}
 		isCrossShard, isContractCreation = false, false
 		toShard = stakingTx.ShardID()
-	case *hmytypes.Transaction:
+	case *itctypes.Transaction:
 		isStaking = false
-		plainTx := tx.(*hmytypes.Transaction)
+		plainTx := tx.(*itctypes.Transaction)
 		operations, rosettaError = GetNativeOperationsFromTransaction(plainTx, receipt, contractInfo)
 		if rosettaError != nil {
 			return nil, rosettaError
@@ -107,7 +107,7 @@ func FormatTransaction(
 
 // FormatCrossShardReceiverTransaction for cross-shard payouts on destination shard
 func FormatCrossShardReceiverTransaction(
-	cxReceipt *hmytypes.CXReceipt,
+	cxReceipt *itctypes.CXReceipt,
 ) (txs *types.Transaction, rosettaError *types.Error) {
 	ctxID := &types.TransactionIdentifier{Hash: cxReceipt.TxHash.String()}
 	senderAccountID, rosettaError := newAccountIdentifier(cxReceipt.From)

@@ -107,7 +107,7 @@ type Header interface {
 
 	// MixDigest is the mixhash.
 	//
-	// This field is a remnant from Ethereum, and Harmony does not use it and always
+	// This field is a remnant from Ethereum, and intelchain does not use it and always
 	// zeroes it out.
 	MixDigest() common.Hash
 

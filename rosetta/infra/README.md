@@ -1,4 +1,4 @@
-# Docker deployment of a Rosetta enabled Harmony node
+# Docker deployment of a Rosetta enabled intelchain node
 
 ## Docker Image
 You can choose to build the docker image using the included Dockerfile with the following command:
@@ -16,10 +16,10 @@ You can start the node with the following command:
 ```bash
 docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 
 ```
-> This command will create the container of the harmony node on shard 0 in the detached mode, 
+> This command will create the container of the intelchain node on shard 0 in the detached mode, 
 > binding port 9700 (the rosetta port) on the container to the host and mounting the shared 
 > `./data` directory on the host to `/root/data` on the container. Note that the container
-> uses `/root/data` for all data storage (this is where the `harmony_db_*` directories will be stored).
+> uses `/root/data` for all data storage (this is where the `intelchain_db_*` directories will be stored).
 
 You can view your container with the following command:
 ```bash
@@ -55,13 +55,13 @@ docker stop [CONTAINER ID]
 
 ## Details
 
-**Note that all the arguments provided when running the docker img are immediately forwarded to the harmony node binary.**
+**Note that all the arguments provided when running the docker img are immediately forwarded to the intelchain node binary.**
 > Note that the following args are **appended** to the provided arg when running the image: 
 > `--http.ip "0.0.0.0" --ws.ip "0.0.0.0" --http.rosetta --node_type "explorer" --datadir "./data" --log.dir "./data/logs"`.
 > This effectively makes them args that you cannot easily change.  
 
 ### Running the node on testnet
-All the args on the image run are forwarded to the harmony node binary. Therefore, you can simply add `-n testnet` to 
+All the args on the image run are forwarded to the intelchain node binary. Therefore, you can simply add `-n testnet` to 
 run the node for testnet. For example:
 ```bash 
 docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0 -n testnet
@@ -89,7 +89,7 @@ docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-no
 
 ### Running a node with a rcloned DB
 Note that all node data will be stored in the `/root/data` directory within the container. Therefore, you can rclone
-the `harmony_db_*` directory to some directory (i.e: `./data`) and mount the volume on the docker run. 
+the `intelchain_db_*` directory to some directory (i.e: `./data`) and mount the volume on the docker run. 
 This way, the node will use DB in the volume that is shared between the container and host. For example: 
 ```bash 
 docker run -d -p 9700:9700 -v "$(pwd)/data:/root/data" intelchainitc/explorer-node --run.shard=0
@@ -99,16 +99,16 @@ Note that the directory structure for `/root/data` (== `./data`) should look som
 ```
 .
 ├── explorer_storage_127.0.0.1_9000
-├── harmony_db_0
-├── harmony_db_1
+├── intelchain_db_0
+├── intelchain_db_1
 ├── logs
 │    ├── node_execution.log
-│    └── zerolog-harmony.log
+│    └── zerolog-intelchain.log
 └── transactions.rlp
 ``` 
 
 ### Inspecting Logs
-If you mount `./data` on the host to `/root/data` in the container, you can view the harmony node logs at
+If you mount `./data` on the host to `/root/data` in the container, you can view the intelchain node logs at
 `./data/logs/` on your host machine.
 
 ### View rosetta request logs

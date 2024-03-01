@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/zennittians/intelchain/core"
-	"github.com/zennittians/intelchain/hmy"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+	"github.com/zennittians/intelchain/itc"
 )
 
 const tomlConfigVersion = "2.6.1"
@@ -15,9 +15,9 @@ const (
 	defNetworkType = nodeconfig.Mainnet
 )
 
-var defaultConfig = harmonyconfig.HarmonyConfig{
+var defaultConfig = intelchainconfig.IntelchainConfig{
 	Version: tomlConfigVersion,
-	General: harmonyconfig.GeneralConfig{
+	General: intelchainconfig.GeneralConfig{
 		NodeType:         "validator",
 		NoStaking:        false,
 		ShardID:          -1,
@@ -28,10 +28,10 @@ var defaultConfig = harmonyconfig.HarmonyConfig{
 		TraceEnable:      false,
 	},
 	Network: getDefaultNetworkConfig(defNetworkType),
-	P2P: harmonyconfig.P2pConfig{
+	P2P: intelchainconfig.P2pConfig{
 		Port:                     nodeconfig.DefaultP2PPort,
 		IP:                       nodeconfig.DefaultPublicListenIP,
-		KeyFile:                  "./.hmykey",
+		KeyFile:                  "./.itckey",
 		DiscConcurrency:          nodeconfig.DefaultP2PConcurrency,
 		MaxConnsPerIP:            nodeconfig.DefaultMaxConnPerIP,
 		DisablePrivateIPScan:     false,
@@ -40,7 +40,7 @@ var defaultConfig = harmonyconfig.HarmonyConfig{
 		ConnManagerHighWatermark: nodeconfig.DefaultConnManagerHighWatermark,
 		WaitForEachPeerToConnect: nodeconfig.DefaultWaitForEachPeerToConnect,
 	},
-	HTTP: harmonyconfig.HttpConfig{
+	HTTP: intelchainconfig.HttpConfig{
 		Enabled:        true,
 		RosettaEnabled: false,
 		IP:             "127.0.0.1",
@@ -51,25 +51,25 @@ var defaultConfig = harmonyconfig.HarmonyConfig{
 		WriteTimeout:   nodeconfig.DefaultHTTPTimeoutWrite,
 		IdleTimeout:    nodeconfig.DefaultHTTPTimeoutIdle,
 	},
-	WS: harmonyconfig.WsConfig{
+	WS: intelchainconfig.WsConfig{
 		Enabled:  true,
 		IP:       "127.0.0.1",
 		Port:     nodeconfig.DefaultWSPort,
 		AuthPort: nodeconfig.DefaultAuthWSPort,
 	},
-	RPCOpt: harmonyconfig.RpcOptConfig{
+	RPCOpt: intelchainconfig.RpcOptConfig{
 		DebugEnabled:       false,
 		EthRPCsEnabled:     true,
 		StakingRPCsEnabled: true,
 		LegacyRPCsEnabled:  true,
-		RpcFilterFile:      "./.hmy/rpc_filter.txt",
+		RpcFilterFile:      "./.itc/rpc_filter.txt",
 		RateLimterEnabled:  true,
 		RequestsPerSecond:  nodeconfig.DefaultRPCRateLimit,
 		EvmCallTimeout:     nodeconfig.DefaultEvmCallTimeout,
 		PreimagesEnabled:   false,
 	},
-	BLSKeys: harmonyconfig.BlsConfig{
-		KeyDir:   "./.hmy/blskeys",
+	BLSKeys: intelchainconfig.BlsConfig{
+		KeyDir:   "./.itc/blskeys",
 		KeyFiles: []string{},
 		MaxKeys:  10,
 
@@ -81,21 +81,21 @@ var defaultConfig = harmonyconfig.HarmonyConfig{
 		KMSConfigSrcType: kmsConfigTypeShared,
 		KMSConfigFile:    "",
 	},
-	TxPool: harmonyconfig.TxPoolConfig{
-		BlacklistFile:     "./.hmy/blacklist.txt",
-		AllowedTxsFile:    "./.hmy/allowedtxs.txt",
+	TxPool: intelchainconfig.TxPoolConfig{
+		BlacklistFile:     "./.itc/blacklist.txt",
+		AllowedTxsFile:    "./.itc/allowedtxs.txt",
 		RosettaFixFile:    "",
 		AccountSlots:      core.DefaultTxPoolConfig.AccountSlots,
-		LocalAccountsFile: "./.hmy/locals.txt",
+		LocalAccountsFile: "./.itc/locals.txt",
 		GlobalSlots:       core.DefaultTxPoolConfig.GlobalSlots,
 		AccountQueue:      core.DefaultTxPoolConfig.AccountQueue,
 		GlobalQueue:       core.DefaultTxPoolConfig.GlobalQueue,
 		Lifetime:          core.DefaultTxPoolConfig.Lifetime,
-		PriceLimit:        harmonyconfig.PriceLimit(core.DefaultTxPoolConfig.PriceLimit),
+		PriceLimit:        intelchainconfig.PriceLimit(core.DefaultTxPoolConfig.PriceLimit),
 		PriceBump:         core.DefaultTxPoolConfig.PriceBump,
 	},
 	Sync: getDefaultSyncConfig(defNetworkType),
-	Pprof: harmonyconfig.PprofConfig{
+	Pprof: intelchainconfig.PprofConfig{
 		Enabled:            false,
 		ListenAddr:         "127.0.0.1:6060",
 		Folder:             "./profiles",
@@ -103,81 +103,81 @@ var defaultConfig = harmonyconfig.HarmonyConfig{
 		ProfileIntervals:   []int{600},
 		ProfileDebugValues: []int{0},
 	},
-	Log: harmonyconfig.LogConfig{
+	Log: intelchainconfig.LogConfig{
 		Console:      false,
 		Folder:       "./latest",
-		FileName:     "harmony.log",
+		FileName:     "intelchain.log",
 		RotateSize:   100,
 		RotateCount:  0,
 		RotateMaxAge: 0,
 		Verbosity:    3,
-		VerbosePrints: harmonyconfig.LogVerbosePrints{
+		VerbosePrints: intelchainconfig.LogVerbosePrints{
 			Config: true,
 		},
 	},
 	DNSSync: getDefaultDNSSyncConfig(defNetworkType),
-	ShardData: harmonyconfig.ShardDataConfig{
+	ShardData: intelchainconfig.ShardDataConfig{
 		EnableShardData: false,
 		DiskCount:       8,
 		ShardCount:      4,
 		CacheTime:       10,
 		CacheSize:       512,
 	},
-	GPO: harmonyconfig.GasPriceOracleConfig{
-		Blocks:            hmy.DefaultGPOConfig.Blocks,
-		Transactions:      hmy.DefaultGPOConfig.Transactions,
-		Percentile:        hmy.DefaultGPOConfig.Percentile,
-		DefaultPrice:      hmy.DefaultGPOConfig.DefaultPrice,
-		MaxPrice:          hmy.DefaultGPOConfig.MaxPrice,
-		LowUsageThreshold: hmy.DefaultGPOConfig.LowUsageThreshold,
-		BlockGasLimit:     hmy.DefaultGPOConfig.BlockGasLimit,
+	GPO: intelchainconfig.GasPriceOracleConfig{
+		Blocks:            itc.DefaultGPOConfig.Blocks,
+		Transactions:      itc.DefaultGPOConfig.Transactions,
+		Percentile:        itc.DefaultGPOConfig.Percentile,
+		DefaultPrice:      itc.DefaultGPOConfig.DefaultPrice,
+		MaxPrice:          itc.DefaultGPOConfig.MaxPrice,
+		LowUsageThreshold: itc.DefaultGPOConfig.LowUsageThreshold,
+		BlockGasLimit:     itc.DefaultGPOConfig.BlockGasLimit,
 	},
 	Cache: getDefaultCacheConfig(defNetworkType),
 }
 
-var defaultSysConfig = harmonyconfig.SysConfig{
+var defaultSysConfig = intelchainconfig.SysConfig{
 	NtpServer: "1.pool.ntp.org",
 }
 
-var defaultDevnetConfig = harmonyconfig.DevnetConfig{
+var defaultDevnetConfig = intelchainconfig.DevnetConfig{
 	NumShards:   2,
 	ShardSize:   10,
-	HmyNodeSize: 10,
+	ItcNodeSize: 10,
 	SlotsLimit:  0, // 0 means no limit
 }
 
-var defaultRevertConfig = harmonyconfig.RevertConfig{
+var defaultRevertConfig = intelchainconfig.RevertConfig{
 	RevertBeacon: false,
 	RevertBefore: 0,
 	RevertTo:     0,
 }
 
-var defaultPreimageConfig = harmonyconfig.PreimageConfig{
+var defaultPreimageConfig = intelchainconfig.PreimageConfig{
 	ImportFrom:    "",
 	ExportTo:      "",
 	GenerateStart: 0,
 	GenerateEnd:   0,
 }
 
-var defaultLogContext = harmonyconfig.LogContext{
+var defaultLogContext = intelchainconfig.LogContext{
 	IP:   "127.0.0.1",
 	Port: 9000,
 }
 
-var defaultConsensusConfig = harmonyconfig.ConsensusConfig{
+var defaultConsensusConfig = intelchainconfig.ConsensusConfig{
 	MinPeers:     6,
 	AggregateSig: true,
 }
 
-var defaultPrometheusConfig = harmonyconfig.PrometheusConfig{
+var defaultPrometheusConfig = intelchainconfig.PrometheusConfig{
 	Enabled:    true,
 	IP:         "0.0.0.0",
 	Port:       9900,
 	EnablePush: false,
-	Gateway:    "https://gateway.harmony.one",
+	Gateway:    "https://gateway.intelchain.org",
 }
 
-var defaultStagedSyncConfig = harmonyconfig.StagedSyncConfig{
+var defaultStagedSyncConfig = intelchainconfig.StagedSyncConfig{
 	TurboMode:              true,
 	DoubleCheckBlockHashes: false,
 	MaxBlocksPerSyncCycle:  512,   // sync new blocks in each cycle, if set to zero means all blocks in one full cycle
@@ -192,7 +192,7 @@ var defaultStagedSyncConfig = harmonyconfig.StagedSyncConfig{
 }
 
 var (
-	defaultMainnetSyncConfig = harmonyconfig.SyncConfig{
+	defaultMainnetSyncConfig = intelchainconfig.SyncConfig{
 		Enabled:              false,
 		SyncMode:             0,
 		Downloader:           false,
@@ -208,7 +208,7 @@ var (
 		DiscBatch:            8,
 	}
 
-	defaultTestNetSyncConfig = harmonyconfig.SyncConfig{
+	defaultTestNetSyncConfig = intelchainconfig.SyncConfig{
 		Enabled:              true,
 		SyncMode:             0,
 		Downloader:           false,
@@ -224,7 +224,7 @@ var (
 		DiscBatch:            3,
 	}
 
-	defaultLocalNetSyncConfig = harmonyconfig.SyncConfig{
+	defaultLocalNetSyncConfig = intelchainconfig.SyncConfig{
 		Enabled:              true,
 		SyncMode:             0,
 		Downloader:           true,
@@ -240,7 +240,7 @@ var (
 		DiscBatch:            8,
 	}
 
-	defaultPartnerSyncConfig = harmonyconfig.SyncConfig{
+	defaultPartnerSyncConfig = intelchainconfig.SyncConfig{
 		Enabled:              true,
 		SyncMode:             0,
 		Downloader:           true,
@@ -256,7 +256,7 @@ var (
 		DiscBatch:            4,
 	}
 
-	defaultElseSyncConfig = harmonyconfig.SyncConfig{
+	defaultElseSyncConfig = intelchainconfig.SyncConfig{
 		Enabled:              true,
 		SyncMode:             0,
 		Downloader:           true,
@@ -273,7 +273,7 @@ var (
 	}
 )
 
-var defaultCacheConfig = harmonyconfig.CacheConfig{
+var defaultCacheConfig = intelchainconfig.CacheConfig{
 	Disabled:        false,
 	TrieNodeLimit:   256,
 	TriesInMemory:   128,
@@ -288,7 +288,7 @@ const (
 	defaultBroadcastInvalidTx = false
 )
 
-func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyconfig.HarmonyConfig {
+func getDefaultItcConfigCopy(nt nodeconfig.NetworkType) intelchainconfig.IntelchainConfig {
 	config := defaultConfig
 
 	config.Network = getDefaultNetworkConfig(nt)
@@ -303,42 +303,42 @@ func getDefaultHmyConfigCopy(nt nodeconfig.NetworkType) harmonyconfig.HarmonyCon
 	return config
 }
 
-func getDefaultSysConfigCopy() harmonyconfig.SysConfig {
+func getDefaultSysConfigCopy() intelchainconfig.SysConfig {
 	config := defaultSysConfig
 	return config
 }
 
-func getDefaultDevnetConfigCopy() harmonyconfig.DevnetConfig {
+func getDefaultDevnetConfigCopy() intelchainconfig.DevnetConfig {
 	config := defaultDevnetConfig
 	return config
 }
 
-func getDefaultRevertConfigCopy() harmonyconfig.RevertConfig {
+func getDefaultRevertConfigCopy() intelchainconfig.RevertConfig {
 	config := defaultRevertConfig
 	return config
 }
 
-func getDefaultPreimageConfigCopy() harmonyconfig.PreimageConfig {
+func getDefaultPreimageConfigCopy() intelchainconfig.PreimageConfig {
 	config := defaultPreimageConfig
 	return config
 }
 
-func getDefaultLogContextCopy() harmonyconfig.LogContext {
+func getDefaultLogContextCopy() intelchainconfig.LogContext {
 	config := defaultLogContext
 	return config
 }
 
-func getDefaultConsensusConfigCopy() harmonyconfig.ConsensusConfig {
+func getDefaultConsensusConfigCopy() intelchainconfig.ConsensusConfig {
 	config := defaultConsensusConfig
 	return config
 }
 
-func getDefaultPrometheusConfigCopy() harmonyconfig.PrometheusConfig {
+func getDefaultPrometheusConfigCopy() intelchainconfig.PrometheusConfig {
 	config := defaultPrometheusConfig
 	return config
 }
 
-func getDefaultCacheConfigCopy() harmonyconfig.CacheConfig {
+func getDefaultCacheConfigCopy() intelchainconfig.CacheConfig {
 	config := defaultCacheConfig
 	return config
 }

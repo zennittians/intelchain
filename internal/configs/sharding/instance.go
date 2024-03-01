@@ -25,20 +25,20 @@ const (
 )
 
 type instance struct {
-	numShards                       uint32
-	numNodesPerShard                int
-	numHarmonyOperatedNodesPerShard int
-	harmonyVotePercent              numeric.Dec
-	externalVotePercent             numeric.Dec
-	hmyAccounts                     []genesis.DeployAccount
-	fnAccounts                      []genesis.DeployAccount
-	reshardingEpoch                 []*big.Int
-	blocksPerEpoch                  uint64
-	slotsLimit                      int // HIP-16: The absolute number of maximum effective slots per shard limit for each validator. 0 means no limit.
-	allowlist                       Allowlist
-	feeCollectors                   FeeCollectors
-	emissionFraction                numeric.Dec
-	recoveryAddress                 ethCommon.Address
+	numShards                          uint32
+	numNodesPerShard                   int
+	numIntelchainOperatedNodesPerShard int
+	intelchainVotePercent              numeric.Dec
+	externalVotePercent                numeric.Dec
+	itcAccounts                        []genesis.DeployAccount
+	fnAccounts                         []genesis.DeployAccount
+	reshardingEpoch                    []*big.Int
+	blocksPerEpoch                     uint64
+	slotsLimit                         int // HIP-16: The absolute number of maximum effective slots per shard limit for each validator. 0 means no limit.
+	allowlist                          Allowlist
+	feeCollectors                      FeeCollectors
+	emissionFraction                   numeric.Dec
+	recoveryAddress                    ethCommon.Address
 }
 
 type FeeCollectors map[ethCommon.Address]numeric.Dec
@@ -48,10 +48,10 @@ type FeeCollectors map[ethCommon.Address]numeric.Dec
 func NewInstance(
 	numShards uint32,
 	numNodesPerShard,
-	numHarmonyOperatedNodesPerShard,
+	numIntelchainOperatedNodesPerShard,
 	slotsLimit int,
-	harmonyVotePercent numeric.Dec,
-	hmyAccounts []genesis.DeployAccount,
+	intelchainVotePercent numeric.Dec,
+	itcAccounts []genesis.DeployAccount,
 	fnAccounts []genesis.DeployAccount,
 	allowlist Allowlist,
 	feeCollectors FeeCollectors,
@@ -69,26 +69,26 @@ func NewInstance(
 			"each shard must have at least one node %d", numNodesPerShard,
 		)
 	}
-	if numHarmonyOperatedNodesPerShard < 0 {
+	if numIntelchainOperatedNodesPerShard < 0 {
 		return nil, errors.Errorf(
-			"Harmony-operated nodes cannot be negative %d", numHarmonyOperatedNodesPerShard,
+			"Intelchain-operated nodes cannot be negative %d", numIntelchainOperatedNodesPerShard,
 		)
 	}
-	if numHarmonyOperatedNodesPerShard > numNodesPerShard {
+	if numIntelchainOperatedNodesPerShard > numNodesPerShard {
 		return nil, errors.Errorf(""+
-			"number of Harmony-operated nodes cannot exceed "+
+			"number of Intelchain-operated nodes cannot exceed "+
 			"overall number of nodes per shard %d %d",
-			numHarmonyOperatedNodesPerShard,
+			numIntelchainOperatedNodesPerShard,
 			numNodesPerShard,
 		)
 	}
 	if slotsLimit < 0 {
 		return nil, errors.Errorf("SlotsLimit cannot be negative %d", slotsLimit)
 	}
-	if harmonyVotePercent.LT(numeric.ZeroDec()) ||
-		harmonyVotePercent.GT(numeric.OneDec()) {
+	if intelchainVotePercent.LT(numeric.ZeroDec()) ||
+		intelchainVotePercent.GT(numeric.OneDec()) {
 		return nil, errors.Errorf("" +
-			"total voting power of harmony nodes should be within [0, 1]",
+			"total voting power of intelchain nodes should be within [0, 1]",
 		)
 	}
 	if len(feeCollectors) > 0 {
@@ -124,20 +124,20 @@ func NewInstance(
 	}
 
 	return instance{
-		numShards:                       numShards,
-		numNodesPerShard:                numNodesPerShard,
-		numHarmonyOperatedNodesPerShard: numHarmonyOperatedNodesPerShard,
-		harmonyVotePercent:              harmonyVotePercent,
-		externalVotePercent:             numeric.OneDec().Sub(harmonyVotePercent),
-		hmyAccounts:                     hmyAccounts,
-		fnAccounts:                      fnAccounts,
-		allowlist:                       allowlist,
-		reshardingEpoch:                 reshardingEpoch,
-		blocksPerEpoch:                  blocksE,
-		slotsLimit:                      slotsLimit,
-		feeCollectors:                   feeCollectors,
-		recoveryAddress:                 recoveryAddress,
-		emissionFraction:                emissionFractionToRecovery,
+		numShards:                          numShards,
+		numNodesPerShard:                   numNodesPerShard,
+		numIntelchainOperatedNodesPerShard: numIntelchainOperatedNodesPerShard,
+		intelchainVotePercent:              intelchainVotePercent,
+		externalVotePercent:                numeric.OneDec().Sub(intelchainVotePercent),
+		itcAccounts:                        itcAccounts,
+		fnAccounts:                         fnAccounts,
+		allowlist:                          allowlist,
+		reshardingEpoch:                    reshardingEpoch,
+		blocksPerEpoch:                     blocksE,
+		slotsLimit:                         slotsLimit,
+		feeCollectors:                      feeCollectors,
+		recoveryAddress:                    recoveryAddress,
+		emissionFraction:                   emissionFractionToRecovery,
 	}, nil
 }
 
@@ -146,9 +146,9 @@ func NewInstance(
 // It is intended to be used for static initialization.
 func MustNewInstance(
 	numShards uint32,
-	numNodesPerShard, numHarmonyOperatedNodesPerShard int, slotsLimitPercent float32,
-	harmonyVotePercent numeric.Dec,
-	hmyAccounts []genesis.DeployAccount,
+	numNodesPerShard, numIntelchainOperatedNodesPerShard int, slotsLimitPercent float32,
+	intelchainVotePercent numeric.Dec,
+	itcAccounts []genesis.DeployAccount,
 	fnAccounts []genesis.DeployAccount,
 	allowlist Allowlist,
 	feeCollectors FeeCollectors,
@@ -156,10 +156,10 @@ func MustNewInstance(
 	recoveryAddress ethCommon.Address,
 	reshardingEpoch []*big.Int, blocksPerEpoch uint64,
 ) Instance {
-	slotsLimit := int(float32(numNodesPerShard-numHarmonyOperatedNodesPerShard) * slotsLimitPercent)
+	slotsLimit := int(float32(numNodesPerShard-numIntelchainOperatedNodesPerShard) * slotsLimitPercent)
 	sc, err := NewInstance(
-		numShards, numNodesPerShard, numHarmonyOperatedNodesPerShard,
-		slotsLimit, harmonyVotePercent, hmyAccounts, fnAccounts,
+		numShards, numNodesPerShard, numIntelchainOperatedNodesPerShard,
+		slotsLimit, intelchainVotePercent, itcAccounts, fnAccounts,
 		allowlist, feeCollectors, emissionFractionToRecovery,
 		recoveryAddress, reshardingEpoch, blocksPerEpoch,
 	)
@@ -189,9 +189,9 @@ func (sc instance) FeeCollectors() FeeCollectors {
 	return sc.feeCollectors
 }
 
-// HarmonyVotePercent returns total percentage of voting power harmony nodes possess.
-func (sc instance) HarmonyVotePercent() numeric.Dec {
-	return sc.harmonyVotePercent
+// IntelchainVotePercent returns total percentage of voting power Intelchain nodes possess.
+func (sc instance) IntelchainVotePercent() numeric.Dec {
+	return sc.intelchainVotePercent
 }
 
 // ExternalVotePercent returns total percentage of voting power external validators possess.
@@ -204,15 +204,15 @@ func (sc instance) NumNodesPerShard() int {
 	return sc.numNodesPerShard
 }
 
-// NumHarmonyOperatedNodesPerShard returns number of nodes in each shard
-// that are operated by Harmony.
-func (sc instance) NumHarmonyOperatedNodesPerShard() int {
-	return sc.numHarmonyOperatedNodesPerShard
+// NumIntelchainOperatedNodesPerShard returns number of nodes in each shard
+// that are operated by Intelchain.
+func (sc instance) NumIntelchainOperatedNodesPerShard() int {
+	return sc.numIntelchainOperatedNodesPerShard
 }
 
-// HmyAccounts returns the list of Harmony accounts
-func (sc instance) HmyAccounts() []genesis.DeployAccount {
-	return sc.hmyAccounts
+// itcAccounts returns the list of Intelchain accounts
+func (sc instance) ItcAccounts() []genesis.DeployAccount {
+	return sc.itcAccounts
 }
 
 // FnAccounts returns the list of Foundational Node accounts
@@ -223,7 +223,7 @@ func (sc instance) FnAccounts() []genesis.DeployAccount {
 // FindAccount returns the deploy account based on the blskey, and if the account is a leader
 // or not in the bootstrapping process.
 func (sc instance) FindAccount(blsPubKey string) (bool, *genesis.DeployAccount) {
-	for i, item := range sc.hmyAccounts {
+	for i, item := range sc.itcAccounts {
 		if item.BLSPublicKey == blsPubKey {
 			item.ShardID = uint32(i) % sc.numShards
 			return uint32(i) < sc.numShards, &item

@@ -8,7 +8,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmytypes "github.com/zennittians/intelchain/core/types"
+	itctypes "github.com/zennittians/intelchain/core/types"
 	rpcV2 "github.com/zennittians/intelchain/rpc/v2"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
@@ -43,9 +43,9 @@ func GetMessageFromStakingTx(tx *stakingTypes.StakingTransaction) (map[string]in
 
 // CreateTestTransaction creates a pre-signed transaction
 func CreateTestTransaction(
-	signer hmytypes.Signer, fromShard, toShard uint32, nonce, gasLimit uint64,
+	signer itctypes.Signer, fromShard, toShard uint32, nonce, gasLimit uint64,
 	gasPrice, amount *big.Int, data []byte,
-) (*hmytypes.Transaction, error) {
+) (*itctypes.Transaction, error) {
 	fromKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, err
@@ -55,27 +55,27 @@ func CreateTestTransaction(
 		return nil, err
 	}
 	toAddr := crypto.PubkeyToAddress(toKey.PublicKey)
-	var tx *hmytypes.Transaction
+	var tx *itctypes.Transaction
 	if fromShard != toShard {
-		tx = hmytypes.NewCrossShardTransaction(
+		tx = itctypes.NewCrossShardTransaction(
 			nonce, &toAddr, fromShard, toShard, amount, gasLimit, gasPrice, data,
 		)
 	} else {
-		tx = hmytypes.NewTransaction(
+		tx = itctypes.NewTransaction(
 			nonce, toAddr, fromShard, amount, gasLimit, gasPrice, data,
 		)
 	}
-	return hmytypes.SignTx(tx, signer, fromKey)
+	return itctypes.SignTx(tx, signer, fromKey)
 }
 
 // CreateTestContractCreationTransaction creates a pre-signed contract creation transaction
 func CreateTestContractCreationTransaction(
-	signer hmytypes.Signer, shard uint32, nonce, gasLimit uint64, gasPrice, amount *big.Int, data []byte,
-) (*hmytypes.Transaction, error) {
+	signer itctypes.Signer, shard uint32, nonce, gasLimit uint64, gasPrice, amount *big.Int, data []byte,
+) (*itctypes.Transaction, error) {
 	fromKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, err
 	}
-	tx := hmytypes.NewContractCreation(nonce, shard, amount, gasLimit, gasPrice, data)
-	return hmytypes.SignTx(tx, signer, fromKey)
+	tx := itctypes.NewContractCreation(nonce, shard, amount, gasLimit, gasPrice, data)
+	return itctypes.SignTx(tx, signer, fromKey)
 }

@@ -31,7 +31,7 @@ func getTestEnvironment(testBankKey ecdsa.PrivateKey) (*BlockChainImpl, *state.D
 	// initialize
 	var (
 		testBankAddress = crypto.PubkeyToAddress(testBankKey.PublicKey)
-		testBankFunds   = new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(40000))
+		testBankFunds   = new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(40000))
 		chainConfig     = params.TestChainConfig
 		blockFactory    = blockfactory.ForTest
 		database        = rawdb.NewMemoryDatabase()
@@ -100,7 +100,7 @@ func TestEVMStaking(t *testing.T) {
 	// add undelegations in epoch0
 	wrapper.Delegations[0].Undelegations = []staking.Undelegation{
 		{
-			Amount: new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(10000)),
+			Amount: new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(10000)),
 			Epoch:  common.Big0,
 		},
 	}
@@ -361,12 +361,12 @@ func sampleCreateValidator(key ecdsa.PrivateKey) staking.CreateValidator {
 			MaxRate:       maxRate,
 			MaxChangeRate: maxChangeRate,
 		},
-		MinSelfDelegation:  new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(10000)),
-		MaxTotalDelegation: new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(20000)),
+		MinSelfDelegation:  new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(10000)),
+		MaxTotalDelegation: new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(20000)),
 		ValidatorAddress:   crypto.PubkeyToAddress(key.PublicKey),
 		SlotPubKeys:        []bls.SerializedPublicKey{pub},
 		SlotKeySigs:        []bls.SerializedSignature{sig},
-		Amount:             new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(15000)),
+		Amount:             new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(15000)),
 	}
 }
 
@@ -381,13 +381,13 @@ func sampleEditValidator(key ecdsa.PrivateKey) staking.EditValidator {
 		Description: staking.Description{
 			Name:            "Alice",
 			Identity:        "alice",
-			Website:         "alice.harmony.one",
+			Website:         "alice.intelchain.otg",
 			SecurityContact: "Bob",
 			Details:         "Don't mess with me!!!",
 		},
 		CommissionRate:     &ra,
-		MinSelfDelegation:  new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(10000)),
-		MaxTotalDelegation: new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(20000)),
+		MinSelfDelegation:  new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(10000)),
+		MaxTotalDelegation: new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(20000)),
 		SlotKeyToRemove:    nil,
 		SlotKeyToAdd:       &slotKeyToAdd,
 		SlotKeyToAddSig:    &slotKeyToAddSig,
@@ -400,8 +400,8 @@ func sampleDelegate(key ecdsa.PrivateKey) staking.Delegate {
 	return staking.Delegate{
 		DelegatorAddress: address,
 		ValidatorAddress: address,
-		// additional delegation of 1000 ONE
-		Amount: new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(1000)),
+		// additional delegation of 1000 ITC
+		Amount: new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(1000)),
 	}
 }
 
@@ -410,8 +410,8 @@ func sampleUndelegate(key ecdsa.PrivateKey) staking.Undelegate {
 	return staking.Undelegate{
 		DelegatorAddress: address,
 		ValidatorAddress: address,
-		// undelegate the delegation of 1000 ONE
-		Amount: new(big.Int).Mul(big.NewInt(denominations.One), big.NewInt(1000)),
+		// undelegate the delegation of 1000 ITC
+		Amount: new(big.Int).Mul(big.NewInt(denominations.Itc), big.NewInt(1000)),
 	}
 }
 

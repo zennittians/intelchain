@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 
 	"github.com/spf13/cobra"
 
@@ -188,13 +188,13 @@ var (
 	newDevnetFlags = []cli.Flag{
 		devnetNumShardsFlag,
 		devnetShardSizeFlag,
-		devnetHmyNodeSizeFlag,
+		devnetItcNodeSizeFlag,
 	}
 
 	legacyDevnetFlags = []cli.Flag{
 		legacyDevnetNumShardsFlag,
 		legacyDevnetShardSizeFlag,
-		legacyDevnetHmyNodeSizeFlag,
+		legacyDevnetItcNodeSizeFlag,
 	}
 
 	revertFlags = append(newRevertFlags, legacyRevertFlags...)
@@ -394,7 +394,7 @@ func getRootFlags() []cli.Flag {
 	return flags
 }
 
-func applyGeneralFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyGeneralFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, nodeTypeFlag) {
 		config.General.NodeType = cli.GetStringFlagValue(cmd, nodeTypeFlag)
 	} else if cli.IsFlagChanged(cmd, legacyNodeTypeFlag) {
@@ -535,7 +535,7 @@ func getNetworkType(cmd *cobra.Command) nodeconfig.NetworkType {
 	return parseNetworkType(raw)
 }
 
-func applyDNSSyncFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
+func applyDNSSyncFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, dnsZoneFlag) {
 		cfg.DNSSync.Zone = cli.GetStringFlagValue(cmd, dnsZoneFlag)
 	} else if cli.IsFlagChanged(cmd, legacyDNSZoneFlag) {
@@ -567,7 +567,7 @@ func applyDNSSyncFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
 
 }
 
-func applyNetworkFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
+func applyNetworkFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, bootNodeFlag) {
 		cfg.Network.BootNodes = cli.GetStringSliceFlagValue(cmd, bootNodeFlag)
 	}
@@ -587,7 +587,7 @@ var (
 	}
 	p2pKeyFileFlag = cli.StringFlag{
 		Name:     "p2p.keyfile",
-		Usage:    "the p2p key file of the harmony node",
+		Usage:    "the p2p key file of the intelchain node",
 		DefValue: defaultConfig.P2P.KeyFile,
 	}
 	p2pDHTDataStoreFlag = cli.StringFlag{
@@ -598,7 +598,7 @@ var (
 	}
 	legacyKeyFileFlag = cli.StringFlag{
 		Name:       "key",
-		Usage:      "the p2p key file of the harmony node",
+		Usage:      "the p2p key file of the intelchain node",
 		DefValue:   defaultConfig.P2P.KeyFile,
 		Deprecated: "use --p2p.keyfile",
 	}
@@ -639,7 +639,7 @@ var (
 	}
 )
 
-func applyP2PFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyP2PFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, p2pPortFlag) {
 		config.P2P.Port = cli.GetIntFlagValue(cmd, p2pPortFlag)
 	}
@@ -739,7 +739,7 @@ var (
 	}
 )
 
-func applyHTTPFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyHTTPFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	var isRPCSpecified, isRosettaSpecified bool
 
 	if cli.IsFlagChanged(cmd, httpIPFlag) {
@@ -810,7 +810,7 @@ var (
 	}
 )
 
-func applyWSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyWSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, wsEnabledFlag) {
 		config.WS.Enabled = cli.GetBoolFlagValue(cmd, wsEnabledFlag)
 	}
@@ -887,7 +887,7 @@ var (
 	}
 )
 
-func applyRPCOptFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyRPCOptFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, rpcDebugEnabledFlag) {
 		config.RPCOpt.DebugEnabled = cli.GetBoolFlagValue(cmd, rpcDebugEnabledFlag)
 	}
@@ -1009,7 +1009,7 @@ var (
 	}
 )
 
-func applyBLSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyBLSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, blsDirFlag) {
 		config.BLSKeys.KeyDir = cli.GetStringFlagValue(cmd, blsDirFlag)
 	} else if cli.IsFlagChanged(cmd, legacyBLSFolderFlag) {
@@ -1037,7 +1037,7 @@ func applyBLSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func applyBLSPassFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	var passFileSpecified bool
 
 	if cli.IsFlagChanged(cmd, passEnabledFlag) {
@@ -1057,7 +1057,7 @@ func applyBLSPassFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) 
 	}
 }
 
-func applyKMSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyKMSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	var fileSpecified bool
 
 	if cli.IsFlagChanged(cmd, kmsEnabledFlag) {
@@ -1074,7 +1074,7 @@ func applyKMSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func applyLegacyBLSPassFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyLegacyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyBLSPassFlag) {
 		val := cli.GetStringFlagValue(cmd, legacyBLSPassFlag)
 		legacyApplyBLSPassVal(val, config)
@@ -1084,14 +1084,14 @@ func applyLegacyBLSPassFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyCo
 	}
 }
 
-func applyLegacyKMSFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyLegacyKMSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyKMSConfigSourceFlag) {
 		val := cli.GetStringFlagValue(cmd, legacyKMSConfigSourceFlag)
 		legacyApplyKMSSourceVal(val, config)
 	}
 }
 
-func legacyApplyBLSPassVal(src string, config *harmonyconfig.HarmonyConfig) {
+func legacyApplyBLSPassVal(src string, config *intelchainconfig.IntelchainConfig) {
 	methodArgs := strings.SplitN(src, ":", 2)
 	method := methodArgs[0]
 
@@ -1112,7 +1112,7 @@ func legacyApplyBLSPassVal(src string, config *harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func legacyApplyKMSSourceVal(src string, config *harmonyconfig.HarmonyConfig) {
+func legacyApplyKMSSourceVal(src string, config *intelchainconfig.IntelchainConfig) {
 	methodArgs := strings.SplitN(src, ":", 2)
 	method := methodArgs[0]
 
@@ -1163,7 +1163,7 @@ var (
 	}
 )
 
-func applyConsensusFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyConsensusFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if config.Consensus == nil && cli.HasFlagsChanged(cmd, consensusValidFlags) {
 		cfg := getDefaultConsensusConfigCopy()
 		config.Consensus = &cfg
@@ -1245,7 +1245,7 @@ var (
 	}
 )
 
-func applyTxPoolFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyTxPoolFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, rosettaFixFileFlag) {
 		config.TxPool.RosettaFixFile = cli.GetStringFlagValue(cmd, rosettaFixFileFlag)
 	}
@@ -1300,7 +1300,7 @@ func applyTxPoolFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 		if value <= 0 {
 			panic("Must provide positive value for txpool.pricelimit")
 		}
-		config.TxPool.PriceLimit = harmonyconfig.PriceLimit(value)
+		config.TxPool.PriceLimit = intelchainconfig.PriceLimit(value)
 	}
 	if cli.IsFlagChanged(cmd, tpPriceBumpFlag) {
 		value := cli.GetIntFlagValue(cmd, tpPriceBumpFlag)
@@ -1348,7 +1348,7 @@ var (
 	}
 )
 
-func applyPprofFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyPprofFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	var pprofSet bool
 	if cli.IsFlagChanged(cmd, pprofListenAddrFlag) {
 		config.Pprof.ListenAddr = cli.GetStringFlagValue(cmd, pprofListenAddrFlag)
@@ -1401,7 +1401,7 @@ var (
 	}
 	logFileNameFlag = cli.StringFlag{
 		Name:     "log.name",
-		Usage:    "log file name (e.g. harmony.log)",
+		Usage:    "log file name (e.g. intelchain.log)",
 		DefValue: defaultConfig.Log.FileName,
 	}
 	logVerbosityFlag = cli.IntFlag{
@@ -1453,7 +1453,7 @@ var (
 	}
 )
 
-func applyLogFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyLogFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, logFolderFlag) {
 		config.Log.Folder = cli.GetStringFlagValue(cmd, logFolderFlag)
 	} else if cli.IsFlagChanged(cmd, legacyLogFolderFlag) {
@@ -1486,7 +1486,7 @@ func applyLogFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 
 	if cli.IsFlagChanged(cmd, logVerbosePrintsFlag) {
 		verbosePrintsFlagSlice := cli.GetStringSliceFlagValue(cmd, logVerbosePrintsFlag)
-		config.Log.VerbosePrints = harmonyconfig.FlagSliceToLogVerbosePrints(verbosePrintsFlagSlice)
+		config.Log.VerbosePrints = intelchainconfig.FlagSliceToLogVerbosePrints(verbosePrintsFlagSlice)
 	}
 
 	if cli.IsFlagChanged(cmd, logConsoleFlag) {
@@ -1515,7 +1515,7 @@ var (
 	}
 )
 
-func applySysFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applySysFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.HasFlagsChanged(cmd, sysFlags) || config.Sys == nil {
 		cfg := getDefaultSysConfigCopy()
 		config.Sys = &cfg
@@ -1539,10 +1539,10 @@ var (
 		DefValue: defaultDevnetConfig.ShardSize,
 		Hidden:   true,
 	}
-	devnetHmyNodeSizeFlag = cli.IntFlag{
-		Name:     "devnet.hmy-node-size",
-		Usage:    "number of Harmony-operated nodes per shard for devnet (negative means equal to --devnet.shard-size)",
-		DefValue: defaultDevnetConfig.HmyNodeSize,
+	devnetItcNodeSizeFlag = cli.IntFlag{
+		Name:     "devnet.itc-node-size",
+		Usage:    "number of intelchain-operated nodes per shard for devnet (negative means equal to --devnet.shard-size)",
+		DefValue: defaultDevnetConfig.ItcNodeSize,
 		Hidden:   true,
 	}
 	legacyDevnetNumShardsFlag = cli.IntFlag{
@@ -1557,15 +1557,15 @@ var (
 		DefValue:   defaultDevnetConfig.ShardSize,
 		Deprecated: "use --devnet.shard-size",
 	}
-	legacyDevnetHmyNodeSizeFlag = cli.IntFlag{
-		Name:       "dn_hmy_size",
-		Usage:      "number of Harmony-operated nodes per shard for -network_type=devnet; negative means equal to -dn_shard_size",
-		DefValue:   defaultDevnetConfig.HmyNodeSize,
-		Deprecated: "use --devnet.hmy-node-size",
+	legacyDevnetItcNodeSizeFlag = cli.IntFlag{
+		Name:       "dn_itc_size",
+		Usage:      "number of intelchain-operated nodes per shard for -network_type=devnet; negative means equal to -dn_shard_size",
+		DefValue:   defaultDevnetConfig.ItcNodeSize,
+		Deprecated: "use --devnet.itc-node-size",
 	}
 )
 
-func applyDevnetFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyDevnetFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.HasFlagsChanged(cmd, devnetFlags) && config.Devnet == nil {
 		cfg := getDefaultDevnetConfigCopy()
 		config.Devnet = &cfg
@@ -1578,8 +1578,8 @@ func applyDevnetFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 		if cli.IsFlagChanged(cmd, devnetShardSizeFlag) {
 			config.Devnet.ShardSize = cli.GetIntFlagValue(cmd, devnetShardSizeFlag)
 		}
-		if cli.IsFlagChanged(cmd, devnetHmyNodeSizeFlag) {
-			config.Devnet.HmyNodeSize = cli.GetIntFlagValue(cmd, devnetHmyNodeSizeFlag)
+		if cli.IsFlagChanged(cmd, devnetItcNodeSizeFlag) {
+			config.Devnet.ItcNodeSize = cli.GetIntFlagValue(cmd, devnetItcNodeSizeFlag)
 		}
 	}
 	if cli.HasFlagsChanged(cmd, legacyDevnetFlags) {
@@ -1589,14 +1589,14 @@ func applyDevnetFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
 		if cli.IsFlagChanged(cmd, legacyDevnetShardSizeFlag) {
 			config.Devnet.ShardSize = cli.GetIntFlagValue(cmd, legacyDevnetShardSizeFlag)
 		}
-		if cli.IsFlagChanged(cmd, legacyDevnetHmyNodeSizeFlag) {
-			config.Devnet.HmyNodeSize = cli.GetIntFlagValue(cmd, legacyDevnetHmyNodeSizeFlag)
+		if cli.IsFlagChanged(cmd, legacyDevnetItcNodeSizeFlag) {
+			config.Devnet.ItcNodeSize = cli.GetIntFlagValue(cmd, legacyDevnetItcNodeSizeFlag)
 		}
 	}
 
 	if config.Devnet != nil {
-		if config.Devnet.HmyNodeSize < 0 || config.Devnet.HmyNodeSize > config.Devnet.ShardSize {
-			config.Devnet.HmyNodeSize = config.Devnet.ShardSize
+		if config.Devnet.ItcNodeSize < 0 || config.Devnet.ItcNodeSize > config.Devnet.ShardSize {
+			config.Devnet.ItcNodeSize = config.Devnet.ShardSize
 		}
 	}
 }
@@ -1640,7 +1640,7 @@ var (
 	}
 )
 
-func applyRevertFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyRevertFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.HasFlagsChanged(cmd, revertFlags) {
 		cfg := getDefaultRevertConfigCopy()
 		config.Revert = &cfg
@@ -1698,7 +1698,7 @@ var (
 	}
 )
 
-func applyPreimageFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyPreimageFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.HasFlagsChanged(cmd, preimageFlags) {
 		cfg := getDefaultPreimageConfigCopy()
 		config.Preimage = &cfg
@@ -1751,7 +1751,7 @@ var (
 )
 
 // Note: this function need to be called before parse other flags
-func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyLegacyMiscFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyPortFlag) {
 		legacyPort := cli.GetIntFlagValue(cmd, legacyPortFlag)
 		config.P2P.Port = legacyPort
@@ -1788,7 +1788,7 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfi
 		logPort := cli.GetIntFlagValue(cmd, legacyPortFlag)
 		config.Log.FileName = fmt.Sprintf("validator-%v-%v.log", logIP, logPort)
 
-		logCtx := &harmonyconfig.LogContext{
+		logCtx := &intelchainconfig.LogContext{
 			IP:   logIP,
 			Port: logPort,
 		}
@@ -1796,7 +1796,7 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfi
 	}
 
 	if cli.HasFlagsChanged(cmd, []cli.Flag{legacyWebHookConfigFlag, legacyTPBroadcastInvalidTxFlag}) {
-		config.Legacy = &harmonyconfig.LegacyConfig{}
+		config.Legacy = &intelchainconfig.LegacyConfig{}
 		if cli.IsFlagChanged(cmd, legacyWebHookConfigFlag) {
 			val := cli.GetStringFlagValue(cmd, legacyWebHookConfigFlag)
 			config.Legacy.WebHookConfig = &val
@@ -1837,7 +1837,7 @@ var (
 	}
 )
 
-func applyPrometheusFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applyPrometheusFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if config.Prometheus == nil {
 		cfg := getDefaultPrometheusConfigCopy()
 		config.Prometheus = &cfg
@@ -1936,7 +1936,7 @@ var (
 )
 
 // applySyncFlags apply the sync flags.
-func applySyncFlags(cmd *cobra.Command, config *harmonyconfig.HarmonyConfig) {
+func applySyncFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, syncStreamEnabledFlag) {
 		config.Sync.Enabled = cli.GetBoolFlagValue(cmd, syncStreamEnabledFlag)
 	}
@@ -2070,7 +2070,7 @@ var (
 	}
 )
 
-func applyShardDataFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
+func applyShardDataFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, enableShardDataFlag) {
 		cfg.ShardData.EnableShardData = cli.GetBoolFlagValue(cmd, enableShardDataFlag)
 	}
@@ -2088,7 +2088,7 @@ func applyShardDataFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
 	}
 }
 
-func applyGPOFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
+func applyGPOFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, gpoBlocksFlag) {
 		cfg.GPO.Blocks = cli.GetIntFlagValue(cmd, gpoBlocksFlag)
 	}
@@ -2151,7 +2151,7 @@ var (
 	}
 )
 
-func applyCacheFlags(cmd *cobra.Command, cfg *harmonyconfig.HarmonyConfig) {
+func applyCacheFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
 	if cli.IsFlagChanged(cmd, cacheDisabled) {
 		cfg.Cache.Disabled = cli.GetBoolFlagValue(cmd, cacheDisabled)
 	}

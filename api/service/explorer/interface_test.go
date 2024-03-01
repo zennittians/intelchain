@@ -92,7 +92,7 @@ func prepareTestLvlDB(db database) error {
 
 func tempTestDir(t *testing.T, index int) string {
 	tempDir := os.TempDir()
-	testDir := path.Join(tempDir, "harmony", "explorer_db", t.Name(), strconv.Itoa(index))
+	testDir := path.Join(tempDir, "intelchain", "explorer_db", t.Name(), strconv.Itoa(index))
 	os.RemoveAll(testDir)
 	return testDir
 }
@@ -237,7 +237,7 @@ func makeTestTxHash(index int) common.Hash {
 	return h
 }
 
-func makeOneAddress(index int) oneAddress {
+func makeItcAddress(index int) oneAddress {
 	var raw common.Address
 	binary.LittleEndian.PutUint64(raw[:], uint64(index))
 	oneAddr, err := common2.AddressToBech32(raw)

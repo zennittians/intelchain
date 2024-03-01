@@ -8,7 +8,7 @@ import (
 	"github.com/zennittians/intelchain/internal/utils"
 )
 
-// SnapdbInfo only used by cmd/harmony/dumpdb.go
+// SnapdbInfo only used by cmd/intelchain/dumpdb.go
 type SnapdbInfo struct {
 	NetworkType         nodeconfig.NetworkType // network type
 	BlockHeader         *block.Header          // latest header at snapshot

@@ -18,7 +18,7 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	hmytypes "github.com/zennittians/intelchain/core/types"
+	itctypes "github.com/zennittians/intelchain/core/types"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
 	"github.com/zennittians/intelchain/test/helpers"
 )
@@ -34,7 +34,7 @@ func TestUnpackWrappedTransactionFromString(t *testing.T) {
 		t.Fatal(rosettaError)
 	}
 	refEstGasUsed := big.NewInt(100000)
-	signer := hmytypes.NewEIP155Signer(big.NewInt(0))
+	signer := itctypes.NewEIP155Signer(big.NewInt(0))
 
 	// Test plain transactions
 	tx, err := helpers.CreateTestTransaction(
@@ -475,7 +475,7 @@ func stakingCreateValidatorTransaction(key *ecdsa.PrivateKey) (*stakingTypes.Sta
 			Description: stakingTypes.Description{
 				Name:            "Alice",
 				Identity:        "alice",
-				Website:         "alice.harmony.one",
+				Website:         "alice.intelchain.org",
 				SecurityContact: "Bob",
 				Details:         "Don't mess with me!!!",
 			},
@@ -527,7 +527,7 @@ func stakingEditValidatorTransaction(key *ecdsa.PrivateKey) (*stakingTypes.Staki
 			Description: stakingTypes.Description{
 				Name:            "Alice",
 				Identity:        "alice",
-				Website:         "alice.harmony.one",
+				Website:         "alice.intelchain.org",
 				SecurityContact: "Bob",
 				Details:         "Don't mess with me!!!",
 			},

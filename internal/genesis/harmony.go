@@ -1,7 +1,7 @@
 package genesis
 
-// HarmonyAccounts are the accounts for the initial genesis nodes hosted by Harmony.
-var HarmonyAccounts = []DeployAccount{
+// IntelchainAccounts are the accounts for the initial genesis nodes hosted by Intelchain.
+var IntelchainAccounts = []DeployAccount{
 	{Index: " 0 ", Address: "one1gh043zc95e6mtutwy5a2zhvsxv7lnlklkj42ux", BLSPublicKey: "ca23704be46ce9c4704681ac9c08ddc644f1858a5c28ce236e1b5d9dee67c1f5a28075b5ef089adeffa8a372c1762007"},
 	{Index: " 1 ", Address: "one1u0kt4ng2x9c0zl0jv57rwj4rvw8fhem2vqksdv", BLSPublicKey: "c6c008ec354ac776fce5c24ce46d5a9897449b66d91d8bbe2ca0249f1e1fce1a5577cf6f91067b060ee20114ac726297"},
 	{Index: " 2 ", Address: "one1xdnm2fj6hyk7e49af2h9dmudkdlta9q354094e", BLSPublicKey: "f9a835dac43236ded1899257c904da922a9a86242ccced1f782eed8f9df6732c0d44f56280d2ca1689db878c2f14d285"},
@@ -808,10 +808,10 @@ var HarmonyAccounts = []DeployAccount{
 	{Index: " 803 ", Address: "one1rvp6sp854guwtt8twrkt9hvezs2fujgcyarmtv", BLSPublicKey: "c2962419d9999a87daa134f6d177f9ccabfe168a470587b13dd02ce91d1690a92170e5949d3dbdfc1b13fd7327dbef8c"},
 }
 
-// HarmonyAccountsPostHIP30 are the accounts after shard and node count reduction.
-// It is calculated by removing shard 2 / 3 keys from HarmonyAccounts.
+// IntelchainAccountsPostHIP30 are the accounts after shard and node count reduction.
+// It is calculated by removing shard 2 / 3 keys from IntelchainAccounts.
 // There is no need to remove 10% (40) keys from the bottom because they will simply be unelected
-var HarmonyAccountsPostHIP30 = []DeployAccount{
+var IntelchainAccountsPostHIP30 = []DeployAccount{
 	{Index: " 0 ", Address: "one1gh043zc95e6mtutwy5a2zhvsxv7lnlklkj42ux", BLSPublicKey: "ca23704be46ce9c4704681ac9c08ddc644f1858a5c28ce236e1b5d9dee67c1f5a28075b5ef089adeffa8a372c1762007"},
 	{Index: " 1 ", Address: "one1u0kt4ng2x9c0zl0jv57rwj4rvw8fhem2vqksdv", BLSPublicKey: "c6c008ec354ac776fce5c24ce46d5a9897449b66d91d8bbe2ca0249f1e1fce1a5577cf6f91067b060ee20114ac726297"},
 	{Index: " 4 ", Address: "one1jyvcqu4k0rszgf3r2a02tm89dzd68arw5lz9vl", BLSPublicKey: "50b20b4eb89041aa4715e87e4aa6430e674658959d8be657d43e4d3d4c35d7507d6a40aec5188218dcbb5460e354fd12"},

@@ -1,5 +1,5 @@
 // Package prometheus defines a service which is used for metrics collection
-// and health of a node in Harmony.
+// and health of a node in intelchain.
 package prometheus
 
 import (
@@ -28,7 +28,7 @@ type Config struct {
 	EnablePush bool   // enable pushgateway support
 	Gateway    string // address of the pushgateway
 	Network    string // network type, used as job prefix
-	Legacy     bool   // legacy or not, legacy is harmony internal node
+	Legacy     bool   // legacy or not, legacy is intelchain internal node
 	NodeType   string // node type, validator or exlorer node
 	Shard      uint32 // shard id, used as job suffix
 	Instance   string // identifier of the instance in prometheus metrics
@@ -71,7 +71,7 @@ func (s *Service) getJobName() string {
 
 	if s.config.IsUsedTiKV() { // tikv node must be explorer node, eg: te_reader0, te_writer0
 		node = "te_" + strings.ToLower(s.config.TikvRole)
-	} else if s.config.Legacy { // legacy nodes are harmony nodes: s0,s1,s2,s3
+	} else if s.config.Legacy { // legacy nodes are intelchain nodes: s0,s1,s2,s3
 		node = "s"
 	} else {
 		if s.config.NodeType == "validator" {

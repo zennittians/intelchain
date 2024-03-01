@@ -247,7 +247,7 @@ type Validator struct {
 const MaxBLSPerValidator = 106
 
 var (
-	oneAsBigInt  = big.NewInt(denominations.One)
+	oneAsBigInt  = big.NewInt(denominations.Itc)
 	minimumStake = new(big.Int).Mul(oneAsBigInt, big.NewInt(TenThousand))
 )
 
@@ -531,14 +531,14 @@ func VerifyBLSKey(pubKey *bls.SerializedPublicKey, pubKeySig *bls.SerializedSign
 	return nil
 }
 
-func containsHarmonyBLSKeys(
+func containsIntelchainBLSKeys(
 	blsKeys []bls.SerializedPublicKey,
-	hmyAccounts []genesis.DeployAccount,
+	itcAccounts []genesis.DeployAccount,
 	epoch *big.Int,
 ) error {
 	for i := range blsKeys {
-		if err := matchesHarmonyBLSKey(
-			&blsKeys[i], hmyAccounts, epoch,
+		if err := matchesIntelchainBLSKey(
+			&blsKeys[i], itcAccounts, epoch,
 		); err != nil {
 			return err
 		}
@@ -546,9 +546,9 @@ func containsHarmonyBLSKeys(
 	return nil
 }
 
-func matchesHarmonyBLSKey(
+func matchesIntelchainBLSKey(
 	blsKey *bls.SerializedPublicKey,
-	hmyAccounts []genesis.DeployAccount,
+	itcAccounts []genesis.DeployAccount,
 	epoch *big.Int,
 ) error {
 	type publicKeyAsHex = string
@@ -558,9 +558,9 @@ func matchesHarmonyBLSKey(
 		if _, ok := cache[key]; !ok {
 			// one time cost per epoch
 			cache[key] = map[publicKeyAsHex]struct{}{}
-			for i := range hmyAccounts {
+			for i := range itcAccounts {
 				// invariant assume it is hex
-				cache[key][hmyAccounts[i].BLSPublicKey] = struct{}{}
+				cache[key][itcAccounts[i].BLSPublicKey] = struct{}{}
 			}
 		}
 
@@ -588,8 +588,8 @@ func CreateValidatorFromNewMsg(
 	pubKeys := append(val.SlotPubKeys[0:0], val.SlotPubKeys...)
 
 	instance := shard.Schedule.InstanceForEpoch(epoch)
-	if err := containsHarmonyBLSKeys(
-		pubKeys, instance.HmyAccounts(), epoch,
+	if err := containsIntelchainBLSKeys(
+		pubKeys, instance.ItcAccounts(), epoch,
 	); err != nil {
 		return nil, err
 	}
@@ -664,8 +664,8 @@ func UpdateValidatorFromEditMsg(validator *Validator, edit *EditValidator, epoch
 		}
 		if !found {
 			instance := shard.Schedule.InstanceForEpoch(epoch)
-			if err := matchesHarmonyBLSKey(
-				edit.SlotKeyToAdd, instance.HmyAccounts(), epoch,
+			if err := matchesIntelchainBLSKey(
+				edit.SlotKeyToAdd, instance.ItcAccounts(), epoch,
 			); err != nil {
 				return err
 			}

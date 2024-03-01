@@ -6,7 +6,7 @@ import (
 	"github.com/zennittians/intelchain/internal/common"
 )
 
-// MustBech32ToAddressH is a wrapper for casting ethCommon.Address to harmony's common.Address
+// MustBech32ToAddressH is a wrapper for casting ethCommon.Address to Intelchain's common.Address
 func MustBech32ToAddressH(b32 string) common.Address {
 	return common.Address(common.MustBech32ToAddress(b32))
 }

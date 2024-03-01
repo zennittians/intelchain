@@ -144,7 +144,7 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 	}
 	var input string
 	if err := json.Unmarshal(data, &input); err != nil {
-		var numInput int64 // old hmy rpc use number type as input
+		var numInput int64 // old itc rpc use number type as input
 		if err := json.Unmarshal(data, &numInput); err != nil {
 			return err
 		}

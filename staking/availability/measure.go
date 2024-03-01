@@ -101,7 +101,7 @@ func bumpCount(
 		for i := range subset.committee {
 			addr := subset.committee[i].EcdsaAddress
 			// NOTE if the signer address is not part of the staked addrs,
-			// then it must be a harmony operated node running,
+			// then it must be a Intelchain operated node running,
 			// hence keep on going
 			if _, isAddrForStaked := stakedAddrSet[addr]; !isAddrForStaked {
 				continue

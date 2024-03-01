@@ -93,7 +93,7 @@ func TestGetNormalTxnHashesByAccount(t *testing.T) {
 	}
 	// Checking results.
 	for i := 0; i != 10; i++ {
-		addr := makeOneAddress(i)
+		addr := makeItcAddress(i)
 		hashes, tts, err := getNormalTxnHashesByAccount(db, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -164,7 +164,7 @@ func TestGetStakingTxnHashesByAccount(t *testing.T) {
 	}
 	// Checking results.
 	for i := 0; i != 10; i++ {
-		addr := makeOneAddress(i)
+		addr := makeItcAddress(i)
 		hashes, tts, err := getStakingTxnHashesByAccount(db, addr)
 		if err != nil {
 			t.Fatal(err)
@@ -215,7 +215,7 @@ func TestGetAllAddresses(t *testing.T) {
 func makeAddresses(size int) []oneAddress {
 	var addrs []oneAddress
 	for i := 0; i != size; i++ {
-		addrs = append(addrs, makeOneAddress(i))
+		addrs = append(addrs, makeItcAddress(i))
 	}
 	return addrs
 }
@@ -226,7 +226,7 @@ func makeTestNormalIndexes(addrNum int) []normalTxnIndex {
 	for i := 0; i != addrNum; i++ {
 		for j := 0; j != i; j++ {
 			indexes = append(indexes, normalTxnIndex{
-				addr:        makeOneAddress(i),
+				addr:        makeItcAddress(i),
 				blockNumber: uint64(j),
 				txnIndex:    0,
 				txnHash:     makeTestTxHash(j),
@@ -242,7 +242,7 @@ func makeTestStakingIndexes(addrNum int) []stakingTxnIndex {
 	for i := 0; i != addrNum; i++ {
 		for j := 0; j != i; j++ {
 			indexes = append(indexes, stakingTxnIndex{
-				addr:        makeOneAddress(i),
+				addr:        makeItcAddress(i),
 				blockNumber: uint64(j),
 				txnIndex:    0,
 				txnHash:     makeTestTxHash(j + 999999),

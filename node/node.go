@@ -18,7 +18,7 @@ import (
 	"github.com/zennittians/intelchain/internal/utils/lrucache"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	harmonyconfig "github.com/zennittians/intelchain/internal/configs/harmony"
+	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	"github.com/zennittians/intelchain/internal/utils/crosslinks"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -121,7 +121,7 @@ type Node struct {
 	serviceManager               *service.Manager
 	ContractDeployerCurrentNonce uint64 // The nonce of the deployer contract at current block
 	ContractAddresses            []common.Address
-	HarmonyConfig                *harmonyconfig.HarmonyConfig
+	IntelchainConfig             *intelchainconfig.IntelchainConfig
 	// node configuration, including group ID, shard ID, etc
 	NodeConfig *nodeconfig.ConfigType
 	// Chain configuration.
@@ -177,7 +177,7 @@ func (node *Node) GetOrCreateSyncInstance(initiate bool) ISync {
 // Beaconchain returns the beacon chain from node.
 func (node *Node) Beaconchain() core.BlockChain {
 	// tikv mode not have the BeaconChain storage
-	if node.HarmonyConfig != nil && node.HarmonyConfig.General.RunElasticMode && node.HarmonyConfig.General.ShardID != shard.BeaconChainShardID {
+	if node.IntelchainConfig != nil && node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.General.ShardID != shard.BeaconChainShardID {
 		return nil
 	}
 
@@ -193,7 +193,7 @@ func (node *Node) chain(shardID uint32, options core.Options) core.BlockChain {
 		utils.Logger().Error().Err(err).Msg("cannot get beaconchain")
 	}
 	// only available in validator node and shard 1-3
-	isEnablePruneBeaconChain := node.HarmonyConfig != nil && node.HarmonyConfig.General.EnablePruneBeaconChain
+	isEnablePruneBeaconChain := node.IntelchainConfig != nil && node.IntelchainConfig.General.EnablePruneBeaconChain
 	isNotBeaconChainValidator := node.NodeConfig.Role() == nodeconfig.Validator && node.NodeConfig.ShardID != shard.BeaconChainShardID
 	if isEnablePruneBeaconChain && isNotBeaconChainValidator {
 		bc.EnablePruneBeaconChainFeature()
@@ -481,7 +481,7 @@ func (node *Node) validateNodeMessage(ctx context.Context, payload []byte) (
 			nodeNodeMessageCounterVec.With(prometheus.Labels{"type": "block_sync"}).Inc()
 
 			// in tikv mode, not need BeaconChain message
-			if node.HarmonyConfig.General.RunElasticMode && node.HarmonyConfig.General.ShardID != shard.BeaconChainShardID {
+			if node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.General.ShardID != shard.BeaconChainShardID {
 				return nil, 0, errIgnoreBeaconMsg
 			}
 
@@ -669,7 +669,7 @@ func validateShardBoundMessage(consensus *consensus.Consensus, peer libp2p_peer.
 }
 
 var (
-	errMsgHadNoHMYPayLoadAssumption      = errors.New("did not have sufficient size for hmy msg")
+	errMsgHadNoITCPayLoadAssumption      = errors.New("did not have sufficient size for itc msg")
 	errConsensusMessageOnUnexpectedTopic = errors.New("received consensus on wrong topic")
 )
 
@@ -773,16 +773,16 @@ func (node *Node) StartPubSub() error {
 			// this is the validation function called to quickly validate every p2p message
 			func(ctx context.Context, peer libp2p_peer.ID, msg *libp2p_pubsub.Message) libp2p_pubsub.ValidationResult {
 				nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "total"}).Inc()
-				hmyMsg := msg.GetData()
+				itcMsg := msg.GetData()
 
 				// first to validate the size of the p2p message
-				if len(hmyMsg) < p2pMsgPrefixSize {
+				if len(itcMsg) < p2pMsgPrefixSize {
 					// TODO (lc): block peers sending empty messages
 					nodeP2PMessageCounterVec.With(prometheus.Labels{"type": "invalid_size"}).Inc()
 					return libp2p_pubsub.ValidationReject
 				}
 
-				openBox := hmyMsg[p2pMsgPrefixSize:]
+				openBox := itcMsg[p2pMsgPrefixSize:]
 
 				// validate message category
 				switch proto.MessageCategory(openBox[proto.MessageCategoryBytes-1]) {
@@ -1024,7 +1024,7 @@ func New(
 	blacklist map[common.Address]struct{},
 	allowedTxs map[common.Address][]core.AllowedTxData,
 	localAccounts []common.Address,
-	harmonyconfig *harmonyconfig.HarmonyConfig,
+	intelchainconfig *intelchainconfig.IntelchainConfig,
 	registry *registry.Registry,
 ) *Node {
 	node := Node{
@@ -1038,9 +1038,9 @@ func New(
 	if consensusObj == nil {
 		panic("consensusObj is nil")
 	}
-	// Get the node config that's created in the harmony.go program.
+	// Get the node config that's created in the intelchain.go program.
 	node.NodeConfig = nodeconfig.GetShardConfig(consensusObj.ShardID)
-	node.HarmonyConfig = harmonyconfig
+	node.IntelchainConfig = intelchainconfig
 
 	if host != nil {
 		node.host = host
@@ -1067,7 +1067,7 @@ func New(
 
 		if b1, b2 := beaconChain == nil, blockchain == nil; b1 || b2 {
 			// in tikv mode, not need BeaconChain
-			if !(node.HarmonyConfig != nil && node.HarmonyConfig.General.RunElasticMode) || node.HarmonyConfig.General.ShardID == shard.BeaconChainShardID {
+			if !(node.IntelchainConfig != nil && node.IntelchainConfig.General.RunElasticMode) || node.IntelchainConfig.General.ShardID == shard.BeaconChainShardID {
 				var err error
 				if b2 {
 					shardID := node.NodeConfig.ShardID
@@ -1084,15 +1084,15 @@ func New(
 		node.BeaconBlockChannel = make(chan *types.Block)
 		txPoolConfig := core.DefaultTxPoolConfig
 
-		if harmonyconfig != nil {
-			txPoolConfig.AccountSlots = harmonyconfig.TxPool.AccountSlots
-			txPoolConfig.GlobalSlots = harmonyconfig.TxPool.GlobalSlots
+		if intelchainconfig != nil {
+			txPoolConfig.AccountSlots = intelchainconfig.TxPool.AccountSlots
+			txPoolConfig.GlobalSlots = intelchainconfig.TxPool.GlobalSlots
 			txPoolConfig.Locals = append(txPoolConfig.Locals, localAccounts...)
-			txPoolConfig.AccountQueue = harmonyconfig.TxPool.AccountQueue
-			txPoolConfig.GlobalQueue = harmonyconfig.TxPool.GlobalQueue
-			txPoolConfig.Lifetime = harmonyconfig.TxPool.Lifetime
-			txPoolConfig.PriceLimit = uint64(harmonyconfig.TxPool.PriceLimit)
-			txPoolConfig.PriceBump = harmonyconfig.TxPool.PriceBump
+			txPoolConfig.AccountQueue = intelchainconfig.TxPool.AccountQueue
+			txPoolConfig.GlobalQueue = intelchainconfig.TxPool.GlobalQueue
+			txPoolConfig.Lifetime = intelchainconfig.TxPool.Lifetime
+			txPoolConfig.PriceLimit = uint64(intelchainconfig.TxPool.PriceLimit)
+			txPoolConfig.PriceBump = intelchainconfig.TxPool.PriceBump
 		}
 		// Temporarily not updating other networks to make the rpc tests pass
 		if node.NodeConfig.GetNetworkType() != nodeconfig.Mainnet && node.NodeConfig.GetNetworkType() != nodeconfig.Testnet {
@@ -1106,7 +1106,7 @@ func New(
 		txPoolConfig.AddEvent = func(tx types.PoolTransaction, local bool) {
 			// in tikv mode, writer will publish tx pool update to all reader
 			if node.Blockchain().IsTikvWriterMaster() {
-				err := redis_helper.PublishTxPoolUpdate(uint32(harmonyconfig.General.ShardID), tx, local)
+				err := redis_helper.PublishTxPoolUpdate(uint32(intelchainconfig.General.ShardID), tx, local)
 				if err != nil {
 					utils.Logger().Warn().Err(err).Msg("redis publish txpool update error")
 				}
@@ -1167,7 +1167,7 @@ func New(
 	}
 
 	// in tikv mode, not need BeaconChain
-	if !(node.HarmonyConfig != nil && node.HarmonyConfig.General.RunElasticMode) || node.HarmonyConfig.General.ShardID == shard.BeaconChainShardID {
+	if !(node.IntelchainConfig != nil && node.IntelchainConfig.General.RunElasticMode) || node.IntelchainConfig.General.ShardID == shard.BeaconChainShardID {
 		// update reward values now that node is ready
 		node.updateInitialRewardValues()
 	}
@@ -1284,7 +1284,7 @@ func (node *Node) ShutDown() {
 	node.Blockchain().Stop()
 	node.Beaconchain().Stop()
 
-	if node.HarmonyConfig.General.RunElasticMode {
+	if node.IntelchainConfig.General.RunElasticMode {
 		_, _ = node.Blockchain().RedisPreempt().Unlock()
 		_, _ = node.Beaconchain().RedisPreempt().Unlock()
 
@@ -1397,7 +1397,7 @@ func (node *Node) syncFromTiKVWriter() {
 				if err != nil {
 					panic(err)
 				}
-				err = os.WriteFile(fmt.Sprintf("/local/%s", time.Now().Format("hmy_0102150405.error.log")), buf.Bytes(), 0644)
+				err = os.WriteFile(fmt.Sprintf("/local/%s", time.Now().Format("itc_0102150405.error.log")), buf.Bytes(), 0644)
 				if err != nil {
 					panic(err)
 				}
@@ -1416,7 +1416,7 @@ func (node *Node) syncFromTiKVWriter() {
 	})
 
 	// subscribe txpool update
-	if node.HarmonyConfig.TiKV.Role == tikv.RoleReader {
+	if node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
 		go redis_helper.SubscribeTxPoolUpdate(bc.ShardID(), func(tx types.PoolTransaction, local bool) {
 			var err error
 			if local {

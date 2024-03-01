@@ -43,7 +43,7 @@ func (role Role) String() string {
 	}
 }
 
-// NetworkType describes the type of Harmony network
+// NetworkType describes the type of Intelchain network
 type NetworkType string
 
 // Constants for NetworkType
