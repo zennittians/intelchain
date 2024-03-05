@@ -237,12 +237,12 @@ func makeTestTxHash(index int) common.Hash {
 	return h
 }
 
-func makeItcAddress(index int) oneAddress {
+func makeItcAddress(index int) itcAddress {
 	var raw common.Address
 	binary.LittleEndian.PutUint64(raw[:], uint64(index))
 	oneAddr, err := common2.AddressToBech32(raw)
 	if err != nil {
 		panic(err)
 	}
-	return oneAddress(oneAddr)
+	return itcAddress(oneAddr)
 }

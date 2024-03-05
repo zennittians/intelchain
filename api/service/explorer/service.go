@@ -171,7 +171,7 @@ func (s *Service) GetAddresses(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	data.Addresses, err = s.storage.GetAddresses(size, oneAddress(prefix))
+	data.Addresses, err = s.storage.GetAddresses(size, itcAddress(prefix))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.Logger().Warn().Err(err).Msg("wasn't able to fetch addresses from storage")

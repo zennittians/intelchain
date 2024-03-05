@@ -108,7 +108,7 @@ func (m *migrationV100) progressReportLoop() {
 }
 
 func (m *migrationV100) doMigration() error {
-	err := m.forEachLegacyAddressInfo(func(addr oneAddress, addrInfo *Address) error {
+	err := m.forEachLegacyAddressInfo(func(addr itcAddress, addrInfo *Address) error {
 		if err := m.flushDBIfBatchFull(); err != nil {
 			return err
 		}
@@ -134,14 +134,14 @@ func (m *migrationV100) doMigration() error {
 
 func (m *migrationV100) estimateTotalAddressCount() error {
 	m.totalNum = 0
-	err := m.forEachLegacyAddressInfo(func(addr oneAddress, addrInfo *Address) error {
+	err := m.forEachLegacyAddressInfo(func(addr itcAddress, addrInfo *Address) error {
 		m.totalNum++
 		return nil
 	})
 	return err
 }
 
-func (m *migrationV100) forEachLegacyAddressInfo(f func(addr oneAddress, addrInfo *Address) error) error {
+func (m *migrationV100) forEachLegacyAddressInfo(f func(addr itcAddress, addrInfo *Address) error) error {
 	it := m.db.NewPrefixIterator([]byte(LegAddressPrefix))
 	defer it.Release()
 
@@ -153,7 +153,7 @@ func (m *migrationV100) forEachLegacyAddressInfo(f func(addr oneAddress, addrInf
 		if len(key) < legAddressPrefixLen {
 			return fmt.Errorf("address prefix len smaller than 3: %v", key)
 		}
-		addr := oneAddress(key[legAddressPrefixLen:])
+		addr := itcAddress(key[legAddressPrefixLen:])
 		var addrInfo *Address
 		if err := rlp.DecodeBytes(val, &addrInfo); err != nil {
 			return errors.Wrapf(err, "address %v", addr)
@@ -167,7 +167,7 @@ func (m *migrationV100) forEachLegacyAddressInfo(f func(addr oneAddress, addrInf
 
 // migrateLegacyAddress migrate the legacy Address info to the new schema.
 // The data is cached at batch.
-func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *Address) error {
+func (m *migrationV100) migrateLegacyAddressToBatch(addr itcAddress, addrInfo *Address) error {
 	written, err := isAddressWritten(m.db, addr)
 	if written || err != nil {
 		return err
@@ -187,7 +187,7 @@ func (m *migrationV100) migrateLegacyAddressToBatch(addr oneAddress, addrInfo *A
 	return nil
 }
 
-func (m *migrationV100) migrateLegacyNormalTx(addr oneAddress, legTx *LegTxRecord) error {
+func (m *migrationV100) migrateLegacyNormalTx(addr itcAddress, legTx *LegTxRecord) error {
 	txHash := common.HexToHash(legTx.Hash)
 	_, bn, index := m.bc.ReadTxLookupEntry(txHash)
 	tx, tt, err := legTxRecordToTxRecord(legTx)
@@ -205,7 +205,7 @@ func (m *migrationV100) migrateLegacyNormalTx(addr oneAddress, legTx *LegTxRecor
 	return m.flushDBIfBatchFull()
 }
 
-func (m *migrationV100) migrateLegacyStakingTx(addr oneAddress, legTx *LegTxRecord) error {
+func (m *migrationV100) migrateLegacyStakingTx(addr itcAddress, legTx *LegTxRecord) error {
 	txHash := common.HexToHash(legTx.Hash)
 	_, bn, index := m.bc.ReadTxLookupEntry(txHash)
 
@@ -235,7 +235,7 @@ func (m *migrationV100) flushDBIfBatchFull() error {
 }
 
 func (m *migrationV100) checkResult() error {
-	err := m.forEachLegacyAddressInfo(func(addr oneAddress, addrInfo *Address) error {
+	err := m.forEachLegacyAddressInfo(func(addr itcAddress, addrInfo *Address) error {
 		select {
 		case <-m.closeC:
 			return errInterrupted
@@ -250,7 +250,7 @@ func (m *migrationV100) checkResult() error {
 	return err
 }
 
-func (m *migrationV100) checkMigratedAddress(addr oneAddress, addrInfo *Address) error {
+func (m *migrationV100) checkMigratedAddress(addr itcAddress, addrInfo *Address) error {
 	if addr == "" {
 		return nil // Contract creation. Skipping
 	}

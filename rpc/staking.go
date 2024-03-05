@@ -168,11 +168,11 @@ func (s *PublicStakingService) GetValidators(
 	validators := []StructuredResponse{}
 	for _, validator := range cmt.Slots {
 		// Fetch the balance of the validator
-		oneAddress, err := internal_common.AddressToBech32(validator.EcdsaAddress)
+		itcAddress, err := internal_common.AddressToBech32(validator.EcdsaAddress)
 		if err != nil {
 			return nil, err
 		}
-		validatorBalance, err := s.getBalanceByBlockNumber(ctx, oneAddress, rpc.BlockNumber(balanceQueryBlock))
+		validatorBalance, err := s.getBalanceByBlockNumber(ctx, itcAddress, rpc.BlockNumber(balanceQueryBlock))
 		if err != nil {
 			return nil, err
 		}
@@ -182,12 +182,12 @@ func (s *PublicStakingService) GetValidators(
 		switch s.version {
 		case V1:
 			validatorsFields = StructuredResponse{
-				"address": oneAddress,
+				"address": itcAddress,
 				"balance": (*hexutil.Big)(validatorBalance),
 			}
 		case V2:
 			validatorsFields = StructuredResponse{
-				"address": oneAddress,
+				"address": itcAddress,
 				"balance": validatorBalance,
 			}
 		default:

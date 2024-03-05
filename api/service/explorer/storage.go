@@ -170,7 +170,7 @@ func (s *storage) DumpCatchupBlock(b *types.Block) {
 	s.tm.AddCatchupTask(b)
 }
 
-func (s *storage) GetAddresses(size int, startAddress oneAddress) ([]string, error) {
+func (s *storage) GetAddresses(size int, startAddress itcAddress) ([]string, error) {
 	if !s.available.IsSet() {
 		return nil, ErrExplorerNotReady
 	}
@@ -189,14 +189,14 @@ func (s *storage) GetNormalTxsByAddress(addr string) ([]common.Hash, []TxType, e
 	if !s.available.IsSet() {
 		return nil, nil, ErrExplorerNotReady
 	}
-	return getNormalTxnHashesByAccount(s.db, oneAddress(addr))
+	return getNormalTxnHashesByAccount(s.db, itcAddress(addr))
 }
 
 func (s *storage) GetStakingTxsByAddress(addr string) ([]common.Hash, []TxType, error) {
 	if !s.available.IsSet() {
 		return nil, nil, ErrExplorerNotReady
 	}
-	return getStakingTxnHashesByAccount(s.db, oneAddress(addr))
+	return getStakingTxnHashesByAccount(s.db, itcAddress(addr))
 }
 
 func (s *storage) GetTraceResultByHash(hash common.Hash) (json.RawMessage, error) {
@@ -442,7 +442,7 @@ func (bc *blockComputer) computeBlock(b *types.Block) (*blockResult, error) {
 
 func (bc *blockComputer) computeNormalTx(btc batch, b *types.Block, tx *types.Transaction) {
 	ethFrom, _ := tx.SenderAddress()
-	from := ethToOneAddress(ethFrom)
+	from := ethToitcAddress(ethFrom)
 
 	_ = writeAddressEntry(btc, from)
 
@@ -456,7 +456,7 @@ func (bc *blockComputer) computeNormalTx(btc batch, b *types.Block, tx *types.Tr
 
 	ethTo := tx.To()
 	if ethTo != nil { // Skip for contract creation
-		to := ethToOneAddress(*ethTo)
+		to := ethToitcAddress(*ethTo)
 		_ = writeAddressEntry(btc, to)
 		_ = writeNormalTxnIndex(btc, normalTxnIndex{
 			addr:        to,
@@ -473,7 +473,7 @@ func (bc *blockComputer) computeNormalTx(btc batch, b *types.Block, tx *types.Tr
 
 func (bc *blockComputer) computeStakingTx(btc batch, b *types.Block, tx *staking.StakingTransaction) {
 	ethFrom, _ := tx.SenderAddress()
-	from := ethToOneAddress(ethFrom)
+	from := ethToitcAddress(ethFrom)
 	_ = writeAddressEntry(btc, from)
 	_, bn, index := bc.bc.ReadTxLookupEntry(tx.Hash())
 	_ = writeStakingTxnIndex(btc, stakingTxnIndex{
@@ -490,7 +490,7 @@ func (bc *blockComputer) computeStakingTx(btc batch, b *types.Block, tx *staking
 	if ethTo == (common.Address{}) {
 		return
 	}
-	to := ethToOneAddress(ethTo)
+	to := ethToitcAddress(ethTo)
 	_ = writeAddressEntry(btc, to)
 	_ = writeStakingTxnIndex(btc, stakingTxnIndex{
 		addr:        to,
@@ -500,9 +500,9 @@ func (bc *blockComputer) computeStakingTx(btc batch, b *types.Block, tx *staking
 	}, txReceived)
 }
 
-func ethToOneAddress(ethAddr common.Address) oneAddress {
+func ethToitcAddress(ethAddr common.Address) itcAddress {
 	raw, _ := common2.AddressToBech32(ethAddr)
-	return oneAddress(raw)
+	return itcAddress(raw)
 }
 
 func toFromStakingTx(tx *staking.StakingTransaction, addressBlock *types.Block) (common.Address, error) {

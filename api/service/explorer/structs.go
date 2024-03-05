@@ -18,7 +18,7 @@ import (
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
-type oneAddress string
+type itcAddress string
 
 type (
 	// TxRecord is the data structure stored in explorer db for the a Transaction record

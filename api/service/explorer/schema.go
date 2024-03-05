@@ -112,7 +112,7 @@ var (
 // bPool is the sync pool for reusing the memory for allocating db keys
 var bPool = buffer.NewPool()
 
-func getAddressKey(addr oneAddress) []byte {
+func getAddressKey(addr itcAddress) []byte {
 	b := bPool.Get()
 	defer b.Free()
 
@@ -121,26 +121,26 @@ func getAddressKey(addr oneAddress) []byte {
 	return b.Bytes()
 }
 
-func getAddressFromAddressKey(key []byte) (oneAddress, error) {
+func getAddressFromAddressKey(key []byte) (itcAddress, error) {
 	if len(key) < len(addrPrefix)+oneAddrByteLen {
 		return "", errors.New("address key size unexpected")
 	}
 	addrBytes := key[len(addrPrefix) : len(addrPrefix)+oneAddrByteLen]
-	return oneAddress(addrBytes), nil
+	return itcAddress(addrBytes), nil
 }
 
-func writeAddressEntry(db databaseWriter, addr oneAddress) error {
+func writeAddressEntry(db databaseWriter, addr itcAddress) error {
 	key := getAddressKey(addr)
 	return db.Put(key, []byte{})
 }
 
-func isAddressWritten(db databaseReader, addr oneAddress) (bool, error) {
+func isAddressWritten(db databaseReader, addr itcAddress) (bool, error) {
 	key := getAddressKey(addr)
 	return db.Has(key)
 }
 
-func getAllAddresses(db databaseReader) ([]oneAddress, error) {
-	var addrs []oneAddress
+func getAllAddresses(db databaseReader) ([]itcAddress, error) {
+	var addrs []itcAddress
 	it := db.NewPrefixIterator(addrPrefix)
 	defer it.Release()
 	for it.Next() {
@@ -153,8 +153,8 @@ func getAllAddresses(db databaseReader) ([]oneAddress, error) {
 	return addrs, nil
 }
 
-func getAddressesInRange(db databaseReader, start oneAddress, size int) ([]oneAddress, error) {
-	var addrs []oneAddress
+func getAddressesInRange(db databaseReader, start itcAddress, size int) ([]itcAddress, error) {
+	var addrs []itcAddress
 	startKey := getAddressKey(start)
 	it := db.NewSizedIterator(startKey, size)
 	defer it.Release()
@@ -205,7 +205,7 @@ func writeTxn(db databaseWriter, txHash common.Hash, tx *TxRecord) error {
 // The key of the entry in db is a combination of txnPrefix, account address, block
 // number of the transaction, transaction index in the block, and transaction hash
 type normalTxnIndex struct {
-	addr        oneAddress
+	addr        itcAddress
 	blockNumber uint64
 	txnIndex    uint64
 	txnHash     common.Hash
@@ -223,7 +223,7 @@ func (index normalTxnIndex) key() []byte {
 	return b.Bytes()
 }
 
-func normalTxnIndexPrefixByAddr(addr oneAddress) []byte {
+func normalTxnIndexPrefixByAddr(addr itcAddress) []byte {
 	b := bPool.Get()
 	defer b.Free()
 
@@ -243,7 +243,7 @@ func txnHashFromNormalTxnIndexKey(key []byte) (common.Hash, error) {
 	return txHash, nil
 }
 
-func getNormalTxnHashesByAccount(db databaseReader, addr oneAddress) ([]common.Hash, []TxType, error) {
+func getNormalTxnHashesByAccount(db databaseReader, addr itcAddress) ([]common.Hash, []TxType, error) {
 	var (
 		txHashes []common.Hash
 		tts      []TxType
@@ -273,7 +273,7 @@ func writeNormalTxnIndex(db databaseWriter, entry normalTxnIndex, tt TxType) err
 }
 
 type stakingTxnIndex struct {
-	addr        oneAddress
+	addr        itcAddress
 	blockNumber uint64
 	txnIndex    uint64
 	txnHash     common.Hash
@@ -291,7 +291,7 @@ func (index stakingTxnIndex) key() []byte {
 	return b.Bytes()
 }
 
-func stakingTxnIndexPrefixByAddr(addr oneAddress) []byte {
+func stakingTxnIndexPrefixByAddr(addr itcAddress) []byte {
 	b := bPool.Get()
 	defer b.Free()
 
@@ -311,7 +311,7 @@ func txnHashFromStakingTxnIndexKey(key []byte) (common.Hash, error) {
 	return txHash, nil
 }
 
-func getStakingTxnHashesByAccount(db databaseReader, addr oneAddress) ([]common.Hash, []TxType, error) {
+func getStakingTxnHashesByAccount(db databaseReader, addr itcAddress) ([]common.Hash, []TxType, error) {
 	var (
 		txHashes []common.Hash
 		tts      []TxType
@@ -356,6 +356,6 @@ func forEachAtPrefix(db databaseReader, prefix []byte, f func(key, val []byte) e
 // Legacy Schema
 
 // LegGetAddressKey ...
-func LegGetAddressKey(address oneAddress) []byte {
+func LegGetAddressKey(address itcAddress) []byte {
 	return []byte(fmt.Sprintf("%s%s", LegAddressPrefix, address))
 }

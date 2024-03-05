@@ -1309,13 +1309,13 @@ func getSignerData(itc *itc.Intelchain, number uint64) (*signerData, error) {
 	signers := make([]string, 0, len(slots))
 	blsSigners := make([]string, 0, len(slots))
 	for _, validator := range slots {
-		oneAddress, err := internal_common.AddressToBech32(validator.EcdsaAddress)
+		itcAddress, err := internal_common.AddressToBech32(validator.EcdsaAddress)
 		if err != nil {
 			return nil, err
 		}
 		if ok, err := mask.KeyEnabled(validator.BLSPublicKey); err == nil && ok {
 			blsSigners = append(blsSigners, validator.BLSPublicKey.Hex())
-			signers = append(signers, oneAddress)
+			signers = append(signers, itcAddress)
 		}
 	}
 	return &signerData{
