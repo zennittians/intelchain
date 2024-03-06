@@ -10,7 +10,7 @@ set -eu
 
 INTELCHAIN_SIGNING_KEY=539910B02B5BAC637F6615C9799ACE3A9B83DF60
 DOWNLOAD_URL=https://github.com/zennittians/intelchain/releases/download
-INTELCHAIN_PUB_KEY=https://intelchain.one/releases/pgp_keys.asc
+INTELCHAIN_PUB_KEY=https://intelchain.org/releases/pgp_keys.asc
 version="v3 20201206.0"
 
 unset -f progname color usage print_usage get_version do_verify do_download
@@ -33,7 +33,7 @@ get_version() {
     else
         # Find the latest intelchain release available for download.
         readonly reason="automatically selected latest available release"
-        intelchain_rel=$(curl -f -s https://intelchain.one/releases/latest) || (color "31" "Get latest version failed. You may manually download the binaries from Github release page. https://github.com/zennittians/intelchain/releases/" && exit 1)
+        intelchain_rel=$(curl -f -s https://intelchain.org/releases/latest) || (color "31" "Get latest version failed. You may manually download the binaries from Github release page. https://github.com/zennittians/intelchain/releases/" && exit 1)
         readonly intelchain_rel
     fi
 }

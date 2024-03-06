@@ -55,7 +55,7 @@ esac
 
 mkdir -p "${DATADIR}/archive"
 
-rclone --config "${CONFIG}" sync -vvv "itc:pub.intelchain.one/${FOLDER}/intelchain_db_${SHARD}" "${DATADIR}/archive/intelchain_db_${SHARD}" > "${DATADIR}/archive/archive-${SHARD}.log" 2>&1
+rclone --config "${CONFIG}" sync -vvv "itc:pub.intelchain.org/${FOLDER}/intelchain_db_${SHARD}" "${DATADIR}/archive/intelchain_db_${SHARD}" > "${DATADIR}/archive/archive-${SHARD}.log" 2>&1
 
 [ -d "${DATADIR}/intelchain_db_${SHARD}" ] && mv -f "${DATADIR}/intelchain_db_${SHARD}" "${DATADIR}/archive/intelchain_db_${SHARD}.bak"
 mv -f "${DATADIR}/archive/intelchain_db_${SHARD}" "${DATADIR}/intelchain_db_${SHARD}"

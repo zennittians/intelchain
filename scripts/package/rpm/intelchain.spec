@@ -14,7 +14,7 @@ License:	MIT
 URL:		https://intelchain.org
 Source0:	%{name}-%{version}.tar
 BuildArch: x86_64
-Packager: Leo Chen <leo@hamrony.one>
+Packager: Winay Jadon <winay@intelchain.org>
 Requires(pre): shadow-utils
 Requires: systemd-rpm-macros jq
 

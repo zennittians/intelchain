@@ -178,9 +178,9 @@ make test-rpc-attach
 ```
 > This will open a shell in the docker container that is running the Node API tests.
 >
-> Note that the docker container has the [intelchain CLI](https://docs.intelchain.one/home/wallets/intelchain-cli) on path,
+> Note that the docker container has the [intelchain CLI](https://docs.intelchain.org/home/wallets/intelchain-cli) on path,
 > therefore you can use that to debug if needed. For example, one could do `itc blockchain latest-headers` to check
-> the current block height of localnet. Reference the documentation for the CLI [here](https://docs.intelchain.one/home/wallets/intelchain-cli)
+> the current block height of localnet. Reference the documentation for the CLI [here](https://docs.intelchain.org/home/wallets/intelchain-cli)
 > for more details & commands.
 
 ### Rosetta tests
