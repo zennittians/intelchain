@@ -10,7 +10,7 @@ import (
 	"github.com/zennittians/intelchain/internal/utils"
 )
 
-const genesisString = "https://intelchain.org 'Open Consensus for 10B' 2019.06.01 $ONE"
+const genesisString = "https://intelchain.org 'Open Consensus for 10B' 2019.06.01 $ITC"
 
 // DeployAccount is the account used in genesis
 type DeployAccount struct {
