@@ -56,8 +56,8 @@ var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 const (
 	// GenesisEpoch is the number of the genesis epoch.
 	GenesisEpoch = 0
-	// GenesisONEToken is the initial total number of ONE in the genesis block for mainnet.
-	GenesisONEToken = 12600000000
+	// GenesisITCToken is the initial total number of ITC in the genesis block for mainnet.
+	GenesisITCToken = 95000000000
 	// ContractDeployerInitFund is the initial fund for the contract deployer account in testnet/devnet.
 	ContractDeployerInitFund = 10000000000
 	// InitFreeFund is the initial fund for permissioned accounts for testnet/devnet/
@@ -66,7 +66,7 @@ const (
 
 var (
 	// GenesisFund is the initial total number of ITC (in intello) in the genesis block for mainnet.
-	GenesisFund = new(big.Int).Mul(big.NewInt(GenesisONEToken), big.NewInt(denominations.Itc))
+	GenesisFund = new(big.Int).Mul(big.NewInt(GenesisITCToken), big.NewInt(denominations.Itc))
 )
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
