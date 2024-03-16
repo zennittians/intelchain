@@ -112,11 +112,11 @@ func getAllInaccessibleAddresses(chain engine.ChainReader) ([]*InaccessibleAddre
 	accs := make([]*InaccessibleAddressInfo, 0, len(InaccessibleAddresses))
 	for _, addr := range InaccessibleAddresses {
 		nonce := state.GetNonce(addr)
-		oneAddr, _ := common2.AddressToBech32(addr)
+		itcAddr, _ := common2.AddressToBech32(addr)
 		balance := state.GetBalance(addr)
 		accs = append(accs, &InaccessibleAddressInfo{
 			EthAddress: addr,
-			Address:    oneAddr,
+			Address:    itcAddr,
 			Balance:    numeric.NewDecFromBigIntWithPrec(balance, numeric.Precision),
 			Nonce:      nonce,
 		})

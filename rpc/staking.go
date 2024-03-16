@@ -141,9 +141,9 @@ func (s *PublicStakingService) GetElectedValidatorAddresses(
 	electedAddresses := s.itc.GetElectedValidatorAddresses()
 	addresses := make([]string, len(electedAddresses))
 	for i, addr := range electedAddresses {
-		oneAddr, _ := internal_common.AddressToBech32(addr)
+		itcAddr, _ := internal_common.AddressToBech32(addr)
 		// Response output is the same for all versions
-		addresses[i] = oneAddr
+		addresses[i] = itcAddr
 	}
 	return addresses, nil
 }
@@ -217,9 +217,9 @@ func (s *PublicStakingService) GetAllValidatorAddresses(
 	validatorAddresses := s.itc.GetAllValidatorAddresses()
 	addresses := make([]string, len(validatorAddresses))
 	for i, addr := range validatorAddresses {
-		oneAddr, _ := internal_common.AddressToBech32(addr)
+		itcAddr, _ := internal_common.AddressToBech32(addr)
 		// Response output is the same for all versions
-		addresses[i] = oneAddr
+		addresses[i] = itcAddr
 	}
 	return addresses, nil
 }

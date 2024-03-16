@@ -1275,13 +1275,13 @@ func (helper *bcServiceHelper) GetBLSSigners(bn uint64) ([]string, error) {
 	return sd.blsSigners, nil
 }
 
-func (helper *bcServiceHelper) IsSigner(oneAddr string, bn uint64) (bool, error) {
+func (helper *bcServiceHelper) IsSigner(itcAddr string, bn uint64) (bool, error) {
 	sd, err := helper.getSignerData(bn)
 	if err != nil {
 		return false, err
 	}
 	for _, signer := range sd.signers {
-		if oneAddr == signer {
+		if itcAddr == signer {
 			return true, nil
 		}
 	}

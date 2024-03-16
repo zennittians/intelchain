@@ -18,7 +18,7 @@ const (
 	CheckpointBitmap = "checkpoint_bitmap"
 	TracePrefix      = "tr_"
 
-	oneAddrByteLen = 42 // byte size of string "one1..."
+	itcAddrByteLen = 42 // byte size of string "itc1..."
 )
 
 // readCheckpointBitmap read explorer checkpoint bitmap from storage
@@ -122,10 +122,10 @@ func getAddressKey(addr itcAddress) []byte {
 }
 
 func getAddressFromAddressKey(key []byte) (itcAddress, error) {
-	if len(key) < len(addrPrefix)+oneAddrByteLen {
+	if len(key) < len(addrPrefix)+itcAddrByteLen {
 		return "", errors.New("address key size unexpected")
 	}
-	addrBytes := key[len(addrPrefix) : len(addrPrefix)+oneAddrByteLen]
+	addrBytes := key[len(addrPrefix) : len(addrPrefix)+itcAddrByteLen]
 	return itcAddress(addrBytes), nil
 }
 
@@ -233,7 +233,7 @@ func normalTxnIndexPrefixByAddr(addr itcAddress) []byte {
 }
 
 func txnHashFromNormalTxnIndexKey(key []byte) (common.Hash, error) {
-	txStart := len(addrNormalTxnIndexPrefix) + oneAddrByteLen + 8 + 8
+	txStart := len(addrNormalTxnIndexPrefix) + itcAddrByteLen + 8 + 8
 	expSize := txStart + common.HashLength
 	if len(key) < expSize {
 		return common.Hash{}, errors.New("unexpected key size")
@@ -301,7 +301,7 @@ func stakingTxnIndexPrefixByAddr(addr itcAddress) []byte {
 }
 
 func txnHashFromStakingTxnIndexKey(key []byte) (common.Hash, error) {
-	txStart := len(addrStakingTxnIndexPrefix) + oneAddrByteLen + 8 + 8
+	txStart := len(addrStakingTxnIndexPrefix) + itcAddrByteLen + 8 + 8
 	expSize := txStart + common.HashLength
 	if len(key) < expSize {
 		return common.Hash{}, errors.New("unexpected key size")

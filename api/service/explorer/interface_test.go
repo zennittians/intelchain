@@ -240,9 +240,9 @@ func makeTestTxHash(index int) common.Hash {
 func makeItcAddress(index int) itcAddress {
 	var raw common.Address
 	binary.LittleEndian.PutUint64(raw[:], uint64(index))
-	oneAddr, err := common2.AddressToBech32(raw)
+	itcAddr, err := common2.AddressToBech32(raw)
 	if err != nil {
 		panic(err)
 	}
-	return itcAddress(oneAddr)
+	return itcAddress(itcAddr)
 }
