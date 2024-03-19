@@ -2,10 +2,6 @@ package rpc
 
 import (
 	"context"
-	"reflect"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/time/rate"
 
 	"github.com/pkg/errors"
 
@@ -13,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 	common2 "github.com/zennittians/intelchain/internal/common"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/internal/utils"
@@ -31,39 +27,16 @@ import (
 type PublicPoolService struct {
 	itc     *itc.Intelchain
 	version Version
-
-	// TEMP SOLUTION to rpc node spamming issue
-	limiterPendingTransactions *rate.Limiter
 }
 
 // NewPublicPoolAPI creates a new API for the RPC interface
-func NewPublicPoolAPI(itc *itc.Intelchain, version Version, limiterEnable bool, limit int) rpc.API {
-	var limiter *rate.Limiter
-	if limiterEnable {
-		limiter = rate.NewLimiter(rate.Limit(limit), limit)
-	}
+func NewPublicPoolAPI(itc *itc.Intelchain, version Version) rpc.API {
 	return rpc.API{
 		Namespace: version.Namespace(),
 		Version:   APIVersion,
-		Service:   &PublicPoolService{itc, version, limiter},
+		Service:   &PublicPoolService{itc, version},
 		Public:    true,
 	}
-}
-
-func (s *PublicPoolService) wait(limiter *rate.Limiter, ctx context.Context) error {
-	if limiter != nil {
-		deadlineCtx, cancel := context.WithTimeout(ctx, DefaultRateLimiterWaitTimeout)
-		defer cancel()
-		if !limiter.Allow() {
-			name := reflect.TypeOf(limiter).Elem().Name()
-			rpcRateLimitCounterVec.With(prometheus.Labels{
-				"limiter_name": name,
-			}).Inc()
-		}
-
-		return limiter.Wait(deadlineCtx)
-	}
-	return nil
 }
 
 // SendRawTransaction will add the signed transaction to the transaction pool.
@@ -71,9 +44,6 @@ func (s *PublicPoolService) wait(limiter *rate.Limiter, ctx context.Context) err
 func (s *PublicPoolService) SendRawTransaction(
 	ctx context.Context, encodedTx hexutil.Bytes,
 ) (common.Hash, error) {
-	timer := DoMetricRPCRequest(SendRawTransaction)
-	defer DoRPCRequestDuration(SendRawTransaction, timer)
-
 	// DOS prevention
 	if len(encodedTx) >= types.MaxEncodedPoolTransactionSize {
 		err := errors.Wrapf(core.ErrOversizedData, "encoded tx size: %d", len(encodedTx))
@@ -106,7 +76,7 @@ func (s *PublicPoolService) SendRawTransaction(
 	// Submit transaction
 	if err := s.itc.SendTx(ctx, tx); err != nil {
 		utils.Logger().Warn().Err(err).Msg("Could not submit transaction")
-		return common.Hash{}, err
+		return txHash, err
 	}
 
 	// Log submission
@@ -158,9 +128,6 @@ func (s *PublicPoolService) verifyChainID(tx *types.Transaction) error {
 func (s *PublicPoolService) SendRawStakingTransaction(
 	ctx context.Context, encodedTx hexutil.Bytes,
 ) (common.Hash, error) {
-	timer := DoMetricRPCRequest(SendRawStakingTransaction)
-	defer DoRPCRequestDuration(SendRawStakingTransaction, timer)
-
 	// DOS prevention
 	if len(encodedTx) >= types.MaxEncodedPoolTransactionSize {
 		err := errors.Wrapf(core.ErrOversizedData, "encoded tx size: %d", len(encodedTx))
@@ -198,9 +165,6 @@ func (s *PublicPoolService) SendRawStakingTransaction(
 func (s *PublicPoolService) GetPoolStats(
 	ctx context.Context,
 ) (StructuredResponse, error) {
-	timer := DoMetricRPCRequest(GetPoolStats)
-	defer DoRPCRequestDuration(GetPoolStats, timer)
-
 	pendingCount, queuedCount := s.itc.GetPoolStats()
 
 	// Response output is the same for all versions
@@ -214,19 +178,9 @@ func (s *PublicPoolService) GetPoolStats(
 func (s *PublicPoolService) PendingTransactions(
 	ctx context.Context,
 ) ([]StructuredResponse, error) {
-	timer := DoMetricRPCRequest(PendingTransactions)
-	defer DoRPCRequestDuration(PendingTransactions, timer)
-
-	err := s.wait(s.limiterPendingTransactions, ctx)
-	if err != nil {
-		DoMetricRPCQueryInfo(PendingTransactions, RateLimitedNumber)
-		return nil, err
-	}
-
 	// Fetch all pending transactions (stx & plain tx)
 	pending, err := s.itc.GetPoolTransactions()
 	if err != nil {
-		DoMetricRPCQueryInfo(PendingTransactions, FailedNumber)
 		return nil, err
 	}
 
@@ -253,14 +207,7 @@ func (s *PublicPoolService) PendingTransactions(
 					continue // Legacy behavior is to not return error here
 				}
 			case Eth:
-				from, err := plainTx.SenderAddress()
-				if err != nil {
-					utils.Logger().Debug().
-						Err(err).
-						Msgf("%v error at %v", LogTag, "PendingTransactions")
-					continue // Legacy behavior is to not return error here
-				}
-				tx, err = eth.NewTransaction(from, plainTx.ConvertToEth(), common.Hash{}, 0, 0, 0)
+				tx, err = eth.NewTransaction(plainTx, common.Hash{}, 0, 0, 0)
 				if err != nil {
 					utils.Logger().Debug().
 						Err(err).
@@ -292,13 +239,9 @@ func (s *PublicPoolService) PendingTransactions(
 func (s *PublicPoolService) PendingStakingTransactions(
 	ctx context.Context,
 ) ([]StructuredResponse, error) {
-	timer := DoMetricRPCRequest(PendingStakingTransactions)
-	defer DoRPCRequestDuration(PendingStakingTransactions, timer)
-
 	// Fetch all pending transactions (stx & plain tx)
 	pending, err := s.itc.GetPoolTransactions()
 	if err != nil {
-		DoMetricRPCQueryInfo(PendingStakingTransactions, FailedNumber)
 		return nil, err
 	}
 
@@ -319,7 +262,7 @@ func (s *PublicPoolService) PendingStakingTransactions(
 					continue // Legacy behavior is to not return error here
 				}
 			case V2:
-				tx, err = v2.NewStakingTransaction(stakingTx, common.Hash{}, 0, 0, 0, true)
+				tx, err = v2.NewStakingTransaction(stakingTx, common.Hash{}, 0, 0, 0)
 				if err != nil {
 					utils.Logger().Debug().
 						Err(err).
@@ -349,15 +292,11 @@ func (s *PublicPoolService) PendingStakingTransactions(
 func (s *PublicPoolService) GetCurrentTransactionErrorSink(
 	ctx context.Context,
 ) ([]StructuredResponse, error) {
-	timer := DoMetricRPCRequest(GetCurrentTransactionErrorSink)
-	defer DoRPCRequestDuration(GetCurrentTransactionErrorSink, timer)
-
 	// For each transaction error in the error sink, format the response (same format for all versions)
 	formattedErrors := []StructuredResponse{}
 	for _, txError := range s.itc.GetCurrentTransactionErrorSink() {
 		formattedErr, err := NewStructuredResponse(txError)
 		if err != nil {
-			DoMetricRPCQueryInfo(GetCurrentTransactionErrorSink, FailedNumber)
 			return nil, err
 		}
 		formattedErrors = append(formattedErrors, formattedErr)
@@ -369,15 +308,11 @@ func (s *PublicPoolService) GetCurrentTransactionErrorSink(
 func (s *PublicPoolService) GetCurrentStakingErrorSink(
 	ctx context.Context,
 ) ([]StructuredResponse, error) {
-	timer := DoMetricRPCRequest(GetCurrentStakingErrorSink)
-	defer DoRPCRequestDuration(GetCurrentStakingErrorSink, timer)
-
 	// For each staking tx error in the error sink, format the response (same format for all versions)
 	formattedErrors := []StructuredResponse{}
 	for _, txErr := range s.itc.GetCurrentStakingErrorSink() {
 		formattedErr, err := NewStructuredResponse(txErr)
 		if err != nil {
-			DoMetricRPCQueryInfo(GetCurrentStakingErrorSink, FailedNumber)
 			return nil, err
 		}
 		formattedErrors = append(formattedErrors, formattedErr)
@@ -389,38 +324,14 @@ func (s *PublicPoolService) GetCurrentStakingErrorSink(
 func (s *PublicPoolService) GetPendingCXReceipts(
 	ctx context.Context,
 ) ([]StructuredResponse, error) {
-	timer := DoMetricRPCRequest(GetPendingCXReceipts)
-	defer DoRPCRequestDuration(GetPendingCXReceipts, timer)
-
 	// For each cx receipt, format the response (same format for all versions)
 	formattedReceipts := []StructuredResponse{}
 	for _, receipts := range s.itc.GetPendingCXReceipts() {
 		formattedReceipt, err := NewStructuredResponse(receipts)
 		if err != nil {
-			DoMetricRPCQueryInfo(GetPendingCXReceipts, FailedNumber)
 			return nil, err
 		}
 		formattedReceipts = append(formattedReceipts, formattedReceipt)
 	}
 	return formattedReceipts, nil
-}
-
-// GetNumPendingCXReceipts ..
-func (s *PublicPoolService) GetNumPendingCXReceipts(
-	ctx context.Context,
-) (int, error) {
-	timer := DoMetricRPCRequest(GetPendingCXReceipts)
-	defer DoRPCRequestDuration(GetPendingCXReceipts, timer)
-
-	// For each cx receipt, format the response (same format for all versions)
-	formattedReceipts := []StructuredResponse{}
-	for _, receipts := range s.itc.GetPendingCXReceipts() {
-		formattedReceipt, err := NewStructuredResponse(receipts)
-		if err != nil {
-			DoMetricRPCQueryInfo(GetPendingCXReceipts, FailedNumber)
-			return 0, err
-		}
-		formattedReceipts = append(formattedReceipts, formattedReceipt)
-	}
-	return len(formattedReceipts), nil
 }

@@ -3,7 +3,6 @@ package shardingconfig
 import (
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/numeric"
 
 	"github.com/zennittians/intelchain/internal/genesis"
@@ -17,8 +16,8 @@ var StressNetSchedule stressnetSchedule
 type stressnetSchedule struct{}
 
 const (
-	// ~0.5 hour per epoch
-	stressnetBlocksPerEpoch = 1024
+	// ~304 sec epochs for P2 of open staking
+	stressnetBlocksPerEpoch = 38
 
 	stressnetVdfDifficulty = 10000 // This takes about 20s to finish the vdf
 
@@ -30,8 +29,6 @@ const (
 
 func (ss stressnetSchedule) InstanceForEpoch(epoch *big.Int) Instance {
 	switch {
-	case params.StressnetChainConfig.IsSixtyPercent(epoch):
-		return stressnetV2
 	case epoch.Cmp(params.StressnetChainConfig.StakingEpoch) >= 0:
 		return stressnetV1
 	default: // genesis
@@ -60,6 +57,12 @@ func (ss stressnetSchedule) VdfDifficulty() int {
 	return stressnetVdfDifficulty
 }
 
+// TODO: remove it after randomness feature turned on mainnet
+// RandonnessStartingEpoch returns starting epoch of randonness generation
+func (ss stressnetSchedule) RandomnessStartingEpoch() uint64 {
+	return mainnetRandomnessStartingEpoch
+}
+
 func (ss stressnetSchedule) GetNetworkID() NetworkID {
 	return StressNet
 }
@@ -79,24 +82,5 @@ var stressnetReshardingEpoch = []*big.Int{
 	params.StressnetChainConfig.StakingEpoch,
 }
 
-var stressnetV0 = MustNewInstance(
-	2, 10, 10, 0,
-	numeric.OneDec(), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),
-)
-var stressnetV1 = MustNewInstance(
-	2, 30, 10, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),
-)
-var stressnetV2 = MustNewInstance(
-	2, 30, 10, 0,
-	numeric.MustNewDecFromStr("0.6"), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch(),
-)
+var stressnetV0 = MustNewInstance(2, 10, 10, numeric.OneDec(), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch())
+var stressnetV1 = MustNewInstance(2, 30, 10, numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, stressnetReshardingEpoch, StressNetSchedule.BlocksPerEpoch())

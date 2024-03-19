@@ -72,8 +72,10 @@ type Mask struct {
 }
 
 // NewMask returns a new participation bitmask for cosigning where all
-// cosigners are disabled by default.
-func NewMask(publics []PublicKeyWrapper) *Mask {
+// cosigners are disabled by default. If a public key is given it verifies that
+// it is present in the list of keys and sets the corresponding index in the
+// bitmask to 1 (enabled).
+func NewMask(publics []PublicKeyWrapper, myKey *PublicKeyWrapper) (*Mask, error) {
 	index := map[SerializedPublicKey]int{}
 	publicKeys := make([]*PublicKeyWrapper, len(publics))
 	for i, key := range publics {
@@ -86,7 +88,17 @@ func NewMask(publics []PublicKeyWrapper) *Mask {
 	}
 	m.Bitmap = make([]byte, m.Len())
 	m.AggregatePublic = &bls.PublicKey{}
-	return m
+	if myKey != nil {
+		i, found := m.PublicsIndex[myKey.Bytes]
+		if found {
+			m.SetBit(i, true)
+			found = true
+		}
+		if !found {
+			return nil, errors.New("key not found")
+		}
+	}
+	return m, nil
 }
 
 // Clear clears the existing bits and aggregate public keys.

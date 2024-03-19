@@ -4,23 +4,18 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-	internal_common "github.com/zennittians/intelchain/internal/common"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/numeric"
 	"github.com/zennittians/intelchain/shard"
@@ -94,16 +89,6 @@ type Delegation struct {
 	Undelegations    []Undelegation `json:"Undelegations"`
 }
 
-func (d Delegation) IntoStructuredResponse() StructuredResponse {
-	return StructuredResponse{
-		"validator_address": d.ValidatorAddress,
-		"delegator_address": d.DelegatorAddress,
-		"amount":            d.Amount,
-		"reward":            d.Reward,
-		"Undelegations":     d.Undelegations,
-	}
-}
-
 // Undelegation represents one undelegation entry
 type Undelegation struct {
 	Amount *big.Int
@@ -116,12 +101,11 @@ type StructuredResponse = map[string]interface{}
 // NewStructuredResponse creates a structured response from the given input
 func NewStructuredResponse(input interface{}) (StructuredResponse, error) {
 	var objMap StructuredResponse
-	var jsonIter = jsoniter.ConfigCompatibleWithStandardLibrary
-	dat, err := jsonIter.Marshal(input)
+	dat, err := json.Marshal(input)
 	if err != nil {
 		return nil, err
 	}
-	d := jsonIter.NewDecoder(bytes.NewReader(dat))
+	d := json.NewDecoder(bytes.NewReader(dat))
 	d.UseNumber()
 	err = d.Decode(&objMap)
 	if err != nil {
@@ -133,14 +117,6 @@ func NewStructuredResponse(input interface{}) (StructuredResponse, error) {
 // BlockNumber ..
 type BlockNumber rpc.BlockNumber
 
-const (
-	// LatestBlockNumber is the alias to rpc latest block number
-	LatestBlockNumber = BlockNumber(rpc.LatestBlockNumber)
-
-	// PendingBlockNumber is the alias to rpc pending block number
-	PendingBlockNumber = BlockNumber(rpc.PendingBlockNumber)
-)
-
 // UnmarshalJSON converts a hex string or integer to a block number
 func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 	baseBn := rpc.BlockNumber(0)
@@ -150,7 +126,7 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 		if len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"' {
 			input = input[1 : len(input)-1]
 		}
-		input = strings.TrimPrefix(strings.ToLower(input), "0x")
+		input = strings.TrimPrefix(input, "0x")
 		num, err := strconv.ParseInt(input, 10, 64)
 		if err != nil {
 			return err
@@ -232,8 +208,6 @@ type HeaderInformation struct {
 	UnixTime         uint64            `json:"unixtime"`
 	LastCommitSig    string            `json:"lastCommitSig"`
 	LastCommitBitmap string            `json:"lastCommitBitmap"`
-	VRF              string            `json:"vrf"`
-	VRFProof         string            `json:"vrfProof"`
 	CrossLinks       *types.CrossLinks `json:"crossLinks,omitempty"`
 }
 
@@ -243,13 +217,6 @@ func NewHeaderInformation(header *block.Header, leader string) *HeaderInformatio
 		return nil
 	}
 
-	vrfAndProof := header.Vrf()
-	vrf := common.Hash{}
-	vrfProof := []byte{}
-	if len(vrfAndProof) == 32+96 {
-		copy(vrf[:], vrfAndProof[:32])
-		vrfProof = vrfAndProof[32:]
-	}
 	result := &HeaderInformation{
 		BlockHash:        header.Hash(),
 		BlockNumber:      header.Number().Uint64(),
@@ -260,8 +227,6 @@ func NewHeaderInformation(header *block.Header, leader string) *HeaderInformatio
 		UnixTime:         header.Time().Uint64(),
 		Timestamp:        time.Unix(header.Time().Int64(), 0).UTC().String(),
 		LastCommitBitmap: hex.EncodeToString(header.LastCommitBitmap()),
-		VRF:              hex.EncodeToString(vrf[:]),
-		VRFProof:         hex.EncodeToString(vrfProof),
 	}
 
 	sig := header.LastCommitSignature()
@@ -278,46 +243,4 @@ func NewHeaderInformation(header *block.Header, leader string) *HeaderInformatio
 	}
 
 	return result
-}
-
-// AddressOrList represents an address or a list of addresses
-type AddressOrList struct {
-	Address     *common.Address
-	AddressList []common.Address
-}
-
-// UnmarshalJSON defines the input parsing of AddressOrList
-func (aol *AddressOrList) UnmarshalJSON(data []byte) (err error) {
-	var itf interface{}
-	if err := json.Unmarshal(data, &itf); err != nil {
-		return err
-	}
-	switch d := itf.(type) {
-	case string: // Single address
-		addr, err := internal_common.ParseAddr(d)
-		if err != nil {
-			return err
-		}
-		aol.Address = &addr
-		return nil
-
-	case []interface{}: // Address array
-		var addrs []common.Address
-		for _, addrItf := range d {
-			addrStr, ok := addrItf.(string)
-			if !ok {
-				return errors.New("not invalid address array")
-			}
-			addr, err := internal_common.ParseAddr(addrStr)
-			if err != nil {
-				return fmt.Errorf("invalid address: %v", addrStr)
-			}
-			addrs = append(addrs, addr)
-		}
-		aol.AddressList = addrs
-		return nil
-
-	default:
-		return errors.New("must provide one address or address list")
-	}
 }

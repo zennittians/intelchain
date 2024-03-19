@@ -25,10 +25,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/rawdb"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/itc"
 )
 
@@ -55,16 +55,12 @@ type PublicTracerService struct {
 	version Version
 }
 
-// NewPublicTraceAPI creates a new API for the RPC interface
-func NewPublicTraceAPI(itc *itc.Intelchain, version Version) rpc.API {
-	var service interface{} = &PublicTracerService{itc, version}
-	if version == Trace {
-		service = &PublicParityTracerService{service.(*PublicTracerService)}
-	}
+// NewPublicTracerAPI creates a new API for the RPC interface
+func NewPublicTracerAPI(itc *itc.Intelchain, version Version) rpc.API {
 	return rpc.API{
 		Namespace: version.Namespace(),
 		Version:   APIVersion,
-		Service:   service,
+		Service:   &PublicTracerService{itc, version},
 		Public:    true,
 	}
 }
@@ -72,41 +68,32 @@ func NewPublicTraceAPI(itc *itc.Intelchain, version Version) rpc.API {
 // TraceChain returns the structured logs created during the execution of EVM
 // between two blocks (excluding start) and returns them as a JSON object.
 func (s *PublicTracerService) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *itc.TraceConfig) (*rpc.Subscription, error) {
-	timer := DoMetricRPCRequest(TraceChain)
-	defer DoRPCRequestDuration(TraceChain, timer)
-
 	// TODO (JL): Make API available after DoS testing
 	return nil, ErrNotAvailable
-	/*
-		if uint64(start) >= uint64(end) {
-			return nil, fmt.Errorf("start block can not be equal or greater than the end block")
-		}
+	if uint64(start) >= uint64(end) {
+		return nil, fmt.Errorf("start block can not be equal or greater than the end block")
+	}
 
-		currentBlock := s.itc.BlockChain.CurrentBlock().NumberU64()
-		if uint64(start) > currentBlock || uint64(end) > currentBlock {
-			return nil, ErrRequestedBlockTooHigh
-		}
+	currentBlock := s.itc.BlockChain.CurrentBlock().NumberU64()
+	if uint64(start) > currentBlock || uint64(end) > currentBlock {
+		return nil, ErrRequestedBlockTooHigh
+	}
 
-		from := s.itc.BlockChain.GetBlockByNumber(uint64(start))
-		if from == nil {
-			return nil, fmt.Errorf("start block #%d not found", start)
-		}
-		to := s.itc.BlockChain.GetBlockByNumber(uint64(end))
-		if to == nil {
-			return nil, fmt.Errorf("end block #%d not found", end)
-		}
+	from := s.itc.BlockChain.GetBlockByNumber(uint64(start))
+	if from == nil {
+		return nil, fmt.Errorf("start block #%d not found", start)
+	}
+	to := s.itc.BlockChain.GetBlockByNumber(uint64(end))
+	if to == nil {
+		return nil, fmt.Errorf("end block #%d not found", end)
+	}
 
-		return s.itc.TraceChain(ctx, from, to, config)
-
-	*/
+	return s.itc.TraceChain(ctx, from, to, config)
 }
 
 // TraceBlockByNumber returns the structured logs created during the execution of
 // EVM and returns them as a JSON object.
 func (s *PublicTracerService) TraceBlockByNumber(ctx context.Context, number rpc.BlockNumber, config *itc.TraceConfig) ([]*itc.TxTraceResult, error) {
-	timer := DoMetricRPCRequest(TraceBlockByNumber)
-	defer DoRPCRequestDuration(TraceBlockByNumber, timer)
-
 	// Fetch the block that we want to trace
 	block := s.itc.BlockChain.GetBlockByNumber(uint64(number))
 
@@ -116,12 +103,8 @@ func (s *PublicTracerService) TraceBlockByNumber(ctx context.Context, number rpc
 // TraceBlockByHash returns the structured logs created during the execution of
 // EVM and returns them as a JSON object.
 func (s *PublicTracerService) TraceBlockByHash(ctx context.Context, hash common.Hash, config *itc.TraceConfig) ([]*itc.TxTraceResult, error) {
-	timer := DoMetricRPCRequest(TraceBlockByHash)
-	defer DoRPCRequestDuration(TraceBlockByHash, timer)
-
 	block := s.itc.BlockChain.GetBlockByHash(hash)
 	if block == nil {
-		DoMetricRPCQueryInfo(TraceBlockByHash, FailedNumber)
 		return nil, fmt.Errorf("block %#x not found", hash)
 	}
 	return s.itc.TraceBlock(ctx, block, config)
@@ -130,12 +113,8 @@ func (s *PublicTracerService) TraceBlockByHash(ctx context.Context, hash common.
 // TraceBlock returns the structured logs created during the execution of EVM
 // and returns them as a JSON object.
 func (s *PublicTracerService) TraceBlock(ctx context.Context, blob []byte, config *itc.TraceConfig) ([]*itc.TxTraceResult, error) {
-	timer := DoMetricRPCRequest(TraceBlock)
-	defer DoRPCRequestDuration(TraceBlock, timer)
-
 	block := new(types.Block)
 	if err := rlp.Decode(bytes.NewReader(blob), block); err != nil {
-		DoMetricRPCQueryInfo(TraceBlock, FailedNumber)
 		return nil, fmt.Errorf("could not decode block: %v", err)
 	}
 	return s.itc.TraceBlock(ctx, block, config)
@@ -144,13 +123,9 @@ func (s *PublicTracerService) TraceBlock(ctx context.Context, blob []byte, confi
 // TraceTransaction returns the structured logs created during the execution of EVM
 // and returns them as a JSON object.
 func (s *PublicTracerService) TraceTransaction(ctx context.Context, hash common.Hash, config *itc.TraceConfig) (interface{}, error) {
-	timer := DoMetricRPCRequest(TraceTransaction)
-	defer DoRPCRequestDuration(TraceTransaction, timer)
-
 	// Retrieve the transaction and assemble its EVM context
 	tx, blockHash, _, index := rawdb.ReadTransaction(s.itc.ChainDb(), hash)
 	if tx == nil {
-		DoMetricRPCQueryInfo(TraceTransaction, FailedNumber)
 		return nil, fmt.Errorf("transaction %#x not found", hash)
 	}
 	reexec := defaultTraceReexec
@@ -160,16 +135,13 @@ func (s *PublicTracerService) TraceTransaction(ctx context.Context, hash common.
 	// Retrieve the block
 	block := s.itc.BlockChain.GetBlockByHash(blockHash)
 	if block == nil {
-		DoMetricRPCQueryInfo(TraceTransaction, FailedNumber)
 		return nil, fmt.Errorf("block %#x not found", blockHash)
 	}
 	msg, vmctx, statedb, err := s.itc.ComputeTxEnv(block, int(index), reexec)
 	if err != nil {
-		DoMetricRPCQueryInfo(TraceTransaction, FailedNumber)
 		return nil, err
 	}
 	// Trace the transaction and return
-	statedb.Prepare(tx.ConvertToEth().Hash(), block.Hash(), int(index))
 	return s.itc.TraceTx(ctx, msg, vmctx, statedb, config)
 }
 
@@ -178,16 +150,12 @@ func (s *PublicTracerService) TraceTransaction(ctx context.Context, hash common.
 // You can provide -2 as a block number to trace on top of the pending block.
 // NOTE: Our version only supports block number as an input
 func (s *PublicTracerService) TraceCall(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber, config *itc.TraceConfig) (interface{}, error) {
-	timer := DoMetricRPCRequest(TraceCall)
-	defer DoRPCRequestDuration(TraceCall, timer)
-
 	// First try to retrieve the state
 	statedb, header, err := s.itc.StateAndHeaderByNumber(ctx, blockNr)
 	if err != nil {
 		// Try to retrieve the specified block
 		block := s.itc.BlockChain.GetBlockByNumber(uint64(blockNr))
 		if block == nil {
-			DoMetricRPCQueryInfo(TraceCall, FailedNumber)
 			return nil, fmt.Errorf("block %v not found: %v", blockNr, err)
 		}
 		// try to recompute the state
@@ -197,7 +165,6 @@ func (s *PublicTracerService) TraceCall(ctx context.Context, args CallArgs, bloc
 		}
 		_, _, statedb, err = s.itc.ComputeTxEnv(block, 0, reexec)
 		if err != nil {
-			DoMetricRPCQueryInfo(TraceCall, FailedNumber)
 			return nil, err
 		}
 	}

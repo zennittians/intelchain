@@ -5,7 +5,7 @@ License: MIT
 Vendor: Intelchain blockchain
 Architecture: amd64
 Source: https://github.com/zennittians/intelchain
-Maintainer: Winay Jadon
+Maintainer: winay Jadon <winay@intelchain.org>
 Section: net
 Priority: extra
 Homepage: https://intelchain.org

@@ -43,7 +43,7 @@ func TestPhaseSwitching(t *testing.T) {
 	_, _, consensus, _, err := GenerateConsensusForTesting()
 	assert.NoError(t, err)
 
-	assert.Equal(t, FBFTAnnounce, consensus.phase) // It's a new consensus, we should be at the FBFTAnnounce phase.
+	assert.Equal(t, FBFTAnnounce, consensus.phase) // It's a new consensus, we should be at the FBFTAnnounce phase
 
 	switches := []phaseSwitch{
 		{start: FBFTAnnounce, end: FBFTPrepare},
@@ -87,14 +87,14 @@ func TestGetNextLeaderKeyShouldFailForStandardGeneratedConsensus(t *testing.T) {
 
 	// The below results in: "panic: runtime error: integer divide by zero"
 	// This happens because there's no check for if there are any participants or not in https://github.com/zennittians/intelchain/blob/main/consensus/quorum/quorum.go#L188-L197
-	assert.Panics(t, func() { consensus.getNextLeaderKey(uint64(1), nil) })
+	assert.Panics(t, func() { consensus.getNextLeaderKey(uint64(1)) })
 }
 
 func TestGetNextLeaderKeyShouldSucceed(t *testing.T) {
 	_, _, consensus, _, err := GenerateConsensusForTesting()
 	assert.NoError(t, err)
 
-	assert.Equal(t, int64(0), consensus.Decider().ParticipantsCount())
+	assert.Equal(t, int64(0), consensus.Decider.ParticipantsCount())
 
 	blsKeys := []*bls_core.PublicKey{}
 	wrappedBLSKeys := []bls.PublicKeyWrapper{}
@@ -111,11 +111,11 @@ func TestGetNextLeaderKeyShouldSucceed(t *testing.T) {
 		wrappedBLSKeys = append(wrappedBLSKeys, wrapped)
 	}
 
-	consensus.Decider().UpdateParticipants(wrappedBLSKeys, []bls.PublicKeyWrapper{})
-	assert.Equal(t, keyCount, consensus.Decider().ParticipantsCount())
+	consensus.Decider.UpdateParticipants(wrappedBLSKeys)
+	assert.Equal(t, keyCount, consensus.Decider.ParticipantsCount())
 
 	consensus.LeaderPubKey = &wrappedBLSKeys[0]
-	nextKey := consensus.getNextLeaderKey(uint64(1), nil)
+	nextKey := consensus.getNextLeaderKey(uint64(1))
 
 	assert.Equal(t, nextKey, &wrappedBLSKeys[1])
 }

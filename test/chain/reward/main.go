@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 
 	msg_pb "github.com/zennittians/intelchain/api/proto/message"
 	"github.com/zennittians/intelchain/crypto/bls"
@@ -108,9 +108,8 @@ func main() {
 	database := rawdb.NewMemoryDatabase()
 	genesis := gspec.MustCommit(database)
 	_ = genesis
-	engine := chain.NewEngine()
-	bc, _ := core.NewBlockChain(database, nil, nil, nil, gspec.Config, engine, vm.Config{})
-	statedb, _ := state.New(common2.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+	bc, _ := core.NewBlockChain(database, nil, gspec.Config, chain.Engine, vm.Config{}, nil)
+	statedb, _ := state.New(common2.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 	msg := createValidator()
 	statedb.AddBalance(msg.ValidatorAddress, new(big.Int).Mul(big.NewInt(5e18), big.NewInt(2000)))
 	validator, err := core.VerifyAndCreateValidatorFromMsg(
@@ -121,15 +120,17 @@ func main() {
 	}
 	for i := 0; i < 100000; i++ {
 		validator.Delegations = append(validator.Delegations, staking.Delegation{
-			Amount: big.NewInt(int64(rand.Intn(100))),
-			Reward: big.NewInt(0),
+			common2.Address{},
+			big.NewInt(int64(rand.Intn(100))),
+			big.NewInt(0),
+			nil,
 		})
 	}
 
 	statedb.UpdateValidatorWrapper(msg.ValidatorAddress, validator)
 
 	startTime := time.Now()
-	validator, _ = statedb.ValidatorWrapper(msg.ValidatorAddress, true, false)
+	validator, _ = statedb.ValidatorWrapper(msg.ValidatorAddress)
 	endTime := time.Now()
 	fmt.Printf("Time required to read validator: %f seconds\n", endTime.Sub(startTime).Seconds())
 

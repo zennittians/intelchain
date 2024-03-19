@@ -6,9 +6,7 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -40,46 +38,17 @@ var (
 // MarshalJSON ..
 func (h Header) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		ParentHash  common.Hash      `json:"parentHash"`
-		UncleHash   common.Hash      `json:"sha3Uncles"`
-		Nonce       types.BlockNonce `json:"nonce"`
-		Coinbase    common.Address   `json:"miner"`
-		Root        common.Hash      `json:"stateRoot"`
-		TxHash      common.Hash      `json:"transactionsRoot"`
-		ReceiptHash common.Hash      `json:"receiptsRoot"`
-		Bloom       types.Bloom      `json:"logsBloom"`
-		Difficulty  *hexutil.Big     `json:"difficulty"`
-		Number      *hexutil.Big     `json:"number"`
-		GasLimit    hexutil.Uint64   `json:"gasLimit"`
-		GasUsed     hexutil.Uint64   `json:"gasUsed"`
-		Time        *hexutil.Big     `json:"timestamp"`
-		Extra       hexutil.Bytes    `json:"extraData"`
-		MixDigest   common.Hash      `json:"mixHash"`
-		Hash        common.Hash      `json:"hash"`
-		// Additional Fields
-		ViewID  *big.Int `json:"viewID"`
-		Epoch   *big.Int `json:"epoch"`
-		ShardID uint32   `json:"shardID"`
+		S uint32   `json:"shard-id"`
+		H string   `json:"block-header-hash"`
+		N *big.Int `json:"block-number"`
+		V *big.Int `json:"view-id"`
+		E *big.Int `json:"epoch"`
 	}{
-		h.ParentHash(),
-		common.Hash{},
-		types.BlockNonce{},
-		h.Coinbase(),
-		h.Root(),
-		h.TxHash(),
-		h.ReceiptHash(),
-		h.Bloom(),
-		(*hexutil.Big)(big.NewInt(0)),
-		(*hexutil.Big)(h.Number()),
-		hexutil.Uint64(h.GasLimit()),
-		hexutil.Uint64(h.GasUsed()),
-		(*hexutil.Big)(h.Time()),
-		h.Extra(),
-		h.MixDigest(),
-		h.Hash(),
+		h.Header.ShardID(),
+		h.Header.Hash().Hex(),
+		h.Header.Number(),
 		h.Header.ViewID(),
 		h.Header.Epoch(),
-		h.Header.ShardID(),
 	})
 }
 
@@ -118,13 +87,8 @@ func (h *Header) DecodeRLP(s *rlp.Stream) error {
 
 // Hash returns the block hash of the header.  This uses HeaderRegistry to
 // choose and return the right tagged RLP form of the header.
-func (h *Header) Hash() common.Hash {
+func (h *Header) Hash() ethcommon.Hash {
 	return hash.FromRLP(h)
-}
-
-// NumberU64 returns the block number of the header as a uint64.
-func (h *Header) NumberU64() uint64 {
-	return h.Number().Uint64()
 }
 
 // Logger returns a sub-logger with block contexts added.

@@ -14,7 +14,7 @@ License:	MIT
 URL:		https://intelchain.org
 Source0:	%{name}-%{version}.tar
 BuildArch: x86_64
-Packager: Winay Jadon <winay@intelchain.org>
+Packager: winay Jadon <leo@hamrony.one>
 Requires(pre): shadow-utils
 Requires: systemd-rpm-macros jq
 
@@ -87,14 +87,3 @@ exit 0
 
 %doc
 %license
-
-
-
-%changelog
-* Wed Aug 26 2020 Winay Jadon <winay at intelchain dot org> 2.3.5
-   - get version from git tag
-   - add %config macro to keep edited config files
-
-* Tue Aug 18 2020 Winay Jadon <winay at intelchain dot org> 2.3.4
-   - init version of the intelchain node program
-

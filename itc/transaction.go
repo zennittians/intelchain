@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/rawdb"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 )
 
 // SendTx ...
@@ -44,7 +44,7 @@ func (itc *Intelchain) ResendCx(ctx context.Context, txID common.Hash) (uint64, 
 	if tx.ShardID() == tx.ToShardID() || blk.Header().ShardID() != tx.ShardID() {
 		return 0, false
 	}
-	entry := core.CxEntry{BlockHash: blockHash, ToShardID: tx.ToShardID()}
+	entry := core.CxEntry{blockHash, tx.ToShardID()}
 	success := itc.CxPool.Add(entry)
 	return blockNum, success
 }

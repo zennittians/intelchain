@@ -32,10 +32,10 @@ const (
 
 var (
 	// ReadTimeout ..
-	ReadTimeout = 60 * time.Second
+	ReadTimeout = 30 * time.Second
 
 	// WriteTimeout ..
-	WriteTimeout = 60 * time.Second
+	WriteTimeout = 30 * time.Second
 
 	// IdleTimeout ..
 	IdleTimeout = 120 * time.Second

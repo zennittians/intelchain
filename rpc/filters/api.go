@@ -6,24 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zennittians/intelchain/internal/utils"
-
-	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
-	itc_rpc "github.com/zennittians/intelchain/rpc"
 )
 
 var (
 	deadline = 5 * time.Minute // consider a filter inactive if it has not been polled for within deadline
-)
-
-const (
-	rpcGetLogsLimit = 1024
 )
 
 // filter is a helper struct that holds meta information over the filter type
@@ -45,31 +36,18 @@ type PublicFilterAPI struct {
 	events    *EventSystem
 	filtersMu sync.Mutex
 	filters   map[rpc.ID]*filter
-	namespace string
-	shardID   uint32
 }
 
 // NewPublicFilterAPI returns a new PublicFilterAPI instance.
-func NewPublicFilterAPI(backend Backend, lightMode bool, namespace string, shardID uint32) rpc.API {
+func NewPublicFilterAPI(backend Backend, lightMode bool) *PublicFilterAPI {
 	api := &PublicFilterAPI{
-		backend:   backend,
-		events:    NewEventSystem(backend, lightMode, namespace == "eth"),
-		filters:   make(map[rpc.ID]*filter),
-		namespace: namespace,
-		shardID:   shardID,
+		backend: backend,
+		events:  NewEventSystem(backend, lightMode),
+		filters: make(map[rpc.ID]*filter),
 	}
 	go api.timeoutLoop()
 
-	return rpc.API{
-		Namespace: namespace,
-		Version:   itc_rpc.APIVersion,
-		Service:   api,
-		Public:    true,
-	}
-}
-
-func (api *PublicFilterAPI) isEth() bool {
-	return api.namespace == "eth"
+	return api
 }
 
 // timeoutLoop runs every 5 minutes and deletes filters that have not been recently used.
@@ -77,7 +55,6 @@ func (api *PublicFilterAPI) isEth() bool {
 func (api *PublicFilterAPI) timeoutLoop() {
 	// TODO ek – infinite loop; add shutdown/cleanup logic
 	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
 	for {
 		<-ticker.C
 		api.filtersMu.Lock()
@@ -102,9 +79,6 @@ func (api *PublicFilterAPI) timeoutLoop() {
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newpendingtransactionfilter
 func (api *PublicFilterAPI) NewPendingTransactionFilter() rpc.ID {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.NewPendingTransactionFilter)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.NewPendingTransactionFilter, timer)
-
 	var (
 		pendingTxs   = make(chan []common.Hash)
 		pendingTxSub = api.events.SubscribePendingTxs(pendingTxs)
@@ -138,9 +112,6 @@ func (api *PublicFilterAPI) NewPendingTransactionFilter() rpc.ID {
 // NewPendingTransactions creates a subscription that is triggered each time a transaction
 // enters the transaction pool and was signed from one of the transactions this nodes manages.
 func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscription, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.NewPendingTransactions)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.NewPendingTransactions, timer)
-
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
@@ -178,9 +149,6 @@ func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Su
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newblockfilter
 func (api *PublicFilterAPI) NewBlockFilter() rpc.ID {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.NewBlockFilter)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.NewBlockFilter, timer)
-
 	var (
 		headers   = make(chan *block.Header)
 		headerSub = api.events.SubscribeNewHeads(headers)
@@ -213,8 +181,6 @@ func (api *PublicFilterAPI) NewBlockFilter() rpc.ID {
 
 // NewHeads send a notification each time a new (header) block is appended to the chain.
 func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.NewHeads)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.NewHeads, timer)
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
@@ -251,9 +217,6 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterchanges
 func (api *PublicFilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.GetFilterChanges)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.GetFilterChanges, timer)
-
 	api.filtersMu.Lock()
 	defer api.filtersMu.Unlock()
 
@@ -300,8 +263,6 @@ func returnLogs(logs []*types.Log) []*types.Log {
 
 // Logs creates a subscription that fires for all new log that match the given filter criteria.
 func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subscription, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.Logs)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.Logs, timer)
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
@@ -312,7 +273,7 @@ func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc
 		matchedLogs = make(chan []*types.Log)
 	)
 
-	logsSub, err := api.events.SubscribeLogs(ethereum.FilterQuery(crit), matchedLogs, nil)
+	logsSub, err := api.events.SubscribeLogs(ethereum.FilterQuery(crit), matchedLogs)
 	if err != nil {
 		return nil, err
 	}
@@ -352,33 +313,14 @@ func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newfilter
 func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.NewFilter)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.NewFilter, timer)
-
-	id := rpc.NewID()
-	if err := redis_helper.PublishNewFilterLogEvent(api.shardID, api.namespace, string(id), ethereum.FilterQuery(crit)); err != nil {
-		return "", fmt.Errorf("sending filter logs to other readers: %w", err)
-	}
-
-	time.Sleep(time.Millisecond * 70) // to give time to the other readers to catch up
-	return api.createFilter(ethereum.FilterQuery(crit), id)
-}
-
-func (api *PublicFilterAPI) createFilter(crit ethereum.FilterQuery, customId rpc.ID) (rpc.ID, error) {
 	logs := make(chan []*types.Log)
-	logsSub, err := api.events.SubscribeLogs(crit, logs, &customId)
+	logsSub, err := api.events.SubscribeLogs(ethereum.FilterQuery(crit), logs)
 	if err != nil {
-		return "", err
+		return rpc.ID(""), err
 	}
 
 	api.filtersMu.Lock()
-	api.filters[logsSub.ID] = &filter{
-		typ:      LogsSubscription,
-		crit:     FilterCriteria(crit),
-		deadline: time.NewTimer(deadline),
-		logs:     make([]*types.Log, 0),
-		s:        logsSub,
-	}
+	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit, deadline: time.NewTimer(deadline), logs: make([]*types.Log, 0), s: logsSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -402,28 +344,14 @@ func (api *PublicFilterAPI) createFilter(crit ethereum.FilterQuery, customId rpc
 	return logsSub.ID, nil
 }
 
-func (api *PublicFilterAPI) SyncNewFilterFromOtherReaders() {
-	go redis_helper.SubscribeNewFilterLogEvent(api.shardID, api.namespace, func(id string, crit ethereum.FilterQuery) {
-		if _, err := api.createFilter(crit, rpc.ID(id)); err != nil {
-			utils.Logger().Warn().
-				Uint32("shardID", api.shardID).
-				Err(err).
-				Msg("unable to sync filters from other readers")
-		}
-	})
-}
-
 // GetLogs returns logs matching the given argument that are stored within the state.
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
 func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([]*types.Log, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.GetLogs)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.GetLogs, timer)
-
 	var filter *Filter
 	if crit.BlockHash != nil {
 		// Block filter requested, construct a single-shot filter
-		filter = NewBlockFilter(api.backend, *crit.BlockHash, crit.Addresses, crit.Topics, api.isEth())
+		filter = NewBlockFilter(api.backend, *crit.BlockHash, crit.Addresses, crit.Topics)
 	} else {
 		// Convert the RPC block numbers into internal representations
 		begin := rpc.LatestBlockNumber.Int64()
@@ -434,17 +362,12 @@ func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([
 		if crit.ToBlock != nil {
 			end = crit.ToBlock.Int64()
 		}
-		if end >= begin && end-begin > rpcGetLogsLimit {
-			return nil, fmt.Errorf("GetLogs query must be smaller than size %v", rpcGetLogsLimit)
-		}
-
 		// Construct the range filter
-		filter = NewRangeFilter(api.backend, begin, end, crit.Addresses, crit.Topics, api.isEth())
+		filter = NewRangeFilter(api.backend, begin, end, crit.Addresses, crit.Topics)
 	}
 	// Run the filter and return all the logs
 	logs, err := filter.Logs(ctx)
 	if err != nil {
-		itc_rpc.DoMetricRPCQueryInfo(itc_rpc.GetLogs, itc_rpc.FailedNumber)
 		return nil, err
 	}
 	return returnLogs(logs), err
@@ -454,9 +377,6 @@ func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_uninstallfilter
 func (api *PublicFilterAPI) UninstallFilter(id rpc.ID) bool {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.UninstallFilter)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.UninstallFilter, timer)
-
 	api.filtersMu.Lock()
 	f, found := api.filters[id]
 	if found {
@@ -475,9 +395,6 @@ func (api *PublicFilterAPI) UninstallFilter(id rpc.ID) bool {
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterlogs
 func (api *PublicFilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Log, error) {
-	timer := itc_rpc.DoMetricRPCRequest(itc_rpc.GetFilterLogs)
-	defer itc_rpc.DoRPCRequestDuration(itc_rpc.GetFilterLogs, timer)
-
 	api.filtersMu.Lock()
 	f, found := api.filters[id]
 	api.filtersMu.Unlock()
@@ -489,7 +406,7 @@ func (api *PublicFilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*ty
 	var filter *Filter
 	if f.crit.BlockHash != nil {
 		// Block filter requested, construct a single-shot filter
-		filter = NewBlockFilter(api.backend, *f.crit.BlockHash, f.crit.Addresses, f.crit.Topics, api.isEth())
+		filter = NewBlockFilter(api.backend, *f.crit.BlockHash, f.crit.Addresses, f.crit.Topics)
 	} else {
 		// Convert the RPC block numbers into internal representations
 		begin := rpc.LatestBlockNumber.Int64()
@@ -501,12 +418,11 @@ func (api *PublicFilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*ty
 			end = f.crit.ToBlock.Int64()
 		}
 		// Construct the range filter
-		filter = NewRangeFilter(api.backend, begin, end, f.crit.Addresses, f.crit.Topics, api.isEth())
+		filter = NewRangeFilter(api.backend, begin, end, f.crit.Addresses, f.crit.Topics)
 	}
 	// Run the filter and return all the logs
 	logs, err := filter.Logs(ctx)
 	if err != nil {
-		itc_rpc.DoMetricRPCQueryInfo(itc_rpc.GetFilterLogs, itc_rpc.FailedNumber)
 		return nil, err
 	}
 	return returnLogs(logs), nil

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
-	v3 "github.com/zennittians/intelchain/block/v3"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/bloombits"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core"
@@ -18,7 +17,6 @@ import (
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/crypto/bls"
 	internal_bls "github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/eth/rpc"
 	internal_common "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/internal/utils"
@@ -67,7 +65,10 @@ func (itc *Intelchain) GetBlockSigners(
 			Object: key,
 		}
 	}
-	mask := internal_bls.NewMask(pubKeys)
+	mask, err := internal_bls.NewMask(pubKeys, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	err = mask.SetMask(blockWithSigners.Header().LastCommitBitmap())
 	if err != nil {
 		return nil, nil, err
@@ -160,7 +161,18 @@ func (itc *Intelchain) GetPreStakingBlockRewards(
 		txFee := new(big.Int).Mul(tx.GasPrice(), big.NewInt(int64(receipts[receiptIndex].GasUsed)))
 		txFees = new(big.Int).Add(txFee, txFees)
 	}
-
+	for _, stx := range blk.StakingTransactions() {
+		dbsTx, _, _, receiptIndex := rawdb.ReadStakingTransaction(itc.ChainDb(), stx.Hash())
+		if dbsTx == nil {
+			return nil, fmt.Errorf("could not find receipt for tx: %v", stx.Hash().String())
+		}
+		if len(receipts) <= int(receiptIndex) {
+			return nil, fmt.Errorf("invalid receipt indext %v (>= num receipts: %v) for tx: %v",
+				receiptIndex, len(receipts), stx.Hash().String())
+		}
+		txFee := new(big.Int).Mul(stx.GasPrice(), big.NewInt(int64(receipts[receiptIndex].GasUsed)))
+		txFees = new(big.Int).Add(txFee, txFees)
+	}
 	if amt, ok := rewards[blk.Header().Coinbase()]; ok {
 		rewards[blk.Header().Coinbase()] = new(big.Int).Add(amt, txFees)
 	} else {
@@ -173,20 +185,10 @@ func (itc *Intelchain) GetPreStakingBlockRewards(
 
 // GetLatestChainHeaders ..
 func (itc *Intelchain) GetLatestChainHeaders() *block.HeaderPair {
-	pair := &block.HeaderPair{
-		BeaconHeader: &block.Header{Header: v3.NewHeader()},
-		ShardHeader:  &block.Header{Header: v3.NewHeader()},
+	return &block.HeaderPair{
+		BeaconHeader: itc.BeaconChain.CurrentHeader(),
+		ShardHeader:  itc.BlockChain.CurrentHeader(),
 	}
-
-	if itc.BeaconChain != nil {
-		pair.BeaconHeader = itc.BeaconChain.CurrentHeader()
-	}
-
-	if itc.BlockChain != nil {
-		pair.ShardHeader = itc.BlockChain.CurrentHeader()
-	}
-
-	return pair
 }
 
 // GetLastCrossLinks ..
@@ -208,19 +210,9 @@ func (itc *Intelchain) CurrentBlock() *types.Block {
 	return types.NewBlockWithHeader(itc.BlockChain.CurrentHeader())
 }
 
-// CurrentHeader returns the current header from the local chain.
-func (itc *Intelchain) CurrentHeader() *block.Header {
-	return itc.BlockChain.CurrentHeader()
-}
-
-// GetBlock returns block by hash.
+// GetBlock ...
 func (itc *Intelchain) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
 	return itc.BlockChain.GetBlockByHash(hash), nil
-}
-
-// GetHeader returns header by hash.
-func (itc *Intelchain) GetHeader(ctx context.Context, hash common.Hash) (*block.Header, error) {
-	return itc.BlockChain.GetHeaderByHash(hash), nil
 }
 
 // GetCurrentBadBlocks ..
@@ -228,30 +220,9 @@ func (itc *Intelchain) GetCurrentBadBlocks() []core.BadBlock {
 	return itc.BlockChain.BadBlocks()
 }
 
-func (itc *Intelchain) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
-	if blockNr, ok := blockNrOrHash.Number(); ok {
-		return itc.BlockByNumber(ctx, blockNr)
-	}
-	if hash, ok := blockNrOrHash.Hash(); ok {
-		header := itc.BlockChain.GetHeaderByHash(hash)
-		if header == nil {
-			return nil, errors.New("header for hash not found")
-		}
-		if blockNrOrHash.RequireCanonical && itc.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
-			return nil, errors.New("hash is not currently canonical")
-		}
-		block := itc.BlockChain.GetBlock(hash, header.Number().Uint64())
-		if block == nil {
-			return nil, errors.New("header found, but block body is missing")
-		}
-		return block, nil
-	}
-	return nil, errors.New("invalid arguments; neither block nor hash specified")
-}
-
 // GetBalance returns balance of an given address.
-func (itc *Intelchain) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error) {
-	s, _, err := itc.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+func (itc *Intelchain) GetBalance(ctx context.Context, address common.Address, blockNum rpc.BlockNumber) (*big.Int, error) {
+	s, _, err := itc.StateAndHeaderByNumber(ctx, blockNum)
 	if s == nil || err != nil {
 		return nil, err
 	}
@@ -308,27 +279,6 @@ func (itc *Intelchain) StateAndHeaderByNumber(ctx context.Context, blockNum rpc.
 	return stateDb, header, err
 }
 
-func (itc *Intelchain) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.DB, *block.Header, error) {
-	if blockNr, ok := blockNrOrHash.Number(); ok {
-		return itc.StateAndHeaderByNumber(ctx, blockNr)
-	}
-	if hash, ok := blockNrOrHash.Hash(); ok {
-		header, err := itc.HeaderByHash(ctx, hash)
-		if err != nil {
-			return nil, nil, err
-		}
-		if header == nil {
-			return nil, nil, errors.New("header for hash not found")
-		}
-		if blockNrOrHash.RequireCanonical && itc.BlockChain.GetCanonicalHash(header.Number().Uint64()) != hash {
-			return nil, nil, errors.New("hash is not currently canonical")
-		}
-		stateDb, err := itc.BlockChain.StateAt(header.Root())
-		return stateDb, header, err
-	}
-	return nil, nil, errors.New("invalid arguments; neither block nor hash specified")
-}
-
 // GetLeaderAddress returns the one address of the leader, given the coinbaseAddr.
 // Note that the coinbaseAddr is overloaded with the BLS pub key hash in staking era.
 func (itc *Intelchain) GetLeaderAddress(coinbaseAddr common.Address, epoch *big.Int) string {
@@ -358,29 +308,11 @@ func (itc *Intelchain) GetLeaderAddress(coinbaseAddr common.Address, epoch *big.
 // Filter related APIs
 
 // GetLogs ...
-func (itc *Intelchain) GetLogs(ctx context.Context, blockHash common.Hash, isEth bool) ([][]*types.Log, error) {
+func (itc *Intelchain) GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error) {
 	receipts := itc.BlockChain.GetReceiptsByHash(blockHash)
 	if receipts == nil {
 		return nil, errors.New("Missing receipts")
 	}
-	if isEth {
-		block := itc.BlockChain.GetBlockByHash(blockHash)
-		if block == nil {
-			return nil, errors.New("Missing block data")
-		}
-		txns := block.Transactions()
-		for i := range receipts {
-			if i < len(txns) {
-				ethHash := txns[i].ConvertToEth().Hash()
-				receipts[i].TxHash = ethHash
-				for j := range receipts[i].Logs {
-					// Override log txHash with receipt's
-					receipts[i].Logs[j].TxHash = ethHash
-				}
-			}
-		}
-	}
-
 	logs := make([][]*types.Log, len(receipts))
 	for i, receipt := range receipts {
 		logs[i] = receipt.Logs

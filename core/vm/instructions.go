@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/params"
-	"github.com/zennittians/intelchain/shard"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -33,7 +32,7 @@ var (
 	tt255                    = math.BigPow(2, 255)
 	errWriteProtection       = errors.New("evm: write protection")
 	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
-	ErrExecutionReverted     = errors.New("evm: execution reverted")
+	errExecutionReverted     = errors.New("evm: execution reverted")
 	errMaxCodeSizeExceeded   = errors.New("evm: max code size exceeded")
 	errInvalidJump           = errors.New("evm: invalid jump destination")
 )
@@ -478,16 +477,6 @@ func opReturnDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contrac
 
 func opExtCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	address := common.BigToAddress(slot)
-	fixValidatorCode := interpreter.evm.chainRules.IsValidatorCodeFix &&
-		interpreter.evm.ShardID == shard.BeaconChainShardID &&
-		interpreter.evm.StateDB.IsValidator(address)
-	if fixValidatorCode {
-		// https://github.com/ethereum/solidity/blob/develop/Changelog.md#081-2021-01-27
-		// per this link, <address>.code.length calls extcodesize on the address so this fix will work
-		slot.SetUint64(0)
-		return nil, nil
-	}
 	slot.SetUint64(uint64(interpreter.evm.StateDB.GetCodeSize(common.BigToAddress(slot))))
 
 	return nil, nil
@@ -520,17 +509,7 @@ func opExtCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, 
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
-	var code []byte
-	fixValidatorCode := interpreter.evm.chainRules.IsValidatorCodeFix &&
-		interpreter.evm.ShardID == shard.BeaconChainShardID &&
-		interpreter.evm.StateDB.IsValidator(addr)
-	if fixValidatorCode {
-		// for EOAs that are not validators, statedb returns nil
-		code = nil
-	} else {
-		code = interpreter.evm.StateDB.GetCode(addr)
-	}
-	codeCopy := getDataBig(code, codeOffset, length)
+	codeCopy := getDataBig(interpreter.evm.StateDB.GetCode(addr), codeOffset, length)
 	memory.Set(memOffset.Uint64(), length.Uint64(), codeCopy)
 
 	interpreter.intPool.put(memOffset, codeOffset, length)
@@ -576,14 +555,7 @@ func opExtCodeHash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, 
 	if interpreter.evm.StateDB.Empty(address) {
 		slot.SetUint64(0)
 	} else {
-		fixValidatorCode := interpreter.evm.chainRules.IsValidatorCodeFix &&
-			interpreter.evm.ShardID == shard.BeaconChainShardID &&
-			interpreter.evm.StateDB.IsValidator(address)
-		if fixValidatorCode {
-			slot.SetBytes(emptyCodeHash.Bytes())
-		} else {
-			slot.SetBytes(interpreter.evm.StateDB.GetCodeHash(address).Bytes())
-		}
+		slot.SetBytes(interpreter.evm.StateDB.GetCodeHash(address).Bytes())
 	}
 	return nil, nil
 }
@@ -747,7 +719,7 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	contract.Gas += returnGas
 	interpreter.intPool.put(value, offset, size)
 
-	if suberr == ErrExecutionReverted {
+	if suberr == errExecutionReverted {
 		return res, nil
 	}
 	return nil, nil
@@ -775,7 +747,7 @@ func opCreate2(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 	contract.Gas += returnGas
 	interpreter.intPool.put(endowment, offset, size, salt)
 
-	if suberr == ErrExecutionReverted {
+	if suberr == errExecutionReverted {
 		return res, nil
 	}
 	return nil, nil
@@ -801,10 +773,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	} else {
 		stack.push(interpreter.intPool.get().SetUint64(1))
 	}
-	if err == nil || err == ErrExecutionReverted {
-		if contract.WithDataCopyFix {
-			ret = common.CopyBytes(ret)
-		}
+	if err == nil || err == errExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	contract.Gas += returnGas
@@ -833,10 +802,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, contract *Contract, mem
 	} else {
 		stack.push(interpreter.intPool.get().SetUint64(1))
 	}
-	if err == nil || err == ErrExecutionReverted {
-		if contract.WithDataCopyFix {
-			ret = common.CopyBytes(ret)
-		}
+	if err == nil || err == errExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	contract.Gas += returnGas
@@ -861,10 +827,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract,
 	} else {
 		stack.push(interpreter.intPool.get().SetUint64(1))
 	}
-	if err == nil || err == ErrExecutionReverted {
-		if contract.WithDataCopyFix {
-			ret = common.CopyBytes(ret)
-		}
+	if err == nil || err == errExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	contract.Gas += returnGas
@@ -889,10 +852,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, m
 	} else {
 		stack.push(interpreter.intPool.get().SetUint64(1))
 	}
-	if err == nil || err == ErrExecutionReverted {
-		if contract.WithDataCopyFix {
-			ret = common.CopyBytes(ret)
-		}
+	if err == nil || err == errExecutionReverted {
 		memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	contract.Gas += returnGas

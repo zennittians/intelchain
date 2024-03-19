@@ -41,6 +41,12 @@ func (s fixedSchedule) VdfDifficulty() int {
 	return mainnetVdfDifficulty
 }
 
+// TODO: remove it after randomness feature turned on mainnet
+//RandonnessStartingEpoch returns starting epoch of randonness generation
+func (s fixedSchedule) RandomnessStartingEpoch() uint64 {
+	return mainnetRandomnessStartingEpoch
+}
+
 func (s fixedSchedule) GetNetworkID() NetworkID {
 	return DevNet
 }

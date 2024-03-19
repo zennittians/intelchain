@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/pkg/errors"
-
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
 	"github.com/zennittians/intelchain/crypto/bls"
 
@@ -19,10 +17,9 @@ import (
 )
 
 type uniformVoteWeight struct {
+	DependencyInjectionWriter
+	DependencyInjectionReader
 	SignatureReader
-
-	lastPowerSignersCountCache map[Phase]int64
-	lastParticipantsCount      int64
 }
 
 // Policy ..
@@ -108,30 +105,27 @@ func (v *uniformVoteWeight) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t{v.Policy().String(), len(keys), keys})
 }
 
-func (v *uniformVoteWeight) ResetPrepareAndCommitVotes() {
-	v.lastPowerSignersCountCache[Prepare] = v.SignersCount(Prepare)
-	v.lastPowerSignersCountCache[Commit] = v.SignersCount(Commit)
-	v.lastParticipantsCount = v.ParticipantsCount()
+func (v *uniformVoteWeight) AmIMemberOfCommitee() bool {
+	pubKeyFunc := v.MyPublicKey()
+	if pubKeyFunc == nil {
+		return false
+	}
+	identity, _ := pubKeyFunc()
+	everyone := v.Participants()
+	for _, key := range identity {
+		for i := range everyone {
+			if key.Object.IsEqual(everyone[i].Object) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
+func (v *uniformVoteWeight) ResetPrepareAndCommitVotes() {
 	v.reset([]Phase{Prepare, Commit})
 }
 
 func (v *uniformVoteWeight) ResetViewChangeVotes() {
-	v.lastPowerSignersCountCache[ViewChange] = v.SignersCount(ViewChange)
-	v.lastParticipantsCount = v.ParticipantsCount()
-
 	v.reset([]Phase{ViewChange})
-}
-
-func (v *uniformVoteWeight) CurrentTotalPower(p Phase) (*numeric.Dec, error) {
-	if v.lastParticipantsCount == 0 {
-		return nil, errors.New("uniformVoteWeight not cache last participants count")
-	}
-
-	if lastPowerSignersCount, ok := v.lastPowerSignersCountCache[p]; ok {
-		power := numeric.NewDec(lastPowerSignersCount).Quo(numeric.NewDec(v.lastParticipantsCount))
-		return &power, nil
-	} else {
-		return nil, errors.New("uniformVoteWeight not cache this phase")
-	}
 }

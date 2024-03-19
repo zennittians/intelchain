@@ -228,7 +228,6 @@ type Block struct {
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
 
-	commitLock sync.Mutex
 	// Commit Signatures/Bitmap
 	commitSigAndBitmap []byte
 }
@@ -266,15 +265,11 @@ func (b *Block) SetCurrentCommitSig(sigAndBitmap []byte) {
 			Int("dstLen", len(b.header.LastCommitSignature())).
 			Msg("SetCurrentCommitSig: sig size mismatch")
 	}
-	b.commitLock.Lock()
 	b.commitSigAndBitmap = sigAndBitmap
-	b.commitLock.Unlock()
 }
 
 // GetCurrentCommitSig get the commit group signature that signed on this block.
 func (b *Block) GetCurrentCommitSig() []byte {
-	b.commitLock.Lock()
-	defer b.commitLock.Unlock()
 	return b.commitSigAndBitmap
 }
 

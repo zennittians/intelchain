@@ -2,20 +2,16 @@ package node
 
 import (
 	"context"
-	"encoding/json"
+	"sort"
 	"sync"
-
-	"github.com/zennittians/intelchain/internal/tikv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	msg_pb "github.com/zennittians/intelchain/api/proto/message"
-	"github.com/zennittians/intelchain/api/service"
 	"github.com/zennittians/intelchain/api/service/explorer"
 	"github.com/zennittians/intelchain/consensus"
 	"github.com/zennittians/intelchain/consensus/signature"
-	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/utils"
 )
@@ -53,22 +49,22 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return err
 		}
 
-		if !node.Consensus.Decider().IsQuorumAchievedByMask(mask) {
+		if !node.Consensus.Decider.IsQuorumAchievedByMask(mask) {
 			utils.Logger().Error().Msg("[Explorer] not have enough signature power")
 			return nil
 		}
 
-		block := node.Consensus.FBFTLog().GetBlockByHash(recvMsg.BlockHash)
+		block := node.Consensus.FBFTLog.GetBlockByHash(recvMsg.BlockHash)
 
 		if block == nil {
 			utils.Logger().Info().
 				Uint64("msgBlock", recvMsg.BlockNum).
 				Msg("[Explorer] Haven't received the block before the committed msg")
-			node.Consensus.FBFTLog().AddVerifiedMessage(recvMsg)
+			node.Consensus.FBFTLog.AddVerifiedMessage(recvMsg)
 			return errBlockBeforeCommit
 		}
 
-		commitPayload := signature.ConstructCommitPayload(node.Blockchain().Config(),
+		commitPayload := signature.ConstructCommitPayload(node.Blockchain(),
 			block.Epoch(), block.Hash(), block.Number().Uint64(), block.Header().ViewID().Uint64())
 		if !aggSig.VerifyHash(mask.AggregatePublic, commitPayload) {
 			utils.Logger().
@@ -94,9 +90,9 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 			return err
 		}
 		// Add the block into FBFT log.
-		node.Consensus.FBFTLog().AddBlock(blockObj)
+		node.Consensus.FBFTLog.AddBlock(blockObj)
 		// Try to search for MessageType_COMMITTED message from pbft log.
-		msgs := node.Consensus.FBFTLog().GetMessagesByTypeSeqHash(
+		msgs := node.Consensus.FBFTLog.GetMessagesByTypeSeqHash(
 			msg_pb.MessageType_COMMITTED,
 			blockObj.NumberU64(),
 			blockObj.Hash(),
@@ -123,75 +119,28 @@ func (node *Node) explorerMessageHandler(ctx context.Context, msg *msg_pb.Messag
 	return nil
 }
 
-func (node *Node) TraceLoopForExplorer() {
-	if !node.IntelchainConfig.General.TraceEnable {
-		return
-	}
-	ch := make(chan core.TraceEvent)
-	subscribe := node.Blockchain().SubscribeTraceEvent(ch)
-	go func() {
-	loop:
-		select {
-		case ev := <-ch:
-			if exp, err := node.getExplorerService(); err == nil {
-				storage := ev.Tracer.GetStorage()
-				exp.DumpTraceResult(storage)
-			}
-			goto loop
-		case <-subscribe.Err():
-			//subscribe.Unsubscribe()
-			break
-		}
-	}()
-}
-
 // AddNewBlockForExplorer add new block for explorer.
 func (node *Node) AddNewBlockForExplorer(block *types.Block) {
-	if node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
-		node.Consensus.FBFTLog().DeleteBlockByNumber(block.NumberU64())
-		return
-	}
-
 	utils.Logger().Info().Uint64("blockHeight", block.NumberU64()).Msg("[Explorer] Adding new block for explorer node")
-
-	if _, err := node.Blockchain().InsertChain([]*types.Block{block}, false); err == nil || errors.Is(err, core.ErrKnownBlock) {
+	if _, err := node.Blockchain().InsertChain([]*types.Block{block}, true); err == nil {
 		if block.IsLastBlockInEpoch() {
 			node.Consensus.UpdateConsensusInformation()
 		}
 		// Clean up the blocks to avoid OOM.
-		node.Consensus.FBFTLog().DeleteBlockByNumber(block.NumberU64())
-
-		// if in tikv mode, only master writer node need dump all explorer block
-		if !node.IntelchainConfig.General.RunElasticMode || node.Blockchain().IsTikvWriterMaster() {
-			// Do dump all blocks from state syncing for explorer one time
-			// TODO: some blocks can be dumped before state syncing finished.
-			// And they would be dumped again here. Please fix it.
-			once.Do(func() {
-				utils.Logger().Info().Int64("starting height", int64(block.NumberU64())-1).
-					Msg("[Explorer] Populating explorer data from state synced blocks")
-				go func() {
-					exp, err := node.getExplorerService()
-					if err != nil {
-						// shall be unreachable
-						utils.Logger().Fatal().Err(err).Msg("critical error in explorer node")
-					}
-
-					if block.NumberU64() == 0 {
-						return
-					}
-
-					// get checkpoint bitmap and flip all bit
-					bitmap := exp.GetCheckpointBitmap()
-					bitmap.Flip(0, block.NumberU64())
-
-					// find all not processed block and dump it
-					iterator := bitmap.ReverseIterator()
-					for iterator.HasNext() {
-						exp.DumpCatchupBlock(node.Blockchain().GetBlockByNumber(iterator.Next()))
-					}
-				}()
-			})
-		}
+		node.Consensus.FBFTLog.DeleteBlockByNumber(block.NumberU64())
+		// Do dump all blocks from state syncing for explorer one time
+		// TODO: some blocks can be dumped before state syncing finished.
+		// And they would be dumped again here. Please fix it.
+		once.Do(func() {
+			utils.Logger().Info().Int64("starting height", int64(block.NumberU64())-1).
+				Msg("[Explorer] Populating explorer data from state synced blocks")
+			go func() {
+				for blockHeight := int64(block.NumberU64()) - 1; blockHeight >= 0; blockHeight-- {
+					explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).Dump(
+						node.Blockchain().GetBlockByNumber(uint64(blockHeight)), uint64(blockHeight))
+				}
+			}()
+		})
 	} else {
 		utils.Logger().Error().Err(err).Msg("[Explorer] Error when adding new block for explorer node")
 	}
@@ -199,77 +148,103 @@ func (node *Node) AddNewBlockForExplorer(block *types.Block) {
 
 // ExplorerMessageHandler passes received message in node_handler to explorer service.
 func (node *Node) commitBlockForExplorer(block *types.Block) {
-	// if in tikv mode, only master writer node need dump explorer block
-	if !node.IntelchainConfig.General.RunElasticMode || (node.IntelchainConfig.TiKV.Role == tikv.RoleWriter && node.Blockchain().IsTikvWriterMaster()) {
-		if block.ShardID() != node.NodeConfig.ShardID {
-			return
-		}
-		// Dump new block into level db.
-		utils.Logger().Info().Uint64("blockNum", block.NumberU64()).Msg("[Explorer] Committing block into explorer DB")
-		exp, err := node.getExplorerService()
-		if err != nil {
-			// shall be unreachable
-			utils.Logger().Fatal().Err(err).Msg("critical error in explorer node")
-		}
-		exp.DumpNewBlock(block)
+	if block.ShardID() != node.NodeConfig.ShardID {
+		return
 	}
+	// Dump new block into level db.
+	utils.Logger().Info().Uint64("blockNum", block.NumberU64()).Msg("[Explorer] Committing block into explorer DB")
+	explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).Dump(block, block.NumberU64())
 
 	curNum := block.NumberU64()
 	if curNum-100 > 0 {
-		node.Consensus.DeleteBlocksLessThan(curNum - 100)
-		node.Consensus.DeleteMessagesLessThan(curNum - 100)
+		node.Consensus.FBFTLog.DeleteBlocksLessThan(curNum - 100)
+		node.Consensus.FBFTLog.DeleteMessagesLessThan(curNum - 100)
 	}
 }
 
 // GetTransactionsHistory returns list of transactions hashes of address.
 func (node *Node) GetTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
-	exp, err := node.getExplorerService()
+	addressData := &explorer.Address{}
+	key := explorer.GetAddressKey(address)
+	bytes, err := explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).GetDB().Get([]byte(key), nil)
 	if err != nil {
+		utils.Logger().Debug().Err(err).
+			Msgf("[Explorer] Error retrieving transaction history for address %s", address)
+		return make([]common.Hash, 0), nil
+	}
+	if err = rlp.DecodeBytes(bytes, &addressData); err != nil {
+		utils.Logger().Error().Err(err).Msg("[Explorer] Cannot convert address data from DB")
 		return nil, err
 	}
-	allTxs, tts, err := exp.GetNormalTxHashesByAccount(address)
-	if err != nil {
-		return nil, err
-	}
-	txs := getTargetTxHashes(allTxs, tts, txType)
-
 	if order == "DESC" {
-		reverseTxs(txs)
+		sort.Slice(addressData.TXs[:], func(i, j int) bool {
+			return addressData.TXs[i].Timestamp > addressData.TXs[j].Timestamp
+		})
+	} else {
+		sort.Slice(addressData.TXs[:], func(i, j int) bool {
+			return addressData.TXs[i].Timestamp < addressData.TXs[j].Timestamp
+		})
 	}
-	return txs, nil
+	hashes := make([]common.Hash, 0)
+	for _, tx := range addressData.TXs {
+		if txType == "" || txType == "ALL" || txType == tx.Type {
+			hash := common.HexToHash(tx.Hash)
+			hashes = append(hashes, hash)
+		}
+	}
+	return hashes, nil
 }
 
 // GetStakingTransactionsHistory returns list of staking transactions hashes of address.
 func (node *Node) GetStakingTransactionsHistory(address, txType, order string) ([]common.Hash, error) {
-	exp, err := node.getExplorerService()
+	addressData := &explorer.Address{}
+	key := explorer.GetAddressKey(address)
+	bytes, err := explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).GetDB().Get([]byte(key), nil)
 	if err != nil {
+		utils.Logger().Debug().Err(err).
+			Msgf("[Explorer] Staking transaction history for address %s not found", address)
+		return make([]common.Hash, 0), nil
+	}
+	if err = rlp.DecodeBytes(bytes, &addressData); err != nil {
+		utils.Logger().Error().Err(err).Msg("[Explorer] Cannot convert address data from DB")
 		return nil, err
 	}
-	allTxs, tts, err := exp.GetStakingTxHashesByAccount(address)
-	if err != nil {
-		return nil, err
-	}
-	txs := getTargetTxHashes(allTxs, tts, txType)
-
 	if order == "DESC" {
-		reverseTxs(txs)
+		sort.Slice(addressData.StakingTXs[:], func(i, j int) bool {
+			return addressData.StakingTXs[i].Timestamp > addressData.StakingTXs[j].Timestamp
+		})
+	} else {
+		sort.Slice(addressData.StakingTXs[:], func(i, j int) bool {
+			return addressData.StakingTXs[i].Timestamp < addressData.StakingTXs[j].Timestamp
+		})
 	}
-	return txs, nil
+	hashes := make([]common.Hash, 0)
+	for _, tx := range addressData.StakingTXs {
+		if txType == "" || txType == "ALL" || txType == tx.Type {
+			hash := common.HexToHash(tx.Hash)
+			hashes = append(hashes, hash)
+		}
+	}
+	return hashes, nil
 }
 
 // GetTransactionsCount returns the number of regular transactions hashes of address for input type.
 func (node *Node) GetTransactionsCount(address, txType string) (uint64, error) {
-	exp, err := node.getExplorerService()
+	addressData := &explorer.Address{}
+	key := explorer.GetAddressKey(address)
+	bytes, err := explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).GetDB().Get([]byte(key), nil)
 	if err != nil {
+		utils.Logger().Error().Err(err).Str("addr", address).Msg("[Explorer] Address not found")
+		return 0, nil
+	}
+	if err = rlp.DecodeBytes(bytes, &addressData); err != nil {
+		utils.Logger().Error().Err(err).Msg("[Explorer] Cannot convert address data from DB")
 		return 0, err
 	}
-	_, tts, err := exp.GetNormalTxHashesByAccount(address)
-	if err != nil {
-		return 0, err
-	}
+
 	count := uint64(0)
-	for _, tt := range tts {
-		if isTargetTxType(tt, txType) {
+	for _, tx := range addressData.TXs {
+		if txType == "" || txType == "ALL" || txType == tx.Type {
 			count++
 		}
 	}
@@ -278,57 +253,23 @@ func (node *Node) GetTransactionsCount(address, txType string) (uint64, error) {
 
 // GetStakingTransactionsCount returns the number of staking transactions hashes of address for input type.
 func (node *Node) GetStakingTransactionsCount(address, txType string) (uint64, error) {
-	exp, err := node.getExplorerService()
+	addressData := &explorer.Address{}
+	key := explorer.GetAddressKey(address)
+	bytes, err := explorer.GetStorageInstance(node.SelfPeer.IP, node.SelfPeer.Port).GetDB().Get([]byte(key), nil)
 	if err != nil {
+		utils.Logger().Error().Err(err).Str("addr", address).Msg("[Explorer] Address not found")
+		return 0, nil
+	}
+	if err = rlp.DecodeBytes(bytes, &addressData); err != nil {
+		utils.Logger().Error().Err(err).Msg("[Explorer] Cannot convert address data from DB")
 		return 0, err
 	}
-	_, tts, err := exp.GetStakingTxHashesByAccount(address)
-	if err != nil {
-		return 0, err
-	}
+
 	count := uint64(0)
-	for _, tt := range tts {
-		if isTargetTxType(tt, txType) {
+	for _, tx := range addressData.StakingTXs {
+		if txType == "" || txType == "ALL" || txType == tx.Type {
 			count++
 		}
 	}
 	return count, nil
-}
-
-// GetStakingTransactionsCount returns the number of staking transactions hashes of address for input type.
-func (node *Node) GetTraceResultByHash(hash common.Hash) (json.RawMessage, error) {
-	exp, err := node.getExplorerService()
-	if err != nil {
-		return nil, err
-	}
-	return exp.GetTraceResultByHash(hash)
-}
-
-func (node *Node) getExplorerService() (*explorer.Service, error) {
-	rawService := node.serviceManager.GetService(service.SupportExplorer)
-	if rawService == nil {
-		return nil, errors.New("explorer service not started")
-	}
-	return rawService.(*explorer.Service), nil
-}
-
-func isTargetTxType(tt explorer.TxType, target string) bool {
-	return target == "" || target == "ALL" || target == tt.String()
-}
-
-func getTargetTxHashes(txs []common.Hash, tts []explorer.TxType, target string) []common.Hash {
-	var res []common.Hash
-	for i, tx := range txs {
-		if isTargetTxType(tts[i], target) {
-			res = append(res, tx)
-		}
-	}
-	return res
-}
-
-func reverseTxs(txs []common.Hash) {
-	for i := 0; i < len(txs)/2; i++ {
-		j := len(txs) - i - 1
-		txs[i], txs[j] = txs[j], txs[i]
-	}
 }

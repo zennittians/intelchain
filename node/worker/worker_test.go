@@ -5,8 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -39,19 +38,17 @@ func TestNewWorker(t *testing.T) {
 			Alloc:   core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
 			ShardID: 10,
 		}
-		engine = chain2.NewEngine()
 	)
 
 	genesis := gspec.MustCommit(database)
 	_ = genesis
-	cacheConfig := &core.CacheConfig{SnapshotLimit: 0}
-	chain, err := core.NewBlockChain(database, nil, &core.BlockChainImpl{}, cacheConfig, gspec.Config, engine, vm.Config{})
+	chain, err := core.NewBlockChain(database, nil, gspec.Config, chain2.Engine, vm.Config{}, nil)
 
 	if err != nil {
 		t.Error(err)
 	}
 	// Create a new worker
-	worker := New(chain, nil)
+	worker := New(params.TestChainConfig, chain, chain2.Engine)
 
 	if worker.GetCurrentState().GetBalance(crypto.PubkeyToAddress(testBankKey.PublicKey)).Cmp(testBankFunds) != 0 {
 		t.Error("Worker state is not setup correctly")
@@ -68,15 +65,13 @@ func TestCommitTransactions(t *testing.T) {
 			Alloc:   core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
 			ShardID: 0,
 		}
-		engine = chain2.NewEngine()
 	)
 
 	gspec.MustCommit(database)
-	cacheConfig := &core.CacheConfig{SnapshotLimit: 0}
-	chain, _ := core.NewBlockChain(database, nil, nil, cacheConfig, gspec.Config, engine, vm.Config{})
+	chain, _ := core.NewBlockChain(database, nil, gspec.Config, chain2.Engine, vm.Config{}, nil)
 
 	// Create a new worker
-	worker := New(chain, nil)
+	worker := New(params.TestChainConfig, chain, chain2.Engine)
 
 	// Generate a test tx
 	baseNonce := worker.GetCurrentState().GetNonce(crypto.PubkeyToAddress(testBankKey.PublicKey))
@@ -100,13 +95,4 @@ func TestCommitTransactions(t *testing.T) {
 	if len(worker.current.txs) != 1 {
 		t.Error("Transaction is not committed")
 	}
-}
-
-func TestGasLimit(t *testing.T) {
-	w := newWorker(
-		&params.ChainConfig{
-			BlockGas30MEpoch: big.NewInt(10),
-		}, nil, nil)
-	require.EqualValues(t, 80_000_000, w.GasFloor(big.NewInt(3)))
-	require.EqualValues(t, 30_000_000, w.GasFloor(big.NewInt(10)))
 }

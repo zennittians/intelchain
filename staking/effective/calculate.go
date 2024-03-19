@@ -13,16 +13,18 @@ import (
 	"github.com/zennittians/intelchain/numeric"
 )
 
-// medium.com/zennittians/introducing-Intelchains-effective-proof-of-stake-epos-2d39b4b8d58
 var (
-	two         = numeric.NewDecFromBigInt(big.NewInt(2))
-	c, _        = numeric.NewDecFromStr("0.15")
-	cV2, _      = numeric.NewDecFromStr("0.35")
-	onePlusC    = numeric.OneDec().Add(c)
-	oneMinusC   = numeric.OneDec().Sub(c)
-	onePlusCV2  = numeric.OneDec().Add(cV2)
-	oneMinusCV2 = numeric.OneDec().Sub(cV2)
+	two       = numeric.NewDecFromBigInt(big.NewInt(2))
+	c, _      = numeric.NewDecFromStr("0.15")
+	onePlusC  = numeric.OneDec().Add(c)
+	oneMinusC = numeric.OneDec().Sub(c)
 )
+
+func effectiveStake(median, actual numeric.Dec) numeric.Dec {
+	left := numeric.MinDec(onePlusC.Mul(median), actual)
+	right := oneMinusC.Mul(median)
+	return numeric.MaxDec(left, right)
+}
 
 // SlotPurchase ..
 type SlotPurchase struct {
@@ -145,24 +147,13 @@ func Compute(
 }
 
 // Apply ..
-func Apply(shortHand map[common.Address]*SlotOrder, pull int, isExtendedBound bool) (
+func Apply(shortHand map[common.Address]*SlotOrder, pull int) (
 	numeric.Dec, []SlotPurchase,
 ) {
 	median, picks := Compute(shortHand, pull)
-	max := onePlusC.Mul(median)
-	min := oneMinusC.Mul(median)
-	if isExtendedBound {
-		max = onePlusCV2.Mul(median)
-		min = oneMinusCV2.Mul(median)
-	}
 	for i := range picks {
-		picks[i].EPoSStake = effectiveStake(min, max, picks[i].RawStake)
+		picks[i].EPoSStake = effectiveStake(median, picks[i].RawStake)
 	}
 
 	return median, picks
-}
-
-func effectiveStake(min, max, actual numeric.Dec) numeric.Dec {
-	newMax := numeric.MinDec(max, actual)
-	return numeric.MaxDec(newMax, min)
 }

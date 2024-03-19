@@ -13,11 +13,10 @@ var (
 
 // SetParseErrorHandle set the error handle function used for cli parsing flags.
 // An error handle example:
-//
-//	cli.SetParseErrorHandle(func(err error) {
-//		fmt.Println(err)
-//		os.Exit(3)
-//	})
+// 		cli.SetParseErrorHandle(func(err error) {
+//			fmt.Println(err)
+// 			os.Exit(3)
+// 		})
 func SetParseErrorHandle(f errorHandle) {
 	parseErrorHandleFunc = f
 }
@@ -70,18 +69,6 @@ func GetIntFlagValue(cmd *cobra.Command, flag IntFlag) int {
 	return getIntFlagValue(cmd.Flags(), flag)
 }
 
-// GetInt64FlagValue get the int value for the given Int64Flag from the local flags of the
-// cobra command.
-func GetInt64FlagValue(cmd *cobra.Command, flag Int64Flag) int64 {
-	return getInt64FlagValue(cmd.Flags(), flag)
-}
-
-// GetInt64FlagValue get the int value for the given Int64Flag from the local flags of the
-// cobra command.
-func GetUint64FlagValue(cmd *cobra.Command, flag Uint64Flag) uint64 {
-	return getUint64FlagValue(cmd.Flags(), flag)
-}
-
 // GetIntPersistentFlagValue get the int value for the given IntFlag from the persistent
 // flags of the cobra command.
 func GetIntPersistentFlagValue(cmd *cobra.Command, flag IntFlag) int {
@@ -90,24 +77,6 @@ func GetIntPersistentFlagValue(cmd *cobra.Command, flag IntFlag) int {
 
 func getIntFlagValue(fs *pflag.FlagSet, flag IntFlag) int {
 	val, err := fs.GetInt(flag.Name)
-	if err != nil {
-		handleParseError(err)
-		return 0
-	}
-	return val
-}
-
-func getInt64FlagValue(fs *pflag.FlagSet, flag Int64Flag) int64 {
-	val, err := fs.GetInt64(flag.Name)
-	if err != nil {
-		handleParseError(err)
-		return 0
-	}
-	return val
-}
-
-func getUint64FlagValue(fs *pflag.FlagSet, flag Uint64Flag) uint64 {
-	val, err := fs.GetUint64(flag.Name)
 	if err != nil {
 		handleParseError(err)
 		return 0
@@ -129,27 +98,6 @@ func GetStringSlicePersistentFlagValue(cmd *cobra.Command, flag StringSliceFlag)
 
 func getStringSliceFlagValue(fs *pflag.FlagSet, flag StringSliceFlag) []string {
 	val, err := fs.GetStringSlice(flag.Name)
-	if err != nil {
-		handleParseError(err)
-		return nil
-	}
-	return val
-}
-
-// GetIntSliceFlagValue get the int slice value for the given IntSliceFlag from
-// the local flags of the cobra command.
-func GetIntSliceFlagValue(cmd *cobra.Command, flag IntSliceFlag) []int {
-	return getIntSliceFlagValue(cmd.Flags(), flag)
-}
-
-// GetIntSlicePersistentFlagValue get the int slice value for the given IntSliceFlag
-// from the persistent flags of the cobra command.
-func GetIntSlicePersistentFlagValue(cmd *cobra.Command, flag IntSliceFlag) []int {
-	return getIntSliceFlagValue(cmd.PersistentFlags(), flag)
-}
-
-func getIntSliceFlagValue(fs *pflag.FlagSet, flag IntSliceFlag) []int {
-	val, err := fs.GetIntSlice(flag.Name)
 	if err != nil {
 		handleParseError(err)
 		return nil

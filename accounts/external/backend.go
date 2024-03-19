@@ -26,10 +26,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/signer/core"
 	"github.com/zennittians/intelchain/accounts"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 )
 
 // ExternalBackend is a struct for external backend
@@ -218,13 +218,12 @@ func (api *ExternalSigner) SignTx(account accounts.Account, tx *types.Transactio
 		t := common.NewMixedcaseAddress(*tx.To())
 		to = &t
 	}
-	gas := hexutil.Big(*tx.GasPrice())
-	args := &apitypes.SendTxArgs{
+	args := &core.SendTxArgs{
 		Data:     &data,
 		Nonce:    hexutil.Uint64(tx.Nonce()),
 		Value:    hexutil.Big(*tx.Value()),
 		Gas:      hexutil.Uint64(tx.GasLimit()),
-		GasPrice: &gas,
+		GasPrice: hexutil.Big(*tx.GasPrice()),
 		To:       to,
 		From:     common.NewMixedcaseAddress(account.Address),
 	}

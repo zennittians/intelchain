@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/zennittians/intelchain/crypto/bls"
+
 	"github.com/zennittians/intelchain/internal/utils"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -44,9 +45,10 @@ type VoteTally struct {
 
 type stakedVoteWeight struct {
 	SignatureReader
+	DependencyInjectionWriter
+	DependencyInjectionReader
 	roster    votepower.Roster
 	voteTally VoteTally
-	lastPower map[Phase]numeric.Dec
 }
 
 // Policy ..
@@ -90,27 +92,22 @@ func (v *stakedVoteWeight) AddNewVote(
 	additionalVotePower := numeric.NewDec(0)
 
 	for _, pubKeyBytes := range pubKeysBytes {
-		votingPower := v.roster.Voters[pubKeyBytes].OverallPercent
-		utils.Logger().Debug().
-			Str("signer", pubKeyBytes.Hex()).
-			Str("votingPower", votingPower.String()).
-			Msg("Signer vote counted")
-		additionalVotePower = additionalVotePower.Add(votingPower)
+		additionalVotePower = additionalVotePower.Add(v.roster.Voters[pubKeyBytes].OverallPercent)
 	}
 
-	var tallyQuorum *tallyAndQuorum
-	switch p {
-	case Prepare:
-		tallyQuorum = v.voteTally.Prepare
-	case Commit:
-		tallyQuorum = v.voteTally.Commit
-	case ViewChange:
-		tallyQuorum = v.voteTally.ViewChange
-	default:
-		// Should not happen
-		return nil, errors.New("stakedVoteWeight not cache this phase")
-	}
-
+	tallyQuorum := func() *tallyAndQuorum {
+		switch p {
+		case Prepare:
+			return v.voteTally.Prepare
+		case Commit:
+			return v.voteTally.Commit
+		case ViewChange:
+			return v.voteTally.ViewChange
+		default:
+			// Should not happen
+			return nil
+		}
+	}()
 	tallyQuorum.tally = tallyQuorum.tally.Add(additionalVotePower)
 
 	t := v.QuorumThreshold()
@@ -126,7 +123,6 @@ func (v *stakedVoteWeight) AddNewVote(
 	utils.Logger().Info().
 		Str("phase", p.String()).
 		Int64("signer-count", v.SignersCount(p)).
-		Str("new-power-added", additionalVotePower.String()).
 		Str("total-power-of-signers", tallyQuorum.tally.String()).
 		Msg(msg)
 	return ballet, nil
@@ -157,10 +153,21 @@ func (v *stakedVoteWeight) IsQuorumAchievedByMask(mask *bls_cosi.Mask) bool {
 	if currentTotalPower == nil {
 		return false
 	}
-	const msg = "[IsQuorumAchievedByMask] Voting power: need %+v, have %+v"
-	utils.Logger().Debug().
-		Msgf(msg, threshold, currentTotalPower)
 	return (*currentTotalPower).GT(threshold)
+}
+
+func (v *stakedVoteWeight) currentTotalPower(p Phase) (*numeric.Dec, error) {
+	switch p {
+	case Prepare:
+		return &v.voteTally.Prepare.tally, nil
+	case Commit:
+		return &v.voteTally.Commit.tally, nil
+	case ViewChange:
+		return &v.voteTally.ViewChange.tally, nil
+	default:
+		// Should not happen
+		return nil, errors.New("wrong phase is provided")
+	}
 }
 
 // ComputeTotalPowerByMask computes the total power indicated by bitmap mask
@@ -201,12 +208,6 @@ func (v *stakedVoteWeight) SetVoters(
 	}
 	// Hold onto this calculation
 	v.roster = *roster
-
-	utils.Logger().Debug().
-		Uint64("curEpoch", epoch.Uint64()).
-		Uint32("shard-id", subCommittee.ShardID).
-		Str("committee", roster.String()).
-		Msg("[SetVoters] Successfully updated voters")
 	return &TallyResult{
 		roster.OurVotingPowerTotalPercentage,
 		roster.TheirVotingPowerTotalPercentage,
@@ -254,9 +255,7 @@ func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 	i, externalCount := 0, 0
 
 	totalRaw := numeric.ZeroDec()
-	for _, slot := range v.roster.OrderedSlots {
-		identity := slot
-		voter := v.roster.Voters[slot]
+	for identity, voter := range v.roster.Voters {
 		member := u{
 			voter.IsIntelchainNode,
 			common2.MustAddressToBech32(voter.EarningAccount),
@@ -288,6 +287,21 @@ func (v *stakedVoteWeight) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (v *stakedVoteWeight) AmIMemberOfCommitee() bool {
+	pubKeyFunc := v.MyPublicKey()
+	if pubKeyFunc == nil {
+		return false
+	}
+	identity, _ := pubKeyFunc()
+	for _, key := range identity {
+		_, ok := v.roster.Voters[key.Bytes]
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
 func newVoteTally() VoteTally {
 	return VoteTally{
 		Prepare:    &tallyAndQuorum{numeric.NewDec(0), false},
@@ -297,25 +311,12 @@ func newVoteTally() VoteTally {
 }
 
 func (v *stakedVoteWeight) ResetPrepareAndCommitVotes() {
-	v.lastPower[Prepare] = v.voteTally.Prepare.tally
-	v.lastPower[Commit] = v.voteTally.Commit.tally
-
 	v.reset([]Phase{Prepare, Commit})
 	v.voteTally.Prepare = &tallyAndQuorum{numeric.NewDec(0), false}
 	v.voteTally.Commit = &tallyAndQuorum{numeric.NewDec(0), false}
 }
 
 func (v *stakedVoteWeight) ResetViewChangeVotes() {
-	v.lastPower[ViewChange] = v.voteTally.ViewChange.tally
-
 	v.reset([]Phase{ViewChange})
 	v.voteTally.ViewChange = &tallyAndQuorum{numeric.NewDec(0), false}
-}
-
-func (v *stakedVoteWeight) CurrentTotalPower(p Phase) (*numeric.Dec, error) {
-	if power, ok := v.lastPower[p]; ok {
-		return &power, nil
-	} else {
-		return nil, errors.New("stakedVoteWeight not cache this phase")
-	}
 }

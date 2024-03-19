@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/itc"
 )
 
@@ -42,41 +42,30 @@ func (s *PublicIntelchainService) ProtocolVersion(
 	}
 }
 
-// Syncing returns false in case the node is in sync with the network
-// If it is syncing, it returns:
-// starting block, current block, and network height
+// Syncing returns false in case the node is currently not syncing with the network. It can be up to date or has not
+// yet received the latest block headers from its pears. In case it is synchronizing:
+// - startingBlock: block number this node started to synchronise from
+// - currentBlock:  block number this node is currently importing
+// - highestBlock:  block number of the highest block header this node has received from peers
+// - pulledStates:  number of state entries processed until now
+// - knownStates:   number of known state entries that still need to be pulled
 func (s *PublicIntelchainService) Syncing(
 	ctx context.Context,
 ) (interface{}, error) {
-	// difference = target - current
-	inSync, target, difference := s.itc.NodeAPI.SyncStatus(s.itc.ShardID)
-	if inSync {
-		return false, nil
-	}
-	return struct {
-		Start   uint64 `json:"startingBlock"`
-		Current uint64 `json:"currentBlock"`
-		Target  uint64 `json:"highestBlock"`
-	}{
-		// Start:   0, // TODO
-		Current: target - difference,
-		Target:  target,
-	}, nil
+	// TODO(dm): find our Downloader module for syncing blocks
+	return false, nil
 }
 
 // GasPrice returns a suggestion for a gas price.
 // Note that the return type is an interface to account for the different versions
 func (s *PublicIntelchainService) GasPrice(ctx context.Context) (interface{}, error) {
-	price, err := s.itc.SuggestPrice(ctx)
-	if err != nil || price.Cmp(big.NewInt(100e9)) < 0 {
-		price = big.NewInt(100e9)
-	}
+	// TODO(dm): add SuggestPrice API
 	// Format response according to version
 	switch s.version {
 	case V1, Eth:
-		return (*hexutil.Big)(price), nil
+		return (*hexutil.Big)(big.NewInt(1)), nil
 	case V2:
-		return price.Uint64(), nil
+		return 1, nil
 	default:
 		return nil, ErrUnknownRPCVersion
 	}
@@ -96,14 +85,4 @@ func (s *PublicIntelchainService) GetPeerInfo(
 ) (StructuredResponse, error) {
 	// Response output is the same for all versions
 	return NewStructuredResponse(s.itc.GetPeerInfo())
-}
-
-// GetNumPendingCrossLinks returns length of itc.BlockChain.ReadPendingCrossLinks()
-func (s *PublicIntelchainService) GetNumPendingCrossLinks() (int, error) {
-	links, err := s.itc.BlockChain.ReadPendingCrossLinks()
-	if err != nil {
-		return 0, err
-	}
-
-	return len(links), nil
 }

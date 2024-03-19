@@ -79,9 +79,9 @@ type ValidatorSnapshotReader interface {
 type counters struct {
 	// The number of blocks the validator
 	// should've signed when in active mode (selected in committee)
-	NumBlocksToSign *big.Int `json:"to-sign" rlp:"nil"`
+	NumBlocksToSign *big.Int `json:"to-sign",rlp:"nil"`
 	// The number of blocks the validator actually signed
-	NumBlocksSigned *big.Int `json:"signed" rlp:"nil"`
+	NumBlocksSigned *big.Int `json:"signed",rlp:"nil"`
 }
 
 // ValidatorWrapper contains validator,
@@ -139,8 +139,6 @@ func NewEmptyStats() *ValidatorStats {
 // whatever current epoch is
 type CurrentEpochPerformance struct {
 	CurrentSigningPercentage Computed `json:"current-epoch-signing-percent"`
-	Epoch                    uint64   `json:"epoch"`
-	Block                    uint64   `json:"block"`
 }
 
 // ValidatorRPCEnhanced contains extra information for RPC consumer
@@ -247,8 +245,8 @@ type Validator struct {
 const MaxBLSPerValidator = 106
 
 var (
-	oneAsBigInt  = big.NewInt(denominations.Itc)
-	minimumStake = new(big.Int).Mul(oneAsBigInt, big.NewInt(TenThousand))
+	itcAsBigInt  = big.NewInt(denominations.Itc)
+	minimumStake = new(big.Int).Mul(itcAsBigInt, big.NewInt(TenThousand))
 )
 
 // SanityCheck checks basic requirements of a validator
@@ -385,34 +383,6 @@ func (w *ValidatorWrapper) SanityCheck() error {
 		)
 	}
 	return nil
-}
-
-// RawStakePerSlot return raw stake of each slot key. If HIP16 was activated at that apoch, it only calculate raw stake for keys not exceed the slotsLimit.
-func (snapshot ValidatorSnapshot) RawStakePerSlot() numeric.Dec {
-	wrapper := snapshot.Validator
-	instance := shard.Schedule.InstanceForEpoch(snapshot.Epoch)
-	slotsLimit := instance.SlotsLimit()
-	// HIP16 is acatived
-	if slotsLimit > 0 {
-		limitedSlotsCount := 0 // limited slots count for HIP16
-		shardCount := big.NewInt(int64(instance.NumShards()))
-		shardSlotsCount := make([]int, shardCount.Uint64()) // number slots keys on each shard
-		for _, pubkey := range wrapper.SlotPubKeys {
-			shardIndex := new(big.Int).Mod(pubkey.Big(), shardCount).Uint64()
-			shardSlotsCount[shardIndex] += 1
-			if shardSlotsCount[shardIndex] > slotsLimit {
-				continue
-			}
-			limitedSlotsCount += 1
-		}
-		return numeric.NewDecFromBigInt(wrapper.TotalDelegation()).
-			QuoInt64(int64(limitedSlotsCount))
-	}
-	if len(wrapper.SlotPubKeys) > 0 {
-		return numeric.NewDecFromBigInt(wrapper.TotalDelegation()).
-			QuoInt64(int64(len(wrapper.SlotPubKeys)))
-	}
-	return numeric.ZeroDec()
 }
 
 // Description - some possible IRL connections

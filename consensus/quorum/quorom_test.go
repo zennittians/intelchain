@@ -6,11 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
 	intelchain_bls "github.com/zennittians/intelchain/crypto/bls"
 	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
-	"github.com/zennittians/intelchain/numeric"
 	"github.com/zennittians/intelchain/shard"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -65,7 +63,7 @@ func TestAddingQuoromParticipants(t *testing.T) {
 		blsKeys = append(blsKeys, wrapper)
 	}
 
-	decider.UpdateParticipants(blsKeys, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants(blsKeys)
 	assert.Equal(t, keyCount, decider.ParticipantsCount())
 }
 
@@ -88,7 +86,7 @@ func TestSubmitVote(test *testing.T) {
 	pubKeyWrapper2 := bls.PublicKeyWrapper{Object: blsPriKey2.GetPublicKey()}
 	pubKeyWrapper2.Bytes.FromLibBLSPublicKey(pubKeyWrapper2.Object)
 
-	decider.UpdateParticipants([]bls.PublicKeyWrapper{pubKeyWrapper1, pubKeyWrapper2}, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants([]bls.PublicKeyWrapper{pubKeyWrapper1, pubKeyWrapper2})
 
 	if _, err := decider.submitVote(
 		Prepare,
@@ -145,7 +143,7 @@ func TestSubmitVoteAggregateSig(test *testing.T) {
 	pubKeyWrapper3 := bls.PublicKeyWrapper{Object: blsPriKey3.GetPublicKey()}
 	pubKeyWrapper3.Bytes.FromLibBLSPublicKey(pubKeyWrapper3.Object)
 
-	decider.UpdateParticipants([]bls.PublicKeyWrapper{pubKeyWrapper1, pubKeyWrapper2}, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants([]bls.PublicKeyWrapper{pubKeyWrapper1, pubKeyWrapper2})
 
 	decider.submitVote(
 		Prepare,
@@ -223,9 +221,9 @@ func TestAddNewVote(test *testing.T) {
 		pubKeys = append(pubKeys, wrapper)
 	}
 
-	decider.UpdateParticipants(pubKeys, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants(pubKeys)
 	decider.SetVoters(&shard.Committee{
-		ShardID: shard.BeaconChainShardID, Slots: slotList,
+		shard.BeaconChainShardID, slotList,
 	}, big.NewInt(3))
 
 	aggSig := &bls_core.Sign{}
@@ -328,9 +326,9 @@ func TestAddNewVoteAggregateSig(test *testing.T) {
 	// make all external keys belong to same account
 	slotList[3].EcdsaAddress = slotList[4].EcdsaAddress
 
-	decider.UpdateParticipants(pubKeys, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants(pubKeys)
 	decider.SetVoters(&shard.Committee{
-		ShardID: shard.BeaconChainShardID, Slots: slotList,
+		shard.BeaconChainShardID, slotList,
 	}, big.NewInt(3))
 
 	aggSig := &bls_core.Sign{}
@@ -412,9 +410,9 @@ func TestAddNewVoteInvalidAggregateSig(test *testing.T) {
 	slotList[5].EcdsaAddress = slotList[7].EcdsaAddress
 	slotList[6].EcdsaAddress = slotList[7].EcdsaAddress
 
-	decider.UpdateParticipants(pubKeys, []bls.PublicKeyWrapper{})
+	decider.UpdateParticipants(pubKeys)
 	decider.SetVoters(&shard.Committee{
-		ShardID: shard.BeaconChainShardID, Slots: slotList,
+		shard.BeaconChainShardID, slotList,
 	}, big.NewInt(3))
 
 	aggSig := &bls_core.Sign{}
@@ -548,79 +546,4 @@ func TestInvalidAggregateSig(test *testing.T) {
 	if !aggSig.VerifyHash(aggPubKey, blockHash[:]) {
 		test.Error("Expect aggregate signature verification to succeed with correctly matched keys and sigs")
 	}
-}
-
-func TestNthNextItcExt(test *testing.T) {
-	numItcNodes := 10
-	numAllExtNodes := 10
-	numAllowlistExtNodes := numAllExtNodes / 2
-	allowlist := shardingconfig.Allowlist{MaxLimitPerShard: numAllowlistExtNodes - 1}
-	blsKeys := []intelchain_bls.PublicKeyWrapper{}
-	for i := 0; i < numItcNodes+numAllExtNodes; i++ {
-		blsKey := intelchain_bls.RandPrivateKey()
-		wrapper := intelchain_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
-		wrapper.Bytes.FromLibBLSPublicKey(wrapper.Object)
-		blsKeys = append(blsKeys, wrapper)
-	}
-	allowlistLeaders := blsKeys[len(blsKeys)-allowlist.MaxLimitPerShard:]
-	allLeaders := append(blsKeys[:numItcNodes], allowlistLeaders...)
-
-	decider := NewDecider(SuperMajorityVote, shard.BeaconChainShardID)
-	fakeInstance := shardingconfig.MustNewInstance(2, 20, numItcNodes, 0, numeric.OneDec(), nil, nil, allowlist, nil, numeric.ZeroDec(), common.Address{}, nil, 0)
-
-	decider.UpdateParticipants(blsKeys, allowlistLeaders)
-	for i := 0; i < len(allLeaders); i++ {
-		leader := allLeaders[i]
-		for j := 0; j < len(allLeaders)*2; j++ {
-			expectNextLeader := allLeaders[(i+j)%len(allLeaders)]
-			found, nextLeader := decider.NthNextItcExt(fakeInstance, &leader, j)
-			if !found {
-				test.Fatal("next leader not found")
-			}
-			if expectNextLeader.Bytes != nextLeader.Bytes {
-				test.Fatal("next leader is not expected")
-			}
-
-			preJ := -j
-			preIndex := (i + len(allLeaders) + preJ%len(allLeaders)) % len(allLeaders)
-			expectPreLeader := allLeaders[preIndex]
-			found, preLeader := decider.NthNextItcExt(fakeInstance, &leader, preJ)
-			if !found {
-				test.Fatal("previous leader not found")
-			}
-			if expectPreLeader.Bytes != preLeader.Bytes {
-				test.Fatal("previous leader is not expected")
-			}
-		}
-	}
-}
-
-func TestCIdentities_NthNextValidatorItc(t *testing.T) {
-	address := []common.Address{
-		common.HexToAddress("0x1"),
-		common.HexToAddress("0x2"),
-		common.HexToAddress("0x3"),
-	}
-	slots := shard.SlotList{}
-	list := []intelchain_bls.PublicKeyWrapper{}
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			blsKey := intelchain_bls.RandPrivateKey()
-			wrapper := intelchain_bls.PublicKeyWrapper{Object: blsKey.GetPublicKey()}
-			wrapper.Bytes.FromLibBLSPublicKey(wrapper.Object)
-			slots = append(slots, shard.Slot{
-				EcdsaAddress:   address[i%3],
-				BLSPublicKey:   wrapper.Bytes,
-				EffectiveStake: nil,
-			})
-			list = append(list, wrapper)
-		}
-	}
-
-	c := newCIdentities()
-	c.UpdateParticipants(list, []bls.PublicKeyWrapper{})
-	found, key := c.NthNextValidator(slots, &list[0], 1)
-	require.Equal(t, true, found)
-	// because we skip 3 keys of current validator
-	require.Equal(t, 3, c.IndexOf(key.Bytes))
 }

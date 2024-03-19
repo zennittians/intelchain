@@ -2,7 +2,6 @@ package itc
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/core/types"
@@ -46,8 +45,4 @@ func (itc *Intelchain) GetPoolTransactions() (types.PoolTransactions, error) {
 		txs = append(txs, batch...)
 	}
 	return txs, nil
-}
-
-func (itc *Intelchain) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return itc.gpo.SuggestPrice(ctx)
 }

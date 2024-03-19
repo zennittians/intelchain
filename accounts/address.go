@@ -6,7 +6,12 @@ import (
 	"github.com/zennittians/intelchain/internal/common"
 )
 
-// MustBech32ToAddressH is a wrapper for casting ethCommon.Address to Intelchain's common.Address
+// ParseAddrH is a wrapper to cast ethCommon.Address to intelchain's common.Address
+func ParseAddrH(s string) common.Address {
+	return common.Address(common.ParseAddr(s))
+}
+
+// MustBech32ToAddressH is a wrapper for casting ethCommon.Address to intelchain's common.Address
 func MustBech32ToAddressH(b32 string) common.Address {
 	return common.Address(common.MustBech32ToAddress(b32))
 }

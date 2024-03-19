@@ -14,32 +14,25 @@ import (
 
 var (
 	// PreStakedBlocks is the block reward, to be split evenly among block signers in pre-staking era.
-	// 24 ITC per block
+	// 24 ONE per block
 	PreStakedBlocks = new(big.Int).Mul(big.NewInt(24), big.NewInt(denominations.Itc))
 	// StakedBlocks is the flat-rate block reward for epos staking launch.
-	// 28 ITC per block.
+	// 28 ONE per block.
 	StakedBlocks = numeric.NewDecFromBigInt(new(big.Int).Mul(
 		big.NewInt(28), big.NewInt(denominations.Itc),
 	))
 	// FiveSecStakedBlocks is the flat-rate block reward after epoch 230.
-	// 17.5 ITC per block
+	// 17.5 ONE per block
 	FiveSecStakedBlocks = numeric.NewDecFromBigInt(new(big.Int).Mul(
 		big.NewInt(17.5*denominations.Intello), big.NewInt(denominations.Intello),
 	))
 	// TwoSecStakedBlocks is the flat-rate block reward after epoch 360.
-	// 7 ITC per block
+	// 7 ONE per block
 	TwoSecStakedBlocks = numeric.NewDecFromBigInt(new(big.Int).Mul(
 		big.NewInt(7*denominations.Intello), big.NewInt(denominations.Intello),
 	))
-	// HIP30StakedBlocks is the reward received after HIP-30 goes into
-	// effect. It is simply double the TwoSecStakedBlocks reward, since
-	// the number of shards is being halved and we keep emission
-	// constant.
-	HIP30StakedBlocks = numeric.NewDecFromBigInt(new(big.Int).Mul(
-		big.NewInt(14*denominations.Intello), big.NewInt(denominations.Intello),
-	))
 
-	// TotalInitialTokens is the total amount of tokens (in ITC) at block 0 of the network.
+	// TotalInitialTokens is the total amount of tokens (in ONE) at block 0 of the network.
 	// This should be set/change on the node's init according to the core.GenesisSpec.
 	TotalInitialTokens = numeric.Dec{Int: big.NewInt(0)}
 
@@ -129,7 +122,7 @@ func getTotalPreStakingNetworkRewards(id shardingconfig.NetworkID) *big.Int {
 	return totalRewards
 }
 
-// GetTotalTokens in the network for all shards in ITC.
+// GetTotalTokens in the network for all shards in ONE.
 // This can only be computed with beaconchain if in staking era.
 // If not in staking era, returns the rewards given out by the start of staking era.
 func GetTotalTokens(chain engine.ChainReader) (numeric.Dec, error) {
@@ -148,7 +141,7 @@ func GetTotalTokens(chain engine.ChainReader) (numeric.Dec, error) {
 	return GetTotalPreStakingTokens().Add(numeric.NewDecFromBigIntWithPrec(stakingRewards, 18)), nil
 }
 
-// GetTotalPreStakingTokens returns the total amount of tokens (in ITC) in the
+// GetTotalPreStakingTokens returns the total amount of tokens (in ONE) in the
 // network at the the last block of the pre-staking era (epoch < staking epoch).
 func GetTotalPreStakingTokens() numeric.Dec {
 	preStakingRewards := numeric.NewDecFromBigIntWithPrec(
@@ -157,7 +150,7 @@ func GetTotalPreStakingTokens() numeric.Dec {
 	return TotalInitialTokens.Add(preStakingRewards)
 }
 
-// SetTotalInitialTokens with the given initial tokens (from genesis in INTELLI).
+// SetTotalInitialTokens with the given initial tokens (from genesis in ATTO).
 func SetTotalInitialTokens(initTokensAsAtto *big.Int) {
 	TotalInitialTokens = numeric.NewDecFromBigIntWithPrec(initTokensAsAtto, 18)
 }

@@ -119,15 +119,12 @@ func NewDecFromIntWithPrec(i *big.Int, prec int64) Dec {
 
 // NewDecFromStr creates a decimal from an input decimal string.
 // valid must come in the form:
-//
-//	(-) whole integers (.) decimal integers
-//
+//   (-) whole integers (.) decimal integers
 // examples of acceptable input include:
-//
-//	-123.456
-//	456.7890
-//	345
-//	-456789
+//   -123.456
+//   456.7890
+//   345
+//   -456789
 //
 // NOTE - An error will return if more decimal places
 // are provided in the string than the constant Precision.
@@ -199,12 +196,6 @@ func (d Dec) Copy() Dec {
 	}
 	return Dec{
 		new(big.Int).Set(d.Int),
-	}
-}
-
-func (d Dec) Div(d2 Dec) Dec {
-	return Dec{
-		new(big.Int).Div(d.Int, d2.Int),
 	}
 }
 

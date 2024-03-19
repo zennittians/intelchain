@@ -8,7 +8,6 @@ import (
 	"github.com/zennittians/abool"
 	"github.com/zennittians/intelchain/consensus/quorum"
 	"github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/internal/registry"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/multibls"
 	"github.com/zennittians/intelchain/p2p"
@@ -18,10 +17,11 @@ import (
 )
 
 func TestConsensusInitialization(t *testing.T) {
-	host, multiBLSPrivateKey, consensus, _, err := GenerateConsensusForTesting()
+	host, multiBLSPrivateKey, consensus, decider, err := GenerateConsensusForTesting()
 	assert.NoError(t, err)
 
 	messageSender := &MessageSender{host: host, retryTimes: int(phaseDuration.Seconds()) / RetryIntervalInSec}
+	fbtLog := NewFBFTLog()
 	state := State{mode: Normal}
 
 	timeouts := createTimeout()
@@ -30,11 +30,13 @@ func TestConsensusInitialization(t *testing.T) {
 	expectedTimeouts[timeoutViewChange] = viewChangeDuration
 	expectedTimeouts[timeoutBootstrap] = bootstrapDuration
 
+	assert.Equal(t, decider, consensus.Decider)
 	assert.Equal(t, host, consensus.host)
 	assert.Equal(t, messageSender, consensus.msgSender)
+	assert.IsType(t, make(chan struct{}), consensus.BlockNumLowChan)
 
 	// FBFTLog
-	assert.NotNil(t, consensus.FBFTLog())
+	assert.Equal(t, fbtLog, consensus.FBFTLog)
 
 	assert.Equal(t, FBFTAnnounce, consensus.phase)
 
@@ -58,10 +60,17 @@ func TestConsensusInitialization(t *testing.T) {
 	assert.Equal(t, uint64(0), consensus.GetViewChangingID())
 	assert.Equal(t, uint32(shard.BeaconChainShardID), consensus.ShardID)
 
-	assert.Equal(t, false, consensus.start)
+	assert.IsType(t, make(chan struct{}), consensus.syncReadyChan)
+	assert.NotNil(t, consensus.syncReadyChan)
+
+	assert.IsType(t, make(chan struct{}), consensus.syncNotReadyChan)
+	assert.NotNil(t, consensus.syncNotReadyChan)
 
 	assert.IsType(t, make(chan slash.Record), consensus.SlashChan)
 	assert.NotNil(t, consensus.SlashChan)
+
+	assert.IsType(t, make(chan ProposalType), consensus.ReadySignal)
+	assert.NotNil(t, consensus.ReadySignal)
 
 	assert.IsType(t, make(chan [vdfAndSeedSize]byte), consensus.RndChannel)
 	assert.NotNil(t, consensus.RndChannel)
@@ -78,10 +87,12 @@ func GenerateConsensusForTesting() (p2p.Host, multibls.PrivateKeys, *Consensus, 
 		return nil, nil, nil, nil, err
 	}
 
+	peer := host.GetSelfPeer()
+
 	decider := quorum.NewDecider(quorum.SuperMajorityVote, shard.BeaconChainShardID)
 	multiBLSPrivateKey := multibls.GetPrivateKeys(bls.RandPrivateKey())
 
-	consensus, err := New(host, shard.BeaconChainShardID, multiBLSPrivateKey, registry.New(), decider, 3, false)
+	consensus, err := New(host, shard.BeaconChainShardID, peer, multiBLSPrivateKey, decider)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

@@ -3,9 +3,7 @@
 
 package cli
 
-import (
-	"github.com/spf13/pflag"
-)
+import "github.com/spf13/pflag"
 
 // Flag is the interface for cli flags.
 // To get the value after cli parsing, use fs.GetString(flag.Name)
@@ -64,38 +62,6 @@ func (f IntFlag) RegisterTo(fs *pflag.FlagSet) error {
 	return markHiddenOrDeprecated(fs, f.Name, f.Deprecated, f.Hidden)
 }
 
-// Int64Flag is the flag with int64 value, used for gwei configurations
-type Int64Flag struct {
-	Name       string
-	Shorthand  string
-	Usage      string
-	Deprecated string
-	Hidden     bool
-	DefValue   int64
-}
-
-// RegisterTo register the int flag to FlagSet
-func (f Int64Flag) RegisterTo(fs *pflag.FlagSet) error {
-	fs.Int64P(f.Name, f.Shorthand, f.DefValue, f.Usage)
-	return markHiddenOrDeprecated(fs, f.Name, f.Deprecated, f.Hidden)
-}
-
-// Uint64Flag is the flag with uint64 value, used for block number configurations
-type Uint64Flag struct {
-	Name       string
-	Shorthand  string
-	Usage      string
-	Deprecated string
-	Hidden     bool
-	DefValue   uint64
-}
-
-// RegisterTo register the int flag to FlagSet
-func (f Uint64Flag) RegisterTo(fs *pflag.FlagSet) error {
-	fs.Uint64P(f.Name, f.Shorthand, f.DefValue, f.Usage)
-	return markHiddenOrDeprecated(fs, f.Name, f.Deprecated, f.Hidden)
-}
-
 // StringSliceFlag is the flag with string slice value
 type StringSliceFlag struct {
 	Name       string
@@ -110,23 +76,6 @@ type StringSliceFlag struct {
 // RegisterTo register the string slice flag to FlagSet
 func (f StringSliceFlag) RegisterTo(fs *pflag.FlagSet) error {
 	fs.StringSliceP(f.Name, f.Shorthand, f.DefValue, f.Usage)
-	return markHiddenOrDeprecated(fs, f.Name, f.Deprecated, f.Hidden)
-}
-
-// IntSliceFlag is the flag with int slice value
-type IntSliceFlag struct {
-	Name       string
-	Shorthand  string
-	Usage      string
-	Deprecated string
-	Hidden     bool
-
-	DefValue []int
-}
-
-// RegisterTo register the string slice flag to FlagSet
-func (f IntSliceFlag) RegisterTo(fs *pflag.FlagSet) error {
-	fs.IntSliceP(f.Name, f.Shorthand, f.DefValue, f.Usage)
 	return markHiddenOrDeprecated(fs, f.Name, f.Deprecated, f.Hidden)
 }
 
@@ -153,12 +102,6 @@ func getFlagName(flag Flag) string {
 	case BoolFlag:
 		return f.Name
 	case StringSliceFlag:
-		return f.Name
-	case IntSliceFlag:
-		return f.Name
-	case Int64Flag:
-		return f.Name
-	case Uint64Flag:
 		return f.Name
 	}
 	return ""

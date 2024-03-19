@@ -28,7 +28,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -56,7 +55,7 @@ var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 const (
 	// GenesisEpoch is the number of the genesis epoch.
 	GenesisEpoch = 0
-	// GenesisITCToken is the initial total number of ITC in the genesis block for mainnet.
+	// GenesisITCToken is the initial total number of ONE in the genesis block for mainnet.
 	GenesisITCToken = 95000000000
 	// ContractDeployerInitFund is the initial fund for the contract deployer account in testnet/devnet.
 	ContractDeployerInitFund = 10000000000
@@ -65,7 +64,7 @@ const (
 )
 
 var (
-	// GenesisFund is the initial total number of ITC (in intello) in the genesis block for mainnet.
+	// GenesisFund is the initial total number of ITC (in intellei) in the genesis block for mainnet.
 	GenesisFund = new(big.Int).Mul(big.NewInt(GenesisITCToken), big.NewInt(denominations.Itc))
 )
 
@@ -106,16 +105,12 @@ func NewGenesisSpec(netType nodeconfig.NetworkType, shardID uint32) *Genesis {
 			foundationAddress := common.HexToAddress("0xE25ABC3f7C3d5fB7FB81EAFd421FF1621A61107c")
 			genesisAlloc[foundationAddress] = GenesisAccount{Balance: GenesisFund}
 		}
-	case nodeconfig.Testnet:
-		chainConfig = *params.TestnetChainConfig
 	case nodeconfig.Pangaea:
 		chainConfig = *params.PangaeaChainConfig
 	case nodeconfig.Partner:
 		chainConfig = *params.PartnerChainConfig
 	case nodeconfig.Stressnet:
 		chainConfig = *params.StressnetChainConfig
-	case nodeconfig.Localnet:
-		chainConfig = *params.LocalnetChainConfig
 	default: // all other types share testnet config
 		chainConfig = *params.TestChainConfig
 	}
@@ -245,27 +240,19 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		utils.Logger().Error().Msg("db should be initialized")
 		os.Exit(1)
 	}
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db), nil)
+	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, account.Balance)
-		statedb.SetCode(addr, account.Code, false)
+		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
-		}
-		if err := rawdb.WritePreimages(
-			statedb.Database().DiskDB(), map[ethCommon.Hash][]byte{
-				crypto.Keccak256Hash(addr.Bytes()): addr.Bytes(),
-			},
-		); err != nil {
-			utils.Logger().Error().Err(err).Msg("Failed to store preimage")
-			os.Exit(1)
 		}
 	}
 	root := statedb.IntermediateRoot(false)
 	shardStateBytes, err := shard.EncodeWrapper(g.ShardState, false)
 	if err != nil {
-		utils.Logger().Error().Err(err).Msg("failed to rlp-serialize genesis shard state")
+		utils.Logger().Error().Msg("failed to rlp-serialize genesis shard state")
 		os.Exit(1)
 	}
 	head := g.Factory.NewHeader(common.Big0).With().

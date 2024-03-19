@@ -38,7 +38,7 @@ var versionCmd = &cobra.Command{
 }
 
 func getIntelchainVersion() string {
-	return fmt.Sprintf(versionFormat, "Intelchain", version, commit, builtBy, builtAt)
+	return fmt.Sprintf(versionFormat, "intelchain", version, commit, builtBy, builtAt)
 }
 
 func printVersion() {

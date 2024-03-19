@@ -35,8 +35,9 @@ type noReward struct{ ignoreMissing }
 
 func (noReward) ReadRoundResult() *reward.CompletedRound {
 	return &reward.CompletedRound{
-		Total:   big.NewInt(0),
-		Payouts: []reward.Payout{},
+		Total:            big.NewInt(0),
+		BeaconchainAward: []reward.Payout{},
+		ShardChainAward:  []reward.Payout{},
 	}
 }
 
@@ -52,26 +53,36 @@ func NewPreStakingEraRewarded(totalAmount *big.Int) reward.Reader {
 
 func (p *preStakingEra) ReadRoundResult() *reward.CompletedRound {
 	return &reward.CompletedRound{
-		Total:   p.payout,
-		Payouts: []reward.Payout{},
+		Total:            p.payout,
+		BeaconchainAward: []reward.Payout{},
+		ShardChainAward:  []reward.Payout{},
 	}
 }
 
 type stakingEra struct {
 	reward.CompletedRound
+	missingSigners shard.SlotList
 }
 
 // NewStakingEraRewardForRound ..
 func NewStakingEraRewardForRound(
 	totalPayout *big.Int,
-	payouts []reward.Payout,
+	mia shard.SlotList,
+	beaconP, shardP []reward.Payout,
 ) reward.Reader {
 	return &stakingEra{
 		CompletedRound: reward.CompletedRound{
-			Total:   totalPayout,
-			Payouts: payouts,
+			Total:            totalPayout,
+			BeaconchainAward: beaconP,
+			ShardChainAward:  shardP,
 		},
+		missingSigners: mia,
 	}
+}
+
+// MissingSigners ..
+func (r *stakingEra) MissingSigners() shard.SlotList {
+	return r.missingSigners
 }
 
 // ReadRoundResult ..

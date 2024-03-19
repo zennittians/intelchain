@@ -3,12 +3,13 @@ package node
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/shard"
 	"github.com/zennittians/intelchain/staking/slash"
 )
 
 // ProcessSlashCandidateMessage ..
 func (node *Node) processSlashCandidateMessage(msgPayload []byte) {
-	if !node.IsRunningBeaconChain() {
+	if node.NodeConfig.ShardID != shard.BeaconChainShardID {
 		return
 	}
 	candidates := slash.Records{}

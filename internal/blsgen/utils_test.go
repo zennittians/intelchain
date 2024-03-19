@@ -2,6 +2,7 @@ package blsgen
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,7 @@ var testKeys = []testKey{
 func writeFile(file string, data string) error {
 	dir := filepath.Dir(file)
 	os.MkdirAll(dir, 0700)
-	return os.WriteFile(file, []byte(data), 0600)
+	return ioutil.WriteFile(file, []byte(data), 0600)
 }
 
 func TestPromptYesNo(t *testing.T) {

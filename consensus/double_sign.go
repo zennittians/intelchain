@@ -17,12 +17,12 @@ func (consensus *Consensus) checkDoubleSign(recvMsg *FBFTMessage) bool {
 	if consensus.couldThisBeADoubleSigner(recvMsg) {
 		addrSet := map[common.Address]struct{}{}
 		for _, pubKey2 := range recvMsg.SenderPubkeys {
-			if alreadyCastBallot := consensus.decider.ReadBallot(
+			if alreadyCastBallot := consensus.Decider.ReadBallot(
 				quorum.Commit, pubKey2.Bytes,
 			); alreadyCastBallot != nil {
 				for _, pubKey1 := range alreadyCastBallot.SignerPubKeys {
 					if bytes.Compare(pubKey2.Bytes[:], pubKey1[:]) == 0 {
-						for _, blk := range consensus.fBFTLog.GetBlocksByNumber(recvMsg.BlockNum) {
+						for _, blk := range consensus.FBFTLog.GetBlocksByNumber(recvMsg.BlockNum) {
 							firstSignedHeader := blk.Header()
 							areHeightsEqual := firstSignedHeader.Number().Uint64() == recvMsg.BlockNum
 							areViewIDsEqual := firstSignedHeader.ViewID().Uint64() == recvMsg.ViewID
@@ -40,8 +40,8 @@ func (consensus *Consensus) checkDoubleSign(recvMsg *FBFTMessage) bool {
 									return true
 								}
 
-								curHeader := consensus.Blockchain().CurrentHeader()
-								committee, err := consensus.Blockchain().ReadShardState(curHeader.Epoch())
+								curHeader := consensus.Blockchain.CurrentHeader()
+								committee, err := consensus.Blockchain.ReadShardState(curHeader.Epoch())
 								if err != nil {
 									consensus.getLogger().Err(err).
 										Uint32("shard", consensus.ShardID).
@@ -86,14 +86,14 @@ func (consensus *Consensus) checkDoubleSign(recvMsg *FBFTMessage) bool {
 									evid := slash.Evidence{
 										ConflictingVotes: slash.ConflictingVotes{
 											FirstVote: slash.Vote{
-												SignerPubKeys:   alreadyCastBallot.SignerPubKeys,
-												BlockHeaderHash: alreadyCastBallot.BlockHeaderHash,
-												Signature:       alreadyCastBallot.Signature,
+												alreadyCastBallot.SignerPubKeys,
+												alreadyCastBallot.BlockHeaderHash,
+												alreadyCastBallot.Signature,
 											},
 											SecondVote: slash.Vote{
-												SignerPubKeys:   secondKeys,
-												BlockHeaderHash: recvMsg.BlockHash,
-												Signature:       common.Hex2Bytes(doubleSign.SerializeToHexStr()),
+												secondKeys,
+												recvMsg.BlockHash,
+												common.Hex2Bytes(doubleSign.SerializeToHexStr()),
 											}},
 										Moment: slash.Moment{
 											Epoch:   curHeader.Epoch(),
@@ -137,9 +137,9 @@ func (consensus *Consensus) checkDoubleSign(recvMsg *FBFTMessage) bool {
 func (consensus *Consensus) couldThisBeADoubleSigner(
 	recvMsg *FBFTMessage,
 ) bool {
-	num, hash := consensus.BlockNum(), recvMsg.BlockHash
-	suspicious := !consensus.fBFTLog.HasMatchingAnnounce(num, hash) ||
-		!consensus.fBFTLog.HasMatchingPrepared(num, hash)
+	num, hash := consensus.blockNum, recvMsg.BlockHash
+	suspicious := !consensus.FBFTLog.HasMatchingAnnounce(num, hash) ||
+		!consensus.FBFTLog.HasMatchingPrepared(num, hash)
 	if suspicious {
 		consensus.getLogger().Debug().
 			Str("message", recvMsg.String()).

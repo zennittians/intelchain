@@ -4,14 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
-
-	"github.com/zennittians/intelchain/itc/tracers"
-
-	"github.com/zennittians/intelchain/core"
-	"github.com/zennittians/intelchain/core/state"
-	coreTypes "github.com/zennittians/intelchain/core/types"
 
 	"github.com/coinbase/rosetta-sdk-go/server"
 	"github.com/coinbase/rosetta-sdk-go/types"
@@ -21,9 +14,9 @@ import (
 	"github.com/zennittians/intelchain/core/rawdb"
 	itctypes "github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/core/vm"
-	"github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
+	"github.com/zennittians/intelchain/rpc"
 	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
@@ -74,7 +67,7 @@ func (s *BlockAPI) Block(
 	if blk.NumberU64() == 0 {
 		prevBlockID = currBlockID
 	} else {
-		prevBlock, err := s.itc.BlockByNumber(ctx, rpc.BlockNumber(blk.Number().Int64()-1))
+		prevBlock, err := s.itc.BlockByNumber(ctx, rpc.BlockNumber(blk.Number().Int64()-1).EthBlockNumber())
 		if err != nil {
 			return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 				"message": err.Error(),
@@ -164,10 +157,10 @@ func (s *BlockAPI) BlockTransaction(
 		}
 		return response, rosettaError2
 	}
-	state, _, err := s.itc.StateAndHeaderByNumber(ctx, rpc.BlockNumber(blk.NumberU64()))
+	state, _, err := s.itc.StateAndHeaderByNumber(ctx, rpc.BlockNumber(request.BlockIdentifier.Index).EthBlockNumber())
 	if state == nil || err != nil {
 		return nil, common.NewError(common.BlockNotFoundError, map[string]interface{}{
-			"message": fmt.Sprintf("block state not found for block %v", blk.NumberU64()),
+			"message": fmt.Sprintf("block state not found for block %v", request.BlockIdentifier.Index),
 		})
 	}
 
@@ -190,7 +183,7 @@ func (s *BlockAPI) BlockTransaction(
 				return nil, rosettaError
 			}
 		}
-		transaction, rosettaError = FormatTransaction(txInfo.tx, txInfo.receipt, contractInfo, true)
+		transaction, rosettaError = FormatTransaction(txInfo.tx, txInfo.receipt, contractInfo)
 		if rosettaError != nil {
 			return nil, rosettaError
 		}
@@ -282,95 +275,40 @@ var (
 	}
 )
 
-var ttLock *lru.Cache
-
-func init() {
-	ttLock, _ = lru.New(10000)
-}
-
 // getTransactionTrace for the given txInfo.
 func (s *BlockAPI) getTransactionTrace(
 	ctx context.Context, blk *itctypes.Block, txInfo *transactionInfo,
-) ([]*tracers.RosettaLogItem, *types.Error) {
-	cacheKey := blk.Hash().String() + txInfo.tx.Hash().String()
+) (*itc.ExecutionResult, *types.Error) {
+	cacheKey := types.Hash(blk) + types.Hash(txInfo)
 	if value, ok := s.txTraceCache.Get(cacheKey); ok {
-		return value.([]*tracers.RosettaLogItem), nil
+		return value.(*itc.ExecutionResult), nil
 	}
 
-	lock := &sync.Mutex{}
-	if ok, _ := ttLock.ContainsOrAdd(blk.Hash().String(), lock); ok {
-		if lockTmp, ok := ttLock.Get(blk.Hash().String()); ok {
-			lock = lockTmp.(*sync.Mutex)
-		} else {
-			lock = nil
-		}
-	}
-
-	if lock != nil {
-		lock.Lock()
-		defer lock.Unlock()
-	}
-
-	if value, ok := s.txTraceCache.Get(cacheKey); ok {
-		return value.([]*tracers.RosettaLogItem), nil
-	}
-
-	var blockError *types.Error
-	var foundResult []*tracers.RosettaLogItem
-	var tracer = "RosettaBlockTracer"
-	err := s.itc.ComputeTxEnvEachBlockWithoutApply(blk, defaultTraceReExec, func(txIndex int, tx *coreTypes.Transaction, msg core.Message, vmctx vm.Context, statedb *state.DB) bool {
-		execResultInterface, err := s.itc.TraceTx(ctx, msg, vmctx, statedb, &itc.TraceConfig{
-			Tracer: &tracer,
-			LogConfig: &vm.LogConfig{
-				DisableMemory:  true,
-				DisableStack:   false,
-				DisableStorage: true,
-				Debug:          false,
-				Limit:          0,
-			},
-			Timeout: &defaultTraceTimeout,
-			Reexec:  &defaultTraceReExec,
+	msg, vmctx, statedb, err := s.itc.ComputeTxEnv(blk, int(txInfo.txIndex), defaultTraceReExec)
+	if err != nil {
+		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
+			"message": err.Error(),
 		})
-		if err != nil {
-			blockError = common.NewError(common.CatchAllError, map[string]interface{}{
-				"message": err.Error(),
-			})
-			return false
-		}
-
-		execResult, ok := execResultInterface.([]*tracers.RosettaLogItem)
-		if !ok {
-			blockError = common.NewError(common.CatchAllError, map[string]interface{}{
-				"message": "unknown tracer exec result type",
-			})
-			return false
-		}
-
-		if txInfo.tx.Hash().String() == tx.Hash().String() {
-			foundResult = execResult
-		}
-
-		cacheKey := blk.Hash().String() + tx.Hash().String()
-		s.txTraceCache.Add(cacheKey, execResult)
-		return true
+	}
+	execResultInterface, err := s.itc.TraceTx(ctx, msg, vmctx, statedb, &itc.TraceConfig{
+		LogConfig: &defaultTraceLogConfig,
+		Timeout:   &defaultTraceTimeout,
+		Reexec:    &defaultTraceReExec,
 	})
 	if err != nil {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
 			"message": err.Error(),
 		})
 	}
-
-	if blockError != nil {
-		return nil, blockError
-	}
-
-	if foundResult == nil {
+	execResult, ok := execResultInterface.(*itc.ExecutionResult)
+	if !ok {
 		return nil, common.NewError(common.CatchAllError, map[string]interface{}{
-			"message": fmt.Errorf("transaction not found for block %#x", blk.Hash()),
+			"message": "unknown tracer exec result type",
 		})
 	}
+	s.txTraceCache.Add(cacheKey, execResult)
 
-	return foundResult, nil
+	return execResult, nil
 }
 
 // getBlock ..
@@ -382,7 +320,7 @@ func getBlock(
 		requestBlockHash := ethcommon.HexToHash(*blockID.Hash)
 		blk, err = itc.GetBlock(ctx, requestBlockHash)
 	} else if blockID.Index != nil {
-		blk, err = itc.BlockByNumber(ctx, rpc.BlockNumber(*blockID.Index))
+		blk, err = itc.BlockByNumber(ctx, rpc.BlockNumber(*blockID.Index).EthBlockNumber())
 	} else {
 		return nil, &common.BlockNotFoundError
 	}

@@ -1,3 +1,3 @@
 package message
 
-//go:generate ./gen.sh
+//go:generate protoc message.proto --go_out=plugins=grpc:.

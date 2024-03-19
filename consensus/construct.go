@@ -29,8 +29,8 @@ type NetworkMessage struct {
 func (consensus *Consensus) populateMessageFields(
 	request *msg_pb.ConsensusRequest, blockHash []byte,
 ) *msg_pb.ConsensusRequest {
-	request.ViewId = consensus.getCurBlockViewID()
-	request.BlockNum = consensus.getBlockNum()
+	request.ViewId = consensus.GetCurBlockViewID()
+	request.BlockNum = consensus.blockNum
 	request.ShardId = consensus.ShardID
 	// 32 byte block hash
 	request.BlockHash = blockHash
@@ -62,7 +62,7 @@ func (consensus *Consensus) construct(
 	p msg_pb.MessageType, payloadForSign []byte, priKeys []*bls.PrivateKeyWrapper,
 ) (*NetworkMessage, error) {
 	if len(priKeys) == 0 {
-		return nil, errors.New("no elected bls keys provided")
+		return nil, errors.New("No private keys provided")
 	}
 	message := &msg_pb.Message{
 		ServiceType: msg_pb.ServiceType_CONSENSUS,
@@ -82,7 +82,11 @@ func (consensus *Consensus) construct(
 		)
 	} else {
 		// TODO: use a persistent bitmap to report bitmap
-		mask := bls.NewMask(consensus.decider.Participants())
+		mask, err := bls.NewMask(consensus.Decider.Participants(), nil)
+		if err != nil {
+			utils.Logger().Warn().Err(err).Msg("unable to setup mask for multi-sig message")
+			return nil, err
+		}
 		for _, key := range priKeys {
 			mask.SetKey(key.Pub.Bytes, true)
 		}
@@ -95,7 +99,6 @@ func (consensus *Consensus) construct(
 	needMsgSig := true
 	switch p {
 	case msg_pb.MessageType_ANNOUNCE:
-		consensusMsg.Block = consensus.block
 		consensusMsg.Payload = consensus.blockHash[:]
 	case msg_pb.MessageType_PREPARE:
 		needMsgSig = false
@@ -139,7 +142,7 @@ func (consensus *Consensus) construct(
 		return nil, err
 	}
 
-	FBFTMsg, err2 := consensus.parseFBFTMessage(message)
+	FBFTMsg, err2 := consensus.ParseFBFTMessage(message)
 
 	if err2 != nil {
 		utils.Logger().Error().Err(err).
@@ -161,7 +164,7 @@ func (consensus *Consensus) construct(
 func (consensus *Consensus) constructQuorumSigAndBitmap(p quorum.Phase) []byte {
 	buffer := bytes.Buffer{}
 	// 96 bytes aggregated signature
-	aggSig := consensus.decider.AggregateVotes(p)
+	aggSig := consensus.Decider.AggregateVotes(p)
 	buffer.Write(aggSig.Serialize())
 	// Bitmap
 	if p == quorum.Prepare {

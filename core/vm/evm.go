@@ -23,23 +23,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/params"
-	stakingTypes "github.com/zennittians/intelchain/staking/types"
+
+	"github.com/zennittians/intelchain/core/types"
 )
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
 // deployed contract addresses (relevant after the account abstraction).
 var emptyCodeHash = crypto.Keccak256Hash(nil)
-
-type RosettaLogAddressItem struct {
-	Account, SubAccount *common.Address
-	Metadata            map[string]interface{}
-}
-
-type RosettaTracer interface {
-	AddRosettaLog(op OpCode, from, to *RosettaLogAddressItem, val *big.Int)
-}
 
 type (
 	// CanTransferFunc is the signature of a transfer guard function
@@ -51,73 +42,20 @@ type (
 	// GetHashFunc returns the nth block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
 	GetHashFunc func(uint64) common.Hash
-	// GetVRFFunc returns the nth block vrf in the blockchain
-	// and is used by the precompile VRF contract.
-	GetVRFFunc func(uint64) common.Hash
-	// Below functions are used by staking precompile, and state transition
-	CreateValidatorFunc func(db StateDB, rosettaTracer RosettaTracer, stakeMsg *stakingTypes.CreateValidator) error
-	EditValidatorFunc   func(db StateDB, rosettaTracer RosettaTracer, stakeMsg *stakingTypes.EditValidator) error
-	DelegateFunc        func(db StateDB, rosettaTracer RosettaTracer, stakeMsg *stakingTypes.Delegate) error
-	UndelegateFunc      func(db StateDB, rosettaTracer RosettaTracer, stakeMsg *stakingTypes.Undelegate) error
-	CollectRewardsFunc  func(db StateDB, rosettaTracer RosettaTracer, stakeMsg *stakingTypes.CollectRewards) error
-	// Used for migrating delegations via the staking precompile
-	//MigrateDelegationsFunc    func(db StateDB, migrationMsg *stakingTypes.MigrationMsg) ([]interface{}, error)
-	CalculateMigrationGasFunc func(db StateDB, migrationMsg *stakingTypes.MigrationMsg, homestead bool, istanbul bool) (uint64, error)
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
 func run(evm *EVM, contract *Contract, input []byte, readOnly bool) ([]byte, error) {
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledContractsHomestead
-		// assign empty write capable precompiles till they are available in the fork
-		var writeCapablePrecompiles map[common.Address]WriteCapablePrecompiledContract
 		if evm.ChainConfig().IsS3(evm.EpochNumber) {
 			precompiles = PrecompiledContractsByzantium
 		}
 		if evm.chainRules.IsIstanbul {
 			precompiles = PrecompiledContractsIstanbul
 		}
-		if evm.chainRules.IsVRF {
-			precompiles = PrecompiledContractsVRF
-		}
-		if evm.chainRules.IsSHA3 {
-			precompiles = PrecompiledContractsSHA3FIPS
-		}
-		if evm.chainRules.IsStakingPrecompile {
-			precompiles = PrecompiledContractsStaking
-			writeCapablePrecompiles = WriteCapablePrecompiledContractsStaking
-		}
-		if evm.chainRules.IsCrossShardXferPrecompile {
-			writeCapablePrecompiles = WriteCapablePrecompiledContractsCrossXfer
-		}
 		if p := precompiles[*contract.CodeAddr]; p != nil {
-			if _, ok := p.(*vrf); ok {
-				if evm.chainRules.IsPrevVRF {
-					requestedBlockNum := big.NewInt(0).SetBytes(input)
-					minBlockNum := big.NewInt(0).Sub(evm.BlockNumber, common.Big257)
-
-					if requestedBlockNum.Cmp(evm.BlockNumber) == 0 {
-						input = evm.Context.VRF.Bytes()
-					} else if requestedBlockNum.Cmp(minBlockNum) > 0 && requestedBlockNum.Cmp(evm.BlockNumber) < 0 {
-						// requested block number is in range
-						input = evm.GetVRF(requestedBlockNum.Uint64()).Bytes()
-					} else {
-						// else default to the current block's VRF
-						input = evm.Context.VRF.Bytes()
-					}
-				} else {
-					// Override the input with vrf data of the requested block so it can be returned to the contract program.
-					input = evm.Context.VRF.Bytes()
-				}
-			} else if _, ok := p.(*epoch); ok {
-				input = evm.EpochNumber.Bytes()
-			}
 			return RunPrecompiledContract(p, input, contract)
-		}
-		if len(writeCapablePrecompiles) > 0 {
-			if p := writeCapablePrecompiles[*contract.CodeAddr]; p != nil {
-				return RunWriteCapablePrecompiledContract(p, evm, contract, input, readOnly)
-			}
 		}
 	}
 	for _, interpreter := range evm.interpreters {
@@ -130,12 +68,7 @@ func run(evm *EVM, contract *Contract, input []byte, readOnly bool) ([]byte, err
 				}(evm.interpreter)
 				evm.interpreter = interpreter
 			}
-
-			if evm.ChainConfig().IsDataCopyFixEpoch(evm.EpochNumber) {
-				contract.WithDataCopyFix = true
-			}
 			return interpreter.Run(contract, input, readOnly)
-
 		}
 	}
 	return nil, ErrNoCompatibleInterpreter
@@ -151,8 +84,6 @@ type Context struct {
 	Transfer TransferFunc
 	// GetHash returns the hash corresponding to n
 	GetHash GetHashFunc
-	// GetVRF returns the VRF corresponding to n
-	GetVRF GetVRFFunc
 
 	// IsValidator determines whether the address corresponds to a validator or a smart contract
 	// true: is a validator address; false: is smart contract address
@@ -168,19 +99,8 @@ type Context struct {
 	BlockNumber *big.Int       // Provides information for NUMBER
 	EpochNumber *big.Int       // Provides information for EPOCH
 	Time        *big.Int       // Provides information for TIME
-	VRF         common.Hash    // Provides information for VRF
 
 	TxType types.TransactionType
-
-	CreateValidator       CreateValidatorFunc
-	EditValidator         EditValidatorFunc
-	Delegate              DelegateFunc
-	Undelegate            UndelegateFunc
-	CollectRewards        CollectRewardsFunc
-	CalculateMigrationGas CalculateMigrationGasFunc
-
-	ShardID   uint32 // Used by staking and cross shard transfer precompile
-	NumShards uint32 // Used by cross shard transfer precompile
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides
@@ -218,10 +138,6 @@ type EVM struct {
 	// available gas is calculated in gasCall* according to the 63/64 rule and later
 	// applied in opCall*.
 	callGasTemp uint64
-	// stored temporarily by stakingPrecompile and cleared immediately after return
-	// (although the EVM object itself is ephemeral)
-	StakeMsgs []stakingTypes.StakeMsg
-	CXReceipt *types.CXReceipt
 }
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
@@ -303,30 +219,16 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	)
 	if !evm.StateDB.Exist(addr) && txType != types.SubtractionOnly {
 		precompiles := PrecompiledContractsHomestead
-		var writeCapablePrecompiles map[common.Address]WriteCapablePrecompiledContract
 		if evm.ChainConfig().IsS3(evm.EpochNumber) {
 			precompiles = PrecompiledContractsByzantium
 		}
 		if evm.chainRules.IsIstanbul {
 			precompiles = PrecompiledContractsIstanbul
 		}
-		if evm.chainRules.IsVRF {
-			precompiles = PrecompiledContractsVRF
-		}
-		if evm.chainRules.IsSHA3 {
-			precompiles = PrecompiledContractsSHA3FIPS
-		}
-		if evm.chainRules.IsStakingPrecompile {
-			precompiles = PrecompiledContractsStaking
-			writeCapablePrecompiles = WriteCapablePrecompiledContractsStaking
-		}
-		if evm.chainRules.IsCrossShardXferPrecompile {
-			writeCapablePrecompiles = WriteCapablePrecompiledContractsCrossXfer
-		}
-		if (len(writeCapablePrecompiles) == 0 || writeCapablePrecompiles[addr] == nil) && precompiles[addr] == nil && evm.ChainConfig().IsS3(evm.EpochNumber) && value.Sign() == 0 {
+		if precompiles[addr] == nil && evm.ChainConfig().IsS3(evm.EpochNumber) && value.Sign() == 0 {
 			// Calling a non existing account, don't do anything, but ping the tracer
 			if evm.vmConfig.Debug && evm.depth == 0 {
-				evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), addr, false, input, gas, value)
+				evm.vmConfig.Tracer.CaptureStart(caller.Address(), addr, false, input, gas, value)
 				evm.vmConfig.Tracer.CaptureEnd(ret, 0, 0, nil)
 			}
 			return nil, gas, nil
@@ -353,7 +255,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 	// Capture the tracer start/end events in debug mode
 	if evm.vmConfig.Debug && evm.depth == 0 {
-		evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), addr, false, input, gas, value)
+		evm.vmConfig.Tracer.CaptureStart(caller.Address(), addr, false, input, gas, value)
 
 		defer func() { // Lazy evaluation of the parameters
 			evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
@@ -366,7 +268,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	// when we're in homestead this also counts for code storage gas errors.
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
@@ -407,7 +309,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	ret, err = run(evm, contract, input, false)
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
@@ -440,7 +342,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	ret, err = run(evm, contract, input, false)
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
@@ -482,7 +384,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	ret, err = run(evm, contract, input, true)
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
@@ -538,7 +440,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	}
 
 	if evm.vmConfig.Debug && evm.depth == 0 {
-		evm.vmConfig.Tracer.CaptureStart(evm, caller.Address(), address, true, codeAndHash.code, gas, value)
+		evm.vmConfig.Tracer.CaptureStart(caller.Address(), address, true, codeAndHash.code, gas, value)
 	}
 	start := time.Now()
 
@@ -553,7 +455,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	if err == nil && !maxCodeSizeExceeded {
 		createDataGas := uint64(len(ret)) * params.CreateDataGas
 		if contract.UseGas(createDataGas) {
-			evm.StateDB.SetCode(address, ret, false)
+			evm.StateDB.SetCode(address, ret)
 		} else {
 			err = ErrCodeStoreOutOfGas
 		}
@@ -564,7 +466,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	// when we're in homestead this also counts for code storage gas errors.
 	if maxCodeSizeExceeded || (err != nil && (evm.ChainConfig().IsS3(evm.EpochNumber) || err != ErrCodeStoreOutOfGas)) {
 		evm.StateDB.RevertToSnapshot(snapshot)
-		if err != ErrExecutionReverted {
+		if err != errExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}

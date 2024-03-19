@@ -3,9 +3,9 @@ package effective
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
-	"os"
 	"sort"
 	"testing"
 
@@ -35,7 +35,7 @@ type slotsData struct {
 }
 
 func init() {
-	input, err := os.ReadFile(eposTestingFile)
+	input, err := ioutil.ReadFile(eposTestingFile)
 	if err != nil {
 		panic(
 			fmt.Sprintf("cannot open genesisblock config file %v, err %v\n",
@@ -93,8 +93,7 @@ func TestEffectiveStake(t *testing.T) {
 		expectedStake := numeric.MaxDec(
 			numeric.MinDec(numeric.OneDec().Add(c).Mul(expectedMedian), val.RawStake),
 			numeric.OneDec().Sub(c).Mul(expectedMedian))
-		calculatedStake := effectiveStake(numeric.OneDec().Sub(c).Mul(expectedMedian),
-			numeric.OneDec().Add(c).Mul(expectedMedian), val.RawStake)
+		calculatedStake := effectiveStake(expectedMedian, val.RawStake)
 		if !expectedStake.Equal(calculatedStake) {
 			t.Errorf(
 				"Expected: %s, Got: %s", expectedStake.String(), calculatedStake.String(),

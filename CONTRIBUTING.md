@@ -1,1 +1,1 @@
-# Contributing To Intelchain
+# Contributing To intelchain

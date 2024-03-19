@@ -1,7 +1,7 @@
 package itc
 
 import (
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	commonRPC "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/staking/network"

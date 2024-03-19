@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/numeric"
 
 	"github.com/zennittians/intelchain/internal/genesis"
@@ -31,6 +29,10 @@ type Schedule interface {
 
 	// VDFDifficulty returns number of iterations for VDF calculation
 	VdfDifficulty() int
+
+	// TODO: remove it after randomness feature turned on mainnet
+	//RandomnessStartingEpoch returns starting epoch of randonness generation
+	RandomnessStartingEpoch() uint64
 
 	// GetNetworkID() return networkID type.
 	GetNetworkID() NetworkID
@@ -72,28 +74,8 @@ type Instance interface {
 	// ReshardingEpoch returns a list of Epoch while off-chain resharding happens
 	ReshardingEpoch() []*big.Int
 
-	// BlocksPerEpoch returns the number of blocks per epoch.
+	// Count of blocks per epoch
 	BlocksPerEpoch() uint64
-
-	// HIP-16: The absolute number of maximum effective slots per shard limit for each validator. 0 means no limit.
-	SlotsLimit() int
-
-	// ExternalAllowlist returns the list of external leader keys in allowlist(HIP18)
-	ExternalAllowlist() []bls.PublicKeyWrapper
-
-	// ExternalAllowlistLimit returns the maximum number of external leader keys on each shard(HIP18)
-	ExternalAllowlistLimit() int
-
-	// FeeCollector returns a mapping of address to decimal % of fee
-	FeeCollectors() FeeCollectors
-
-	// HIP30RecoveryAddress returns the address to which
-	// HIP30EmissionSplit % income is sent
-	HIP30RecoveryAddress() ethCommon.Address
-
-	// HIP30EmissionFraction is the percentage of the emission
-	// sent to the Recovery Address
-	HIP30EmissionFraction() numeric.Dec
 }
 
 // genShardingStructure return sharding structure, given shard number and its patterns.

@@ -3,24 +3,20 @@ package consensus
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/pkg/errors"
 	"github.com/zennittians/abool"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
-	"github.com/zennittians/intelchain/consensus/engine"
 	"github.com/zennittians/intelchain/consensus/quorum"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/crypto/bls"
 	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/internal/registry"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/multibls"
 	"github.com/zennittians/intelchain/p2p"
-	"github.com/zennittians/intelchain/shard"
-	"github.com/zennittians/intelchain/shard/committee"
 	"github.com/zennittians/intelchain/staking/slash"
 )
 
@@ -40,21 +36,20 @@ const (
 	AsyncProposal
 )
 
-type DownloadAsync interface {
-	DownloadAsync()
-}
+// BlockVerifierFunc is a function used to verify the block
+type BlockVerifierFunc func(*types.Block) error
 
 // Consensus is the main struct with all states and data related to consensus process.
 type Consensus struct {
-	decider quorum.Decider
+	Decider quorum.Decider
 	// FBFTLog stores the pbft messages and blocks during FBFT process
-	fBFTLog *FBFTLog
+	FBFTLog *FBFTLog
 	// phase: different phase of FBFT protocol: pre-prepare, prepare, commit, finish etc
 	phase FBFTPhase
 	// current indicates what state a node is in
 	current State
-	// isBackup declarative the node is in backup mode
-	isBackup bool
+	// How long to delay sending commit messages.
+	delayCommit time.Duration
 	// 2 types of timeouts: normal and viewchange
 	consensusTimeout map[TimeoutType]*utils.Timeout
 	// Commits collected from validators.
@@ -64,12 +59,14 @@ type Consensus struct {
 	commitBitmap         *bls_cosi.Mask
 
 	multiSigBitmap *bls_cosi.Mask // Bitmap for parsing multisig bitmap from validators
+	multiSigMutex  sync.RWMutex
 
-	// Registry for services.
-	registry *registry.Registry
+	// The blockchain this consensus is working on
+	Blockchain *core.BlockChain
 	// Minimal number of peers in the shard
 	// If the number of validators is less than minPeers, the consensus won't start
-	MinPeers int
+	MinPeers   int
+	pubKeyLock sync.Mutex
 	// private/public keys of current node
 	priKey multibls.PrivateKeys
 	// the publickey of leader
@@ -86,18 +83,22 @@ type Consensus struct {
 	// IgnoreViewIDCheck determines whether to ignore viewID check
 	IgnoreViewIDCheck *abool.AtomicBool
 	// consensus mutex
-	mutex *sync.RWMutex
+	mutex sync.Mutex
 	// ViewChange struct
 	vc *viewChange
 	// Signal channel for proposing a new block and start new consensus
-	readySignal chan ProposalType
+	ReadySignal chan ProposalType
 	// Channel to send full commit signatures to finish new block proposal
-	commitSigChannel chan []byte
+	CommitSigChannel chan []byte
 	// The post-consensus job func passed from Node object
 	// Called when consensus on a new block is done
 	PostConsensusJob func(*types.Block) error
+	// The verifier func passed from Node object
+	BlockVerifier BlockVerifierFunc
 	// verified block to state sync broadcast
 	VerifiedNewBlock chan *types.Block
+	// will trigger state syncing when blockNum is low
+	BlockNumLowChan chan struct{}
 	// Channel for DRG protocol to send pRnd (preimage of randomness resulting from combined vrf
 	// randomnesses) to consensus. The first 32 bytes are randomness, the rest is for bitmap.
 	PRndChannel chan []byte
@@ -109,6 +110,10 @@ type Consensus struct {
 	host p2p.Host
 	// MessageSender takes are of sending consensus message and the corresponding retry logic.
 	msgSender *MessageSender
+	// Used to convey to the consensus main loop that block syncing has finished.
+	syncReadyChan chan struct{}
+	// Used to convey to the consensus main loop that node is out of sync
+	syncNotReadyChan chan struct{}
 	// If true, this consensus will not propose view change.
 	disableViewChange bool
 	// Have a dedicated reader thread pull from this chan, like in node
@@ -124,122 +129,38 @@ type Consensus struct {
 	// finality of previous consensus in the unit of milliseconds
 	finality int64
 	// finalityCounter keep tracks of the finality time
-	finalityCounter atomic.Value //int64
-
-	dHelper DownloadAsync
-
-	// Both flags only for initialization state.
-	start           bool
-	isInitialLeader bool
+	finalityCounter int64
 }
 
-// Blockchain returns the blockchain.
-func (consensus *Consensus) Blockchain() core.BlockChain {
-	return consensus.registry.GetBlockchain()
-}
-
-func (consensus *Consensus) FBFTLog() FBFT {
-	return threadsafeFBFTLog{
-		log: consensus.fBFTLog,
-		mu:  consensus.mutex,
-	}
-}
-
-// ChainReader returns the chain reader.
-// This is mostly the same as Blockchain, but it returns only read methods, so we assume it's safe for concurrent use.
-func (consensus *Consensus) ChainReader() engine.ChainReader {
-	return consensus.Blockchain()
-}
-
-func (consensus *Consensus) ReadySignal(p ProposalType) {
-	consensus.readySignal <- p
-}
-
-func (consensus *Consensus) GetReadySignal() chan ProposalType {
-	return consensus.readySignal
-}
-
-func (consensus *Consensus) GetCommitSigChannel() chan []byte {
-	return consensus.commitSigChannel
-}
-
-// Beaconchain returns the beaconchain.
-func (consensus *Consensus) Beaconchain() core.BlockChain {
-	return consensus.registry.GetBeaconchain()
-}
-
-// verifyBlock is a function used to verify the block and keep trace of verified blocks.
-func (consensus *Consensus) verifyBlock(block *types.Block) error {
-	if !consensus.fBFTLog.IsBlockVerified(block.Hash()) {
-		if err := consensus.BlockVerifier(block); err != nil {
-			return errors.Errorf("Block verification failed: %s", err)
-		}
-		consensus.fBFTLog.MarkBlockVerified(block)
-	}
-	return nil
+// SetCommitDelay sets the commit message delay.  If set to non-zero,
+// validator delays commit message by the amount.
+func (consensus *Consensus) SetCommitDelay(delay time.Duration) {
+	consensus.delayCommit = delay
 }
 
 // BlocksSynchronized lets the main loop know that block synchronization finished
 // thus the blockchain is likely to be up to date.
 func (consensus *Consensus) BlocksSynchronized() {
-	err := consensus.AddConsensusLastMile()
-	if err != nil {
-		consensus.GetLogger().Error().Err(err).Msg("add last mile failed")
-	}
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-	consensus.syncReadyChan()
+	consensus.syncReadyChan <- struct{}{}
 }
 
 // BlocksNotSynchronized lets the main loop know that block is not synchronized
-func (consensus *Consensus) BlocksNotSynchronized(reason string) {
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-	consensus.syncNotReadyChan(reason)
+func (consensus *Consensus) BlocksNotSynchronized() {
+	consensus.syncNotReadyChan <- struct{}{}
 }
 
 // VdfSeedSize returns the number of VRFs for VDF computation
 func (consensus *Consensus) VdfSeedSize() int {
-	consensus.mutex.RLock()
-	defer consensus.mutex.RUnlock()
-	return int(consensus.decider.ParticipantsCount()) * 2 / 3
+	return int(consensus.Decider.ParticipantsCount()) * 2 / 3
 }
 
 // GetPublicKeys returns the public keys
 func (consensus *Consensus) GetPublicKeys() multibls.PublicKeys {
-	return consensus.getPublicKeys()
-}
-
-func (consensus *Consensus) getPublicKeys() multibls.PublicKeys {
 	return consensus.priKey.GetPublicKeys()
 }
 
-func (consensus *Consensus) GetLeaderPubKey() *bls_cosi.PublicKeyWrapper {
-	consensus.mutex.RLock()
-	defer consensus.mutex.RUnlock()
-	return consensus.getLeaderPubKey()
-}
-
-func (consensus *Consensus) getLeaderPubKey() *bls_cosi.PublicKeyWrapper {
-	return consensus.LeaderPubKey
-}
-
-func (consensus *Consensus) SetLeaderPubKey(pub *bls_cosi.PublicKeyWrapper) {
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-	consensus.setLeaderPubKey(pub)
-}
-
-func (consensus *Consensus) setLeaderPubKey(pub *bls_cosi.PublicKeyWrapper) {
-	consensus.LeaderPubKey = pub
-}
-
-func (consensus *Consensus) GetPrivateKeys() multibls.PrivateKeys {
-	return consensus.priKey
-}
-
 // GetLeaderPrivateKey returns leader private key if node is the leader
-func (consensus *Consensus) getLeaderPrivateKey(leaderKey *bls_core.PublicKey) (*bls.PrivateKeyWrapper, error) {
+func (consensus *Consensus) GetLeaderPrivateKey(leaderKey *bls_core.PublicKey) (*bls.PrivateKeyWrapper, error) {
 	for i, key := range consensus.priKey {
 		if key.Pub.Object.IsEqual(leaderKey) {
 			return &consensus.priKey[i], nil
@@ -248,45 +169,33 @@ func (consensus *Consensus) getLeaderPrivateKey(leaderKey *bls_core.PublicKey) (
 	return nil, errors.Wrapf(errLeaderPriKeyNotFound, leaderKey.SerializeToHexStr())
 }
 
-// getConsensusLeaderPrivateKey returns consensus leader private key if node is the leader
-func (consensus *Consensus) getConsensusLeaderPrivateKey() (*bls.PrivateKeyWrapper, error) {
-	return consensus.getLeaderPrivateKey(consensus.LeaderPubKey.Object)
+// GetConsensusLeaderPrivateKey returns consensus leader private key if node is the leader
+func (consensus *Consensus) GetConsensusLeaderPrivateKey() (*bls.PrivateKeyWrapper, error) {
+	return consensus.GetLeaderPrivateKey(consensus.LeaderPubKey.Object)
 }
 
-func (consensus *Consensus) IsBackup() bool {
-	return consensus.isBackup
-}
-
-func (consensus *Consensus) BlockNum() uint64 {
-	return atomic.LoadUint64(&consensus.blockNum)
-}
-
-func (consensus *Consensus) getBlockNum() uint64 {
-	return atomic.LoadUint64(&consensus.blockNum)
+// SetBlockVerifier sets the block verifier
+func (consensus *Consensus) SetBlockVerifier(verifier BlockVerifierFunc) {
+	consensus.BlockVerifier = verifier
+	consensus.vc.SetBlockVerifier(verifier)
 }
 
 // New create a new Consensus record
 func New(
-	host p2p.Host, shard uint32, multiBLSPriKey multibls.PrivateKeys,
-	registry *registry.Registry,
-	Decider quorum.Decider, minPeers int, aggregateSig bool,
+	host p2p.Host, shard uint32, leader p2p.Peer, multiBLSPriKey multibls.PrivateKeys,
+	Decider quorum.Decider,
 ) (*Consensus, error) {
-	consensus := Consensus{
-		mutex:        &sync.RWMutex{},
-		ShardID:      shard,
-		fBFTLog:      NewFBFTLog(),
-		phase:        FBFTAnnounce,
-		current:      State{mode: Normal},
-		decider:      Decider,
-		registry:     registry,
-		MinPeers:     minPeers,
-		AggregateSig: aggregateSig,
-		host:         host,
-		msgSender:    NewMessageSender(host),
-		// FBFT timeout
-		consensusTimeout: createTimeout(),
-		dHelper:          downloadAsync{},
-	}
+	consensus := Consensus{}
+	consensus.Decider = Decider
+	consensus.host = host
+	consensus.msgSender = NewMessageSender(host)
+	consensus.BlockNumLowChan = make(chan struct{}, 1)
+	// FBFT related
+	consensus.FBFTLog = NewFBFTLog()
+	consensus.phase = FBFTAnnounce
+	consensus.current = State{mode: Normal}
+	// FBFT timeout
+	consensus.consensusTimeout = createTimeout()
 
 	if multiBLSPriKey != nil {
 		consensus.priKey = multiBLSPriKey
@@ -300,95 +209,22 @@ func New(
 	// viewID has to be initialized as the height of
 	// the blockchain during initialization as it was
 	// displayed on explorer as Height right now
-	consensus.setCurBlockViewID(0)
+	consensus.SetCurBlockViewID(0)
+	consensus.ShardID = shard
+	consensus.syncReadyChan = make(chan struct{})
+	consensus.syncNotReadyChan = make(chan struct{})
 	consensus.SlashChan = make(chan slash.Record)
-	consensus.readySignal = make(chan ProposalType)
-	consensus.commitSigChannel = make(chan []byte)
+	consensus.ReadySignal = make(chan ProposalType)
+	consensus.CommitSigChannel = make(chan []byte)
 	// channel for receiving newly generated VDF
 	consensus.RndChannel = make(chan [vdfAndSeedSize]byte)
 	consensus.IgnoreViewIDCheck = abool.NewBool(false)
 	// Make Sure Verifier is not null
 	consensus.vc = newViewChange()
+
 	// init prometheus metrics
 	initMetrics()
 	consensus.AddPubkeyMetrics()
 
 	return &consensus, nil
-}
-
-func (consensus *Consensus) GetHost() p2p.Host {
-	return consensus.host
-}
-
-func (consensus *Consensus) Registry() *registry.Registry {
-	return consensus.registry
-}
-
-func (consensus *Consensus) Decider() quorum.Decider {
-	return quorum.NewThreadSafeDecider(consensus.decider, consensus.mutex)
-}
-
-// InitConsensusWithValidators initialize shard state
-// from latest epoch and update committee pub
-// keys for consensus
-func (consensus *Consensus) InitConsensusWithValidators() (err error) {
-	shardID := consensus.ShardID
-	currentBlock := consensus.Blockchain().CurrentBlock()
-	blockNum := currentBlock.NumberU64()
-	consensus.SetMode(Listening)
-	epoch := currentBlock.Epoch()
-	utils.Logger().Info().
-		Uint64("blockNum", blockNum).
-		Uint32("shardID", shardID).
-		Uint64("epoch", epoch.Uint64()).
-		Msg("[InitConsensusWithValidators] Try To Get PublicKeys")
-	shardState, err := committee.WithStakingEnabled.Compute(
-		epoch, consensus.Blockchain(),
-	)
-	if err != nil {
-		utils.Logger().Err(err).
-			Uint64("blockNum", blockNum).
-			Uint32("shardID", shardID).
-			Uint64("epoch", epoch.Uint64()).
-			Msg("[InitConsensusWithValidators] Failed getting shard state")
-		return err
-	}
-	subComm, err := shardState.FindCommitteeByID(shardID)
-	if err != nil {
-		utils.Logger().Err(err).
-			Interface("shardState", shardState).
-			Msg("[InitConsensusWithValidators] Find CommitteeByID")
-		return err
-	}
-	pubKeys, err := subComm.BLSPublicKeys()
-	if err != nil {
-		utils.Logger().Error().
-			Uint32("shardID", shardID).
-			Uint64("blockNum", blockNum).
-			Msg("[InitConsensusWithValidators] PublicKeys is Empty, Cannot update public keys")
-		return errors.Wrapf(
-			err,
-			"[InitConsensusWithValidators] PublicKeys is Empty, Cannot update public keys",
-		)
-	}
-
-	for _, key := range pubKeys {
-		if consensus.GetPublicKeys().Contains(key.Object) {
-			utils.Logger().Info().
-				Uint64("blockNum", blockNum).
-				Int("numPubKeys", len(pubKeys)).
-				Str("mode", consensus.Mode().String()).
-				Msg("[InitConsensusWithValidators] Successfully updated public keys")
-			consensus.UpdatePublicKeys(pubKeys, shard.Schedule.InstanceForEpoch(epoch).ExternalAllowlist())
-			consensus.SetMode(Normal)
-			return nil
-		}
-	}
-	return nil
-}
-
-type downloadAsync struct {
-}
-
-func (a downloadAsync) DownloadAsync() {
 }

@@ -3,8 +3,6 @@ package consensus
 import (
 	"encoding/binary"
 	"fmt"
-	"hash/crc32"
-	"strconv"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,19 +34,6 @@ type FBFTMessage struct {
 	M3AggSig           *bls_core.Sign
 	M3Bitmap           *bls_cosi.Mask
 	Verified           bool
-}
-
-func (m *FBFTMessage) Hash() []byte {
-	// Hash returns hash of the struct
-
-	c := crc32.NewIEEE()
-	c.Write([]byte(strconv.FormatUint(uint64(m.MessageType), 10)))
-	c.Write([]byte(strconv.FormatUint(m.ViewID, 10)))
-	c.Write([]byte(strconv.FormatUint(m.BlockNum, 10)))
-	c.Write(m.BlockHash[:])
-	c.Write(m.Block[:])
-	c.Write(m.Payload[:])
-	return c.Sum(nil)
 }
 
 // String ..
@@ -113,21 +98,14 @@ func (m *FBFTMessage) id() fbftMsgID {
 	return id
 }
 
-type FBFT interface {
-	GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64) []*FBFTMessage
-	IsBlockVerified(hash common.Hash) bool
-	DeleteBlockByNumber(number uint64)
-	GetBlockByHash(hash common.Hash) *types.Block
-	AddVerifiedMessage(msg *FBFTMessage)
-	AddBlock(block *types.Block)
-	GetMessagesByTypeSeqHash(typ msg_pb.MessageType, blockNum uint64, blockHash common.Hash) []*FBFTMessage
-}
-
 // FBFTLog represents the log stored by a node during FBFT process
 type FBFTLog struct {
 	blocks         map[common.Hash]*types.Block // store blocks received in FBFT
 	verifiedBlocks map[common.Hash]struct{}     // store block hashes for blocks that has already been verified
-	messages       map[fbftMsgID]*FBFTMessage   // store messages received in FBFT
+	blockLock      sync.RWMutex
+
+	messages map[fbftMsgID]*FBFTMessage // store messages received in FBFT
+	msgLock  sync.RWMutex
 }
 
 // NewFBFTLog returns new instance of FBFTLog
@@ -142,27 +120,42 @@ func NewFBFTLog() *FBFTLog {
 
 // AddBlock add a new block into the log
 func (log *FBFTLog) AddBlock(block *types.Block) {
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
+
 	log.blocks[block.Hash()] = block
 }
 
 // MarkBlockVerified marks the block as verified
 func (log *FBFTLog) MarkBlockVerified(block *types.Block) {
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
+
 	log.verifiedBlocks[block.Hash()] = struct{}{}
 }
 
 // IsBlockVerified checks whether the block is verified
-func (log *FBFTLog) IsBlockVerified(hash common.Hash) bool {
-	_, exist := log.verifiedBlocks[hash]
+func (log *FBFTLog) IsBlockVerified(block *types.Block) bool {
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
+
+	_, exist := log.verifiedBlocks[block.Hash()]
 	return exist
 }
 
 // GetBlockByHash returns the block matches the given block hash
 func (log *FBFTLog) GetBlockByHash(hash common.Hash) *types.Block {
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
+
 	return log.blocks[hash]
 }
 
 // GetBlocksByNumber returns the blocks match the given block number
 func (log *FBFTLog) GetBlocksByNumber(number uint64) []*types.Block {
+	log.blockLock.RLock()
+	defer log.blockLock.RUnlock()
+
 	var blocks []*types.Block
 	for _, block := range log.blocks {
 		if block.NumberU64() == number {
@@ -173,7 +166,10 @@ func (log *FBFTLog) GetBlocksByNumber(number uint64) []*types.Block {
 }
 
 // DeleteBlocksLessThan deletes blocks less than given block number
-func (log *FBFTLog) deleteBlocksLessThan(number uint64) {
+func (log *FBFTLog) DeleteBlocksLessThan(number uint64) {
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
+
 	for h, block := range log.blocks {
 		if block.NumberU64() < number {
 			delete(log.blocks, h)
@@ -184,6 +180,9 @@ func (log *FBFTLog) deleteBlocksLessThan(number uint64) {
 
 // DeleteBlockByNumber deletes block of specific number
 func (log *FBFTLog) DeleteBlockByNumber(number uint64) {
+	log.blockLock.Lock()
+	defer log.blockLock.Unlock()
+
 	for h, block := range log.blocks {
 		if block.NumberU64() == number {
 			delete(log.blocks, h)
@@ -193,7 +192,10 @@ func (log *FBFTLog) DeleteBlockByNumber(number uint64) {
 }
 
 // DeleteMessagesLessThan deletes messages less than given block number
-func (log *FBFTLog) deleteMessagesLessThan(number uint64) {
+func (log *FBFTLog) DeleteMessagesLessThan(number uint64) {
+	log.msgLock.Lock()
+	defer log.msgLock.Unlock()
+
 	for h, msg := range log.messages {
 		if msg.BlockNum < number {
 			delete(log.messages, h)
@@ -203,6 +205,9 @@ func (log *FBFTLog) deleteMessagesLessThan(number uint64) {
 
 // AddVerifiedMessage adds a signature verified pbft message into the log
 func (log *FBFTLog) AddVerifiedMessage(msg *FBFTMessage) {
+	log.msgLock.Lock()
+	defer log.msgLock.Unlock()
+
 	msg.Verified = true
 
 	log.messages[msg.id()] = msg
@@ -210,6 +215,9 @@ func (log *FBFTLog) AddVerifiedMessage(msg *FBFTMessage) {
 
 // AddNotVerifiedMessage adds a not signature verified pbft message into the log
 func (log *FBFTLog) AddNotVerifiedMessage(msg *FBFTMessage) {
+	log.msgLock.Lock()
+	defer log.msgLock.Unlock()
+
 	msg.Verified = false
 
 	log.messages[msg.id()] = msg
@@ -217,6 +225,9 @@ func (log *FBFTLog) AddNotVerifiedMessage(msg *FBFTMessage) {
 
 // GetNotVerifiedCommittedMessages returns not verified committed pbft messages with matching blockNum, viewID and blockHash
 func (log *FBFTLog) GetNotVerifiedCommittedMessages(blockNum uint64, viewID uint64, blockHash common.Hash) []*FBFTMessage {
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
+
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
 		if msg.MessageType == msg_pb.MessageType_COMMITTED && msg.BlockNum == blockNum && msg.ViewID == viewID && msg.BlockHash == blockHash && !msg.Verified {
@@ -228,6 +239,9 @@ func (log *FBFTLog) GetNotVerifiedCommittedMessages(blockNum uint64, viewID uint
 
 // GetMessagesByTypeSeqViewHash returns pbft messages with matching type, blockNum, viewID and blockHash
 func (log *FBFTLog) GetMessagesByTypeSeqViewHash(typ msg_pb.MessageType, blockNum uint64, viewID uint64, blockHash common.Hash) []*FBFTMessage {
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
+
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
 		if msg.MessageType == typ && msg.BlockNum == blockNum && msg.ViewID == viewID && msg.BlockHash == blockHash && msg.Verified {
@@ -239,6 +253,9 @@ func (log *FBFTLog) GetMessagesByTypeSeqViewHash(typ msg_pb.MessageType, blockNu
 
 // GetMessagesByTypeSeq returns pbft messages with matching type, blockNum
 func (log *FBFTLog) GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64) []*FBFTMessage {
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
+
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
 		if msg.MessageType == typ && msg.BlockNum == blockNum && msg.Verified {
@@ -250,6 +267,9 @@ func (log *FBFTLog) GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64
 
 // GetMessagesByTypeSeqHash returns pbft messages with matching type, blockNum
 func (log *FBFTLog) GetMessagesByTypeSeqHash(typ msg_pb.MessageType, blockNum uint64, blockHash common.Hash) []*FBFTMessage {
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
+
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
 		if msg.MessageType == typ && msg.BlockNum == blockNum && msg.BlockHash == blockHash && msg.Verified {
@@ -285,6 +305,9 @@ func (log *FBFTLog) HasMatchingViewPrepared(blockNum uint64, viewID uint64, bloc
 
 // GetMessagesByTypeSeqView returns pbft messages with matching type, blockNum and viewID
 func (log *FBFTLog) GetMessagesByTypeSeqView(typ msg_pb.MessageType, blockNum uint64, viewID uint64) []*FBFTMessage {
+	log.msgLock.RLock()
+	defer log.msgLock.RUnlock()
+
 	var found []*FBFTMessage
 	for _, msg := range log.messages {
 		if msg.MessageType != typ || msg.BlockNum != blockNum || msg.ViewID != viewID && msg.Verified {
@@ -313,12 +336,6 @@ func (log *FBFTLog) FindMessageByMaxViewID(msgs []*FBFTMessage) *FBFTMessage {
 
 // ParseFBFTMessage parses FBFT message into FBFTMessage structure
 func (consensus *Consensus) ParseFBFTMessage(msg *msg_pb.Message) (*FBFTMessage, error) {
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-	return consensus.parseFBFTMessage(msg)
-}
-
-func (consensus *Consensus) parseFBFTMessage(msg *msg_pb.Message) (*FBFTMessage, error) {
 	// TODO Have this do sanity checks on the message please
 	pbftMsg := FBFTMessage{}
 	pbftMsg.MessageType = msg.GetType()
@@ -343,7 +360,9 @@ func (consensus *Consensus) parseFBFTMessage(msg *msg_pb.Message) (*FBFTMessage,
 		copy(pbftMsg.SenderPubkeys[0].Bytes[:], consensusMsg.SenderPubkey[:])
 	} else {
 		// else, it should be a multi-key message where the bitmap is populated
+		consensus.multiSigMutex.RLock()
 		pubKeys, err := consensus.multiSigBitmap.GetSignedPubKeysFromBitmap(pbftMsg.SenderPubkeyBitmap)
+		consensus.multiSigMutex.RUnlock()
 		if err != nil {
 			return nil, err
 		}
@@ -383,53 +402,6 @@ func (log *FBFTLog) GetCommittedBlockAndMsgsFromNumber(bn uint64, logger *zerolo
 
 // PruneCacheBeforeBlock prune all blocks before bn
 func (log *FBFTLog) PruneCacheBeforeBlock(bn uint64) {
-	log.deleteBlocksLessThan(bn - 1)
-	log.deleteMessagesLessThan(bn - 1)
-}
-
-type threadsafeFBFTLog struct {
-	log *FBFTLog
-	mu  *sync.RWMutex
-}
-
-func (t threadsafeFBFTLog) GetMessagesByTypeSeq(typ msg_pb.MessageType, blockNum uint64) []*FBFTMessage {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.log.GetMessagesByTypeSeq(typ, blockNum)
-}
-
-func (t threadsafeFBFTLog) IsBlockVerified(hash common.Hash) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.log.IsBlockVerified(hash)
-}
-
-func (t threadsafeFBFTLog) DeleteBlockByNumber(number uint64) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.log.DeleteBlockByNumber(number)
-}
-
-func (t threadsafeFBFTLog) GetBlockByHash(hash common.Hash) *types.Block {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.log.GetBlockByHash(hash)
-}
-
-func (t threadsafeFBFTLog) AddVerifiedMessage(msg *FBFTMessage) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.log.AddVerifiedMessage(msg)
-}
-
-func (t threadsafeFBFTLog) AddBlock(block *types.Block) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.log.AddBlock(block)
-}
-
-func (t threadsafeFBFTLog) GetMessagesByTypeSeqHash(typ msg_pb.MessageType, blockNum uint64, blockHash common.Hash) []*FBFTMessage {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.log.GetMessagesByTypeSeqHash(typ, blockNum, blockHash)
+	log.DeleteBlocksLessThan(bn - 1)
+	log.DeleteMessagesLessThan(bn - 1)
 }

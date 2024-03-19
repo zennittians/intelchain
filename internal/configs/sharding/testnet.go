@@ -3,7 +3,6 @@ package shardingconfig
 import (
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/internal/genesis"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/numeric"
@@ -12,16 +11,6 @@ import (
 // TestnetSchedule is the long-running public testnet sharding
 // configuration schedule.
 var TestnetSchedule testnetSchedule
-
-var ninetyPercentEpoch = big.NewInt(399)
-var shardReductionEpoch = big.NewInt(486)
-
-var feeCollectorsTestnet = FeeCollectors{
-	mustAddress("0xb728AEaBF60fD01816ee9e756c18bc01dC91ba5D"): numeric.MustNewDecFromStr("0.5"),
-	mustAddress("0xb41B6B8d9e68fD44caC8342BC2EEf4D59531d7d7"): numeric.MustNewDecFromStr("0.5"),
-}
-
-var hip30CollectionAddressTestnet = mustAddress("0x58dB8BeCe892F343350D125ff22B242784a8BA38")
 
 type testnetSchedule struct{}
 
@@ -38,19 +27,19 @@ const (
 	TestNetHTTPPattern = "https://api.s%d.b.intelchain.org"
 	// TestNetWSPattern is the websocket pattern for testnet.
 	TestNetWSPattern = "wss://ws.s%d.b.intelchain.org"
+
+	testnetV2Epoch = 6050 // per shard, reduce internal node from 15 to 8, and external nodes from 5 to 22
 )
 
 func (ts testnetSchedule) InstanceForEpoch(epoch *big.Int) Instance {
 	switch {
-	case params.TestnetChainConfig.IsHIP30(epoch):
-		return testnetV5
-	case params.TestnetChainConfig.IsFeeCollectEpoch(epoch):
-		return testnetV4
-	case epoch.Cmp(shardReductionEpoch) >= 0:
+	case params.TestnetChainConfig.IsSixtyPercent(epoch):
+		return testnetV3_1
+	case params.TestnetChainConfig.IsTwoSeconds(epoch):
 		return testnetV3
-	case epoch.Cmp(ninetyPercentEpoch) >= 0:
+	case epoch.Cmp(big.NewInt(testnetV2Epoch)) >= 0:
 		return testnetV2
-	case params.TestnetChainConfig.IsStaking(epoch):
+	case epoch.Cmp(params.TestnetChainConfig.StakingEpoch) >= 0:
 		return testnetV1
 	default: // genesis
 		return testnetV0
@@ -105,6 +94,12 @@ func (ts testnetSchedule) VdfDifficulty() int {
 	return testnetVdfDifficulty
 }
 
+// TODO: remove it after randomness feature turned on mainnet
+// RandonnessStartingEpoch returns starting epoch of randonness generation
+func (ts testnetSchedule) RandomnessStartingEpoch() uint64 {
+	return mainnetRandomnessStartingEpoch
+}
+
 func (ts testnetSchedule) GetNetworkID() NetworkID {
 	return TestNet
 }
@@ -125,48 +120,8 @@ var testnetReshardingEpoch = []*big.Int{
 	params.TestnetChainConfig.TwoSecondsEpoch,
 }
 
-var (
-	testnetV0 = MustNewInstance(
-		4, 8, 8, 0,
-		numeric.OneDec(), genesis.TNIntelchainAccounts,
-		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
-	)
-	testnetV1 = MustNewInstance(
-		4, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.70"), genesis.TNIntelchainAccounts,
-		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
-	)
-	testnetV2 = MustNewInstance(
-		4, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccounts,
-		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
-	)
-	testnetV3 = MustNewInstance(
-		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
-		genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
-	)
-	testnetV4 = MustNewInstance(
-		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
-		genesis.TNFoundationalAccounts, emptyAllowlist,
-		feeCollectorsTestnet, numeric.ZeroDec(), ethCommon.Address{},
-		testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch(),
-	)
-	testnetV5 = MustNewInstance(
-		2, 30, 8, 0.15,
-		numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccountsV1,
-		genesis.TNFoundationalAccounts, emptyAllowlist,
-		feeCollectorsTestnet, numeric.MustNewDecFromStr("0.25"),
-		hip30CollectionAddressTestnet, testnetReshardingEpoch,
-		TestnetSchedule.BlocksPerEpoch(),
-	)
-)
+var testnetV0 = MustNewInstance(4, 16, 15, numeric.OneDec(), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, testnetReshardingEpoch, TestnetSchedule.BlocksPerEpochOld())
+var testnetV1 = MustNewInstance(4, 20, 15, numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, testnetReshardingEpoch, TestnetSchedule.BlocksPerEpochOld())
+var testnetV2 = MustNewInstance(4, 30, 8, numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, testnetReshardingEpoch, TestnetSchedule.BlocksPerEpochOld())
+var testnetV3 = MustNewInstance(4, 30, 8, numeric.MustNewDecFromStr("0.90"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch())
+var testnetV3_1 = MustNewInstance(4, 30, 8, numeric.MustNewDecFromStr("0.60"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, testnetReshardingEpoch, TestnetSchedule.BlocksPerEpoch())

@@ -1,10 +1,10 @@
-package eth
+package v1
 
 import (
 	"context"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 	internal_common "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/itc"
 )
@@ -32,13 +32,10 @@ func NewPublicEthService(itc *itc.Intelchain, namespace string) rpc.API {
 // given block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
 // block numbers are also allowed.
 func (s *PublicEthService) GetBalance(
-	ctx context.Context, address string, blockNrOrHash rpc.BlockNumberOrHash,
+	ctx context.Context, address string, blockNr rpc.BlockNumber,
 ) (*hexutil.Big, error) {
-	addr, err := internal_common.ParseAddr(address)
-	if err != nil {
-		return nil, err
-	}
-	balance, err := s.itc.GetBalance(ctx, addr, blockNrOrHash)
+	addr := internal_common.ParseAddr(address)
+	balance, err := s.itc.GetBalance(ctx, addr, blockNr)
 	if err != nil {
 		return nil, err
 	}

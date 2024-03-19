@@ -101,8 +101,7 @@ type topLevelRegistry struct {
 type Roster struct {
 	Voters map[bls.SerializedPublicKey]*AccommodateIntelchainVote
 	topLevelRegistry
-	ShardID      uint32
-	OrderedSlots []bls.SerializedPublicKey
+	ShardID uint32
 }
 
 func (r Roster) String() string {
@@ -180,7 +179,6 @@ func Compute(subComm *shard.Committee, epoch *big.Int) (*Roster, error) {
 
 	intelchainPercent := shard.Schedule.InstanceForEpoch(epoch).IntelchainVotePercent()
 	externalPercent := shard.Schedule.InstanceForEpoch(epoch).ExternalVotePercent()
-
 	for i := range staked {
 		member := AccommodateIntelchainVote{
 			PureStakedVote: PureStakedVote{
@@ -215,28 +213,23 @@ func Compute(subComm *shard.Committee, epoch *big.Int) (*Roster, error) {
 		}
 	}
 
-	{
-		// NOTE Enforce voting power sums to one,
-		// give diff (expect tiny amt) to last staked voter
-		if diff := numeric.OneDec().Sub(
-			ourPercentage.Add(theirPercentage),
-		); !diff.IsZero() && lastStakedVoter != nil {
-			lastStakedVoter.OverallPercent =
-				lastStakedVoter.OverallPercent.Add(diff)
-			theirPercentage = theirPercentage.Add(diff)
-		}
+	// NOTE Enforce voting power sums to one,
+	// give diff (expect tiny amt) to last staked voter
+	if diff := numeric.OneDec().Sub(
+		ourPercentage.Add(theirPercentage),
+	); !diff.IsZero() && lastStakedVoter != nil {
+		lastStakedVoter.OverallPercent =
+			lastStakedVoter.OverallPercent.Add(diff)
+		theirPercentage = theirPercentage.Add(diff)
+	}
 
-		if lastStakedVoter != nil &&
-			!ourPercentage.Add(theirPercentage).Equal(numeric.OneDec()) {
-			return nil, ErrVotingPowerNotEqualOne
-		}
+	if lastStakedVoter != nil &&
+		!ourPercentage.Add(theirPercentage).Equal(numeric.OneDec()) {
+		return nil, ErrVotingPowerNotEqualOne
 	}
 
 	roster.OurVotingPowerTotalPercentage = ourPercentage
 	roster.TheirVotingPowerTotalPercentage = theirPercentage
-	for _, slot := range subComm.Slots {
-		roster.OrderedSlots = append(roster.OrderedSlots, slot.BLSPublicKey)
-	}
 	return roster, nil
 }
 
@@ -252,21 +245,4 @@ func NewRoster(shardID uint32) *Roster {
 		},
 		ShardID: shardID,
 	}
-}
-
-// VotePowerByMask return the vote power with the given BLS mask. The result is a number between 0 and 1.
-func (r *Roster) VotePowerByMask(mask *bls.Mask) numeric.Dec {
-	res := numeric.ZeroDec()
-
-	for key, index := range mask.PublicsIndex {
-		if enabled, err := mask.IndexEnabled(index); err != nil || !enabled {
-			continue
-		}
-		voter, ok := r.Voters[key]
-		if !ok {
-			continue
-		}
-		res = res.Add(voter.OverallPercent)
-	}
-	return res
 }

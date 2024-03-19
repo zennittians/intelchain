@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -106,7 +107,7 @@ func writeAwsConfigFile(file string, config AwsConfig) error {
 			return err
 		}
 	}
-	return os.WriteFile(file, b, 0700)
+	return ioutil.WriteFile(file, b, 0700)
 }
 
 func TestPromptACProvider_getAwsConfig(t *testing.T) {

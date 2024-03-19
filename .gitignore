@@ -62,7 +62,7 @@ node_modules/
 .txgenkey
 
 # go mod summary file
-# go.sum
+go.sum
 
 # bnkey
 test/.bnkey
@@ -91,10 +91,3 @@ explorer_storage_*
 
 # local blskeys for testing
 .itc/blskeys
-
-# pprof profiles
-profiles/*.pb.gz
-
-# cache db
-cache/
-cache_*_db

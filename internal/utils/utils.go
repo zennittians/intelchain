@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	p2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
+	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
 	"github.com/zennittians/intelchain/crypto/bls"

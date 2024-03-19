@@ -24,8 +24,6 @@ const (
 	CallNewAccountGas uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
 	// TxGas ...
 	TxGas uint64 = 21000 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
-	// TxGasXShard
-	TxGasXShard uint64 = 23000 // Approximate cost for transferring native tokens across shards. Used in balance migration
 	// TxGasContractCreation ...
 	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
 	// TxGasValidatorCreation ...
@@ -172,11 +170,6 @@ const (
 	Bn256PairingBaseGasIstanbul      uint64 = 45000  // Base price for an elliptic curve pairing check
 	Bn256PairingPerPointGasByzantium uint64 = 80000  // Byzantium per-point price for an elliptic curve pairing check
 	Bn256PairingPerPointGasIstanbul  uint64 = 34000  // Per-point price for an elliptic curve pairing check
-
-	//SHA3-FIPS Precompiled contracts gas price esstimation as per ethereum yellow paper appendix G
-	Sha3FipsGas     uint64 = 30 // Once per SHA3-256 operation.
-	Sha3FipsWordGas uint64 = 6  // Once per word of the SHA3-256 operation's data.
-
 )
 
 // nolint

@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 	internal_common "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/itc"
 )
@@ -34,11 +34,8 @@ func NewPublicLegacyAPI(itc *itc.Intelchain, namespace string) rpc.API {
 func (s *PublicLegacyService) GetBalance(
 	ctx context.Context, address string,
 ) (*big.Int, error) {
-	addr, err := internal_common.ParseAddr(address)
-	if err != nil {
-		return nil, err
-	}
-	balance, err := s.itc.GetBalance(ctx, addr, rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber))
+	addr := internal_common.ParseAddr(address)
+	balance, err := s.itc.GetBalance(ctx, addr, rpc.BlockNumber(-1))
 	if err != nil {
 		return nil, err
 	}

@@ -140,22 +140,16 @@ func TestGasCost(t *testing.T) {
 		t.Errorf("gas price set incorrectly \n")
 	}
 	cost, err := stakingTx.Cost()
-	if err != nil {
-		t.Errorf("unexpected error %v\n", err)
-	}
-	if cost.Int64() != 600100 {
-		t.Errorf("unexpected cost: %v / %v", cost, 600100)
+	if err != nil || cost.Int64() != 600100 {
+		t.Errorf("staking transaction cost is incorrect %v\n", err)
 	}
 	delegateTx, err := createDelegate()
 	if err != nil {
 		t.Errorf("cannot create delegate staking transaction, %v\n", err)
 	}
 	cost, err = delegateTx.Cost()
-	if err != nil {
-		t.Errorf("unexpected error %v\n", err)
-	}
-	if cost.Int64() != 21000 {
-		t.Errorf("unexpected cost: %v / %v", cost, 21000)
+	if err != nil || cost.Int64() != 21100 {
+		t.Errorf("staking transaction cost is incorrect %v\n", err)
 	}
 }
 

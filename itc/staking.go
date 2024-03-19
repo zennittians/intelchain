@@ -7,13 +7,12 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/consensus/quorum"
 	"github.com/zennittians/intelchain/core/rawdb"
-	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/internal/chain"
 	internalCommon "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/numeric"
@@ -47,7 +46,9 @@ func (itc *Intelchain) readAndUpdateRawStakes(
 			if err != nil {
 				continue
 			}
-			spread = snapshot.RawStakePerSlot()
+			wrapper := snapshot.Validator
+			spread = numeric.NewDecFromBigInt(wrapper.TotalDelegation()).
+				QuoInt64(int64(len(wrapper.SlotPubKeys)))
 			validatorSpreads[slotAddr] = spread
 		}
 
@@ -65,11 +66,6 @@ func (itc *Intelchain) readAndUpdateRawStakes(
 
 func (itc *Intelchain) getSuperCommittees() (*quorum.Transition, error) {
 	nowE := itc.BlockChain.CurrentHeader().Epoch()
-
-	if itc.BlockChain.CurrentHeader().IsLastBlockInEpoch() {
-		// current epoch is current header epoch + 1 if the header was last block of prev epoch
-		nowE = new(big.Int).Add(nowE, common.Big1)
-	}
 	thenE := new(big.Int).Sub(nowE, common.Big1)
 
 	var (
@@ -90,8 +86,8 @@ func (itc *Intelchain) getSuperCommittees() (*quorum.Transition, error) {
 		shard.ExternalSlotsAvailableForEpoch(thenE)
 
 	then, now :=
-		quorum.NewRegistry(stakedSlotsThen, int(thenE.Int64())),
-		quorum.NewRegistry(stakedSlotsNow, int(nowE.Int64()))
+		quorum.NewRegistry(stakedSlotsThen),
+		quorum.NewRegistry(stakedSlotsNow)
 
 	rawStakes := []effective.SlotPurchase{}
 	validatorSpreads := map[common.Address]numeric.Dec{}
@@ -136,16 +132,6 @@ func (itc *Intelchain) IsStakingEpoch(epoch *big.Int) bool {
 // IsPreStakingEpoch ...
 func (itc *Intelchain) IsPreStakingEpoch(epoch *big.Int) bool {
 	return itc.BlockChain.Config().IsPreStaking(epoch)
-}
-
-// IsNoEarlyUnlockEpoch ...
-func (itc *Intelchain) IsNoEarlyUnlockEpoch(epoch *big.Int) bool {
-	return itc.BlockChain.Config().IsNoEarlyUnlock(epoch)
-}
-
-// IsMaxRate ...
-func (itc *Intelchain) IsMaxRate(epoch *big.Int) bool {
-	return itc.BlockChain.Config().IsMaxRate(epoch)
 }
 
 // IsCommitteeSelectionBlock checks if the given block is the committee selection block
@@ -232,44 +218,12 @@ func (itc *Intelchain) GetAllValidatorAddresses() []common.Address {
 	return itc.BlockChain.ValidatorCandidates()
 }
 
-func (itc *Intelchain) GetValidatorsStakeByBlockNumber(
-	block *types.Block,
-) (map[string]*big.Int, error) {
-	if cachedReward, ok := itc.stakeByBlockNumberCache.Get(block.Hash()); ok {
-		return cachedReward.(map[string]*big.Int), nil
-	}
-	validatorAddresses := itc.GetAllValidatorAddresses()
-	stakes := make(map[string]*big.Int, len(validatorAddresses))
-	for _, validatorAddress := range validatorAddresses {
-		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validatorAddress, block.Root())
-		if err != nil {
-			if errors.Cause(err) != state.ErrAddressNotPresent {
-				return nil, errors.Errorf(
-					"cannot fetch information for validator %s at block %d due to %s",
-					validatorAddress.Hex(),
-					block.Number(),
-					err,
-				)
-			} else {
-				// `validatorAddress` was not a validator back then
-				continue
-			}
-		}
-		stakes[validatorAddress.Hex()] = wrapper.TotalDelegation()
-	}
-	itc.stakeByBlockNumberCache.Add(block.Hash(), stakes)
-	return stakes, nil
-}
-
 var (
 	epochBlocksMap = map[common.Address]map[uint64]staking.EpochSigningEntry{}
-	mapLock        = sync.Mutex{}
 )
 
 func (itc *Intelchain) getEpochSigning(epoch *big.Int, addr common.Address) (staking.EpochSigningEntry, error) {
 	entry := staking.EpochSigningEntry{}
-	mapLock.Lock()
-	defer mapLock.Unlock()
 	if validatorMap, ok := epochBlocksMap[addr]; ok {
 		if val, ok := validatorMap[epoch.Uint64()]; ok {
 			return val, nil
@@ -315,7 +269,7 @@ func (itc *Intelchain) GetValidatorInformation(
 	addr common.Address, block *types.Block,
 ) (*staking.ValidatorRPCEnhanced, error) {
 	bc := itc.BlockChain
-	wrapper, err := bc.ReadValidatorInformationAtRoot(addr, block.Root())
+	wrapper, err := bc.ReadValidatorInformationAt(addr, block.Root())
 	if err != nil {
 		s, _ := internalCommon.AddressToBech32(addr)
 		return nil, errors.Wrapf(err, "not found address in current state %s", s)
@@ -363,8 +317,6 @@ func (itc *Intelchain) GetValidatorInformation(
 	if defaultReply.CurrentlyInCommittee {
 		defaultReply.Performance = &staking.CurrentEpochPerformance{
 			CurrentSigningPercentage: *computed,
-			Epoch:                    itc.BeaconChain.CurrentBlock().Header().Epoch().Uint64(),
-			Block:                    itc.BeaconChain.CurrentBlock().Header().Number().Uint64(),
 		}
 	}
 
@@ -392,7 +344,7 @@ func (itc *Intelchain) GetValidatorInformation(
 	// b.apiCache.Forget(prevKey)
 
 	// calculate last APRHistoryLength epochs for averaging APR
-	// epochFrom := bc.GasPriceConfig().StakingEpoch
+	// epochFrom := bc.Config().StakingEpoch
 	// nowMinus := big.NewInt(0).Sub(now, big.NewInt(staking.APRHistoryLength))
 	// if nowMinus.Cmp(epochFrom) > 0 {
 	// 	epochFrom = nowMinus
@@ -478,8 +430,7 @@ func (itc *Intelchain) GetMedianRawStakeSnapshot() (
 		func() (interface{}, error) {
 			// Compute for next epoch
 			epoch := big.NewInt(0).Add(itc.CurrentBlock().Epoch(), big.NewInt(1))
-			instance := shard.Schedule.InstanceForEpoch(epoch)
-			return committee.NewEPoSRound(epoch, itc.BlockChain, itc.BlockChain.Config().IsEPoSBound35(epoch), instance.SlotsLimit(), int(instance.NumShards()))
+			return committee.NewEPoSRound(epoch, itc.BlockChain)
 		},
 	)
 	if err != nil {
@@ -489,23 +440,31 @@ func (itc *Intelchain) GetMedianRawStakeSnapshot() (
 }
 
 // GetDelegationsByValidator returns all delegation information of a validator
-func (itc *Intelchain) GetDelegationsByValidator(validator common.Address) []staking.Delegation {
+func (itc *Intelchain) GetDelegationsByValidator(validator common.Address) []*staking.Delegation {
 	wrapper, err := itc.BlockChain.ReadValidatorInformation(validator)
 	if err != nil || wrapper == nil {
 		return nil
 	}
-	return wrapper.Delegations
+	delegations := []*staking.Delegation{}
+	for i := range wrapper.Delegations {
+		delegations = append(delegations, &wrapper.Delegations[i])
+	}
+	return delegations
 }
 
 // GetDelegationsByValidatorAtBlock returns all delegation information of a validator at the given block
 func (itc *Intelchain) GetDelegationsByValidatorAtBlock(
 	validator common.Address, block *types.Block,
-) []staking.Delegation {
-	wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validator, block.Root())
+) []*staking.Delegation {
+	wrapper, err := itc.BlockChain.ReadValidatorInformationAt(validator, block.Root())
 	if err != nil || wrapper == nil {
 		return nil
 	}
-	return wrapper.Delegations
+	delegations := []*staking.Delegation{}
+	for i := range wrapper.Delegations {
+		delegations = append(delegations, &wrapper.Delegations[i])
+	}
+	return delegations
 }
 
 // GetDelegationsByDelegator returns all delegation information of a delegator
@@ -520,17 +479,16 @@ func (itc *Intelchain) GetDelegationsByDelegator(
 func (itc *Intelchain) GetDelegationsByDelegatorByBlock(
 	delegator common.Address, block *types.Block,
 ) ([]common.Address, []*staking.Delegation) {
+	addresses := []common.Address{}
+	delegations := []*staking.Delegation{}
 	delegationIndexes, err := itc.BlockChain.
 		ReadDelegationsByDelegatorAt(delegator, block.Number())
 	if err != nil {
 		return nil, nil
 	}
 
-	addresses := make([]common.Address, 0, len(delegationIndexes))
-	delegations := make([]*staking.Delegation, 0, len(delegationIndexes))
-
 	for i := range delegationIndexes {
-		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(
+		wrapper, err := itc.BlockChain.ReadValidatorInformationAt(
 			delegationIndexes[i].ValidatorAddress, block.Root(),
 		)
 		if err != nil || wrapper == nil {
@@ -548,29 +506,7 @@ func (itc *Intelchain) GetDelegationsByDelegatorByBlock(
 }
 
 // UndelegationPayouts ..
-type UndelegationPayouts struct {
-	Data map[common.Address]map[common.Address]*big.Int
-}
-
-func NewUndelegationPayouts() *UndelegationPayouts {
-	return &UndelegationPayouts{
-		Data: make(map[common.Address]map[common.Address]*big.Int),
-	}
-}
-
-func (u *UndelegationPayouts) SetPayoutByDelegatorAddrAndValidatorAddr(
-	delegator, validator common.Address, amount *big.Int,
-) {
-	if u.Data[delegator] == nil {
-		u.Data[delegator] = make(map[common.Address]*big.Int)
-	}
-
-	if totalPayout, ok := u.Data[delegator][validator]; ok {
-		u.Data[delegator][validator] = new(big.Int).Add(totalPayout, amount)
-	} else {
-		u.Data[delegator][validator] = amount
-	}
-}
+type UndelegationPayouts map[common.Address]*big.Int
 
 // GetUndelegationPayouts returns the undelegation payouts for each delegator
 //
@@ -579,16 +515,16 @@ func (u *UndelegationPayouts) SetPayoutByDelegatorAddrAndValidatorAddr(
 // This not a problem if a full (archival) DB is used.
 func (itc *Intelchain) GetUndelegationPayouts(
 	ctx context.Context, epoch *big.Int,
-) (*UndelegationPayouts, error) {
+) (UndelegationPayouts, error) {
 	if !itc.IsPreStakingEpoch(epoch) {
 		return nil, fmt.Errorf("not pre-staking epoch or later")
 	}
 
 	payouts, ok := itc.undelegationPayoutsCache.Get(epoch.Uint64())
 	if ok {
-		return payouts.(*UndelegationPayouts), nil
+		return payouts.(UndelegationPayouts), nil
 	}
-	undelegationPayouts := NewUndelegationPayouts()
+	undelegationPayouts := UndelegationPayouts{}
 	// require second to last block as saved undelegations are AFTER undelegations are payed out
 	blockNumber := shard.Schedule.EpochLastBlock(epoch.Uint64()) - 1
 	undelegationPayoutBlock, err := itc.BlockByNumber(ctx, rpc.BlockNumber(blockNumber))
@@ -597,18 +533,20 @@ func (itc *Intelchain) GetUndelegationPayouts(
 		return undelegationPayouts, nil
 	}
 
-	isMaxRate := itc.IsMaxRate(epoch)
 	lockingPeriod := itc.GetDelegationLockingPeriodInEpoch(undelegationPayoutBlock.Epoch())
 	for _, validator := range itc.GetAllValidatorAddresses() {
-		wrapper, err := itc.BlockChain.ReadValidatorInformationAtRoot(validator, undelegationPayoutBlock.Root())
+		wrapper, err := itc.BlockChain.ReadValidatorInformationAt(validator, undelegationPayoutBlock.Root())
 		if err != nil || wrapper == nil {
 			continue // Not a validator at this epoch or unable to fetch validator info because of pruned state.
 		}
-		noEarlyUnlock := itc.IsNoEarlyUnlockEpoch(epoch)
 		for _, delegation := range wrapper.Delegations {
-			withdraw := delegation.RemoveUnlockedUndelegations(epoch, wrapper.LastEpochInCommittee, lockingPeriod, noEarlyUnlock, isMaxRate)
+			withdraw := delegation.RemoveUnlockedUndelegations(epoch, wrapper.LastEpochInCommittee, lockingPeriod)
 			if withdraw.Cmp(bigZero) == 1 {
-				undelegationPayouts.SetPayoutByDelegatorAddrAndValidatorAddr(validator, delegation.DelegatorAddress, withdraw)
+				if totalPayout, ok := undelegationPayouts[delegation.DelegatorAddress]; ok {
+					undelegationPayouts[delegation.DelegatorAddress] = new(big.Int).Add(totalPayout, withdraw)
+				} else {
+					undelegationPayouts[delegation.DelegatorAddress] = withdraw
+				}
 			}
 		}
 	}

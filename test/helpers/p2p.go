@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
+	libp2p_crypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/pkg/errors"
 	"github.com/zennittians/bls/ffi/go/bls"
 	intelchain_bls "github.com/zennittians/intelchain/crypto/bls"
@@ -55,12 +55,8 @@ func GenerateHost(address string, port string) (p2p.Host, *bls.PublicKey, error)
 	if err != nil {
 		return nil, nil, err
 	}
-	host, err := p2p.NewHost(p2p.HostConfig{
-		Self:          &peer,
-		BLSKey:        nodePrivateKey,
-		BootNodes:     nil,
-		DataStoreFile: nil,
-	})
+
+	host, err := p2p.NewHost(&peer, nodePrivateKey)
 	if err != nil {
 		return nil, nil, err
 	}

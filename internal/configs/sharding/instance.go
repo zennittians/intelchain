@@ -3,9 +3,7 @@ package shardingconfig
 import (
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
-	"github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/internal/genesis"
 	"github.com/zennittians/intelchain/numeric"
 )
@@ -34,29 +32,14 @@ type instance struct {
 	fnAccounts                         []genesis.DeployAccount
 	reshardingEpoch                    []*big.Int
 	blocksPerEpoch                     uint64
-	slotsLimit                         int // HIP-16: The absolute number of maximum effective slots per shard limit for each validator. 0 means no limit.
-	allowlist                          Allowlist
-	feeCollectors                      FeeCollectors
-	emissionFraction                   numeric.Dec
-	recoveryAddress                    ethCommon.Address
 }
-
-type FeeCollectors map[ethCommon.Address]numeric.Dec
 
 // NewInstance creates and validates a new sharding configuration based
 // upon given parameters.
 func NewInstance(
-	numShards uint32,
-	numNodesPerShard,
-	numIntelchainOperatedNodesPerShard,
-	slotsLimit int,
-	intelchainVotePercent numeric.Dec,
+	numShards uint32, numNodesPerShard, numIntelchainOperatedNodesPerShard int, intelchainVotePercent numeric.Dec,
 	itcAccounts []genesis.DeployAccount,
 	fnAccounts []genesis.DeployAccount,
-	allowlist Allowlist,
-	feeCollectors FeeCollectors,
-	emissionFractionToRecovery numeric.Dec,
-	recoveryAddress ethCommon.Address,
 	reshardingEpoch []*big.Int, blocksE uint64,
 ) (Instance, error) {
 	if numShards < 1 {
@@ -82,45 +65,11 @@ func NewInstance(
 			numNodesPerShard,
 		)
 	}
-	if slotsLimit < 0 {
-		return nil, errors.Errorf("SlotsLimit cannot be negative %d", slotsLimit)
-	}
 	if intelchainVotePercent.LT(numeric.ZeroDec()) ||
 		intelchainVotePercent.GT(numeric.OneDec()) {
 		return nil, errors.Errorf("" +
 			"total voting power of intelchain nodes should be within [0, 1]",
 		)
-	}
-	if len(feeCollectors) > 0 {
-		total := numeric.ZeroDec() // is a copy
-		for _, v := range feeCollectors {
-			total = total.Add(v)
-		}
-		if !total.Equal(numeric.OneDec()) {
-			return nil, errors.Errorf(
-				"total fee collection percentage should be 1, but got %v", total,
-			)
-		}
-	}
-	if emissionFractionToRecovery.LT(numeric.ZeroDec()) ||
-		emissionFractionToRecovery.GT(numeric.OneDec()) {
-		return nil, errors.Errorf(
-			"emission split must be within [0, 1]",
-		)
-	}
-	if !emissionFractionToRecovery.Equal(numeric.ZeroDec()) {
-		if recoveryAddress == (ethCommon.Address{}) {
-			return nil, errors.Errorf(
-				"have non-zero emission split but no target address",
-			)
-		}
-	}
-	if recoveryAddress != (ethCommon.Address{}) {
-		if emissionFractionToRecovery.Equal(numeric.ZeroDec()) {
-			return nil, errors.Errorf(
-				"have target address but no emission split",
-			)
-		}
 	}
 
 	return instance{
@@ -131,13 +80,8 @@ func NewInstance(
 		externalVotePercent:                numeric.OneDec().Sub(intelchainVotePercent),
 		itcAccounts:                        itcAccounts,
 		fnAccounts:                         fnAccounts,
-		allowlist:                          allowlist,
 		reshardingEpoch:                    reshardingEpoch,
 		blocksPerEpoch:                     blocksE,
-		slotsLimit:                         slotsLimit,
-		feeCollectors:                      feeCollectors,
-		recoveryAddress:                    recoveryAddress,
-		emissionFraction:                   emissionFractionToRecovery,
 	}, nil
 }
 
@@ -146,22 +90,15 @@ func NewInstance(
 // It is intended to be used for static initialization.
 func MustNewInstance(
 	numShards uint32,
-	numNodesPerShard, numIntelchainOperatedNodesPerShard int, slotsLimitPercent float32,
+	numNodesPerShard, numIntelchainOperatedNodesPerShard int,
 	intelchainVotePercent numeric.Dec,
 	itcAccounts []genesis.DeployAccount,
 	fnAccounts []genesis.DeployAccount,
-	allowlist Allowlist,
-	feeCollectors FeeCollectors,
-	emissionFractionToRecovery numeric.Dec,
-	recoveryAddress ethCommon.Address,
 	reshardingEpoch []*big.Int, blocksPerEpoch uint64,
 ) Instance {
-	slotsLimit := int(float32(numNodesPerShard-numIntelchainOperatedNodesPerShard) * slotsLimitPercent)
 	sc, err := NewInstance(
-		numShards, numNodesPerShard, numIntelchainOperatedNodesPerShard,
-		slotsLimit, intelchainVotePercent, itcAccounts, fnAccounts,
-		allowlist, feeCollectors, emissionFractionToRecovery,
-		recoveryAddress, reshardingEpoch, blocksPerEpoch,
+		numShards, numNodesPerShard, numIntelchainOperatedNodesPerShard, intelchainVotePercent,
+		itcAccounts, fnAccounts, reshardingEpoch, blocksPerEpoch,
 	)
 	if err != nil {
 		panic(err)
@@ -177,16 +114,6 @@ func (sc instance) BlocksPerEpoch() uint64 {
 // NumShards returns the number of shards in the network.
 func (sc instance) NumShards() uint32 {
 	return sc.numShards
-}
-
-// SlotsLimit returns the max slots per shard limit for each validator
-func (sc instance) SlotsLimit() int {
-	return sc.slotsLimit
-}
-
-// FeeCollector returns a mapping of address to decimal % of fee
-func (sc instance) FeeCollectors() FeeCollectors {
-	return sc.feeCollectors
 }
 
 // IntelchainVotePercent returns total percentage of voting power Intelchain nodes possess.
@@ -246,22 +173,4 @@ func (sc instance) ReshardingEpoch() []*big.Int {
 // ReshardingEpoch returns the list of epoch number
 func (sc instance) GetNetworkID() NetworkID {
 	return DevNet
-}
-
-// ExternalAllowlist returns the list of external leader keys in allowlist(HIP18)
-func (sc instance) ExternalAllowlist() []bls.PublicKeyWrapper {
-	return sc.allowlist.BLSPublicKeys
-}
-
-// ExternalAllowlistLimit returns the maximum number of external leader keys on each shard
-func (sc instance) ExternalAllowlistLimit() int {
-	return sc.allowlist.MaxLimitPerShard
-}
-
-func (sc instance) HIP30RecoveryAddress() ethCommon.Address {
-	return sc.recoveryAddress
-}
-
-func (sc instance) HIP30EmissionFraction() numeric.Dec {
-	return sc.emissionFraction
 }

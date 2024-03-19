@@ -18,16 +18,14 @@ package core
 
 import (
 	"container/heap"
-	"errors"
 	"math"
 	"math/big"
 	"sort"
 
-	staking "github.com/zennittians/intelchain/staking/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/utils"
+	staking "github.com/zennittians/intelchain/staking/types"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for
@@ -125,36 +123,6 @@ func (m *txSortedMap) Filter(filter func(types.PoolTransaction) bool) types.Pool
 	return removed
 }
 
-// Filter iterates over the list of transactions and removes all of them for which
-// the specified function evaluates to true. Return the filtered transactions and
-// corresponding errors.
-func (m *txSortedMap) FilterWithError(filter func(types.PoolTransaction) error) (types.PoolTransactions, []error) {
-	var (
-		removed types.PoolTransactions
-		errs    []error
-	)
-
-	// Collect all the transactions to filter out
-	for nonce, tx := range m.items {
-		if err := filter(tx); err != nil {
-			removed = append(removed, tx)
-			errs = append(errs, err)
-			delete(m.items, nonce)
-		}
-	}
-	// If transactions were removed, the heap and cache are ruined
-	if len(removed) > 0 {
-		*m.index = make([]uint64, 0, len(m.items))
-		for nonce := range m.items {
-			*m.index = append(*m.index, nonce)
-		}
-		heap.Init(m.index)
-
-		m.cache = nil
-	}
-	return removed, errs
-}
-
 // Cap places a hard limit on the number of items, returning all transactions
 // exceeding that limit.
 func (m *txSortedMap) Cap(threshold int) types.PoolTransactions {
@@ -248,8 +216,6 @@ func (m *txSortedMap) Flatten() types.PoolTransactions {
 	return txs
 }
 
-const stakingTxCheckThreshold = 10 // check staking transaction validation every 10 blocks
-
 // txList is a "list" of transactions belonging to an account, sorted by account
 // nonce. The same type can be used both for storing contiguous transactions for
 // the executable/pending queue; and for storing gapped transactions for the non-
@@ -258,9 +224,8 @@ type txList struct {
 	strict bool         // Whether nonces are strictly continuous or not
 	txs    *txSortedMap // Heap indexed sorted hash map of the transactions
 
-	lastStkCheck uint64   // Check all staking transaction validation every 10 blocks
-	costcap      *big.Int // Price of the highest costing transaction (reset only if exceeds balance)
-	gascap       uint64   // Gas limit of the highest spending transaction (reset only if exceeds block limit)
+	costcap *big.Int // Price of the highest costing transaction (reset only if exceeds balance)
+	gascap  uint64   // Gas limit of the highest spending transaction (reset only if exceeds block limit)
 }
 
 // newTxList create a new transaction list for maintaining nonce-indexable fast,
@@ -318,39 +283,11 @@ func (l *txList) Forward(threshold uint64) types.PoolTransactions {
 	return l.txs.Forward(threshold)
 }
 
-// Filter out all invalid transactions from the txList. Return removed transactions, errors
-// why the removed transactions are failed, and trailing transactions that are enqueued due
-// to high nonce because removing the invalid transaction.
-// Invalid transaction check as follows:
-// 1. Not enough balance transactions.
-// 2. Checked every 10 blocks for staking transaction validation.
-func (l *txList) FilterValid(txPool *TxPool, address common.Address, bn uint64) (types.PoolTransactions, []error, types.PoolTransactions) {
-	var invalids types.PoolTransactions
-
-	removed, errs := l.filterPrice(txPool, address)
-	if bn >= l.lastStkCheck+stakingTxCheckThreshold {
-		l.lastStkCheck = bn
-
-		stkRemoved, errRemoved := l.filterStaking(txPool)
-		removed = append(removed, stkRemoved...)
-		errs = append(errs, errRemoved...)
-	}
-
-	if l.strict && len(removed) > 0 {
-		lowest := uint64(math.MaxUint64)
-		for _, tx := range removed {
-			if nonce := tx.Nonce(); lowest > nonce {
-				lowest = nonce
-			}
-		}
-		invalids = l.txs.Filter(func(tx types.PoolTransaction) bool { return tx.Nonce() > lowest })
-	}
-	return removed, errs, invalids
-}
-
-// filterPrice returns all regular transactions from the list with a cost or gas limit higher
-// than the provided thresholds.
-func (l *txList) filterPrice(txPool *TxPool, address common.Address) (types.PoolTransactions, []error) {
+// FilterValid returns all regular transactions from the list with a cost or gas limit higher
+// than the provided thresholds and all staking transactions that can not be validated.
+func (l *txList) FilterValid(
+	txPool *TxPool, address common.Address,
+) (types.PoolTransactions, types.PoolTransactions) {
 	costLimit := txPool.currentState.GetBalance(address)
 	gasLimit := txPool.currentMaxGas
 	// If all transactions are below the threshold, short circuit
@@ -360,38 +297,40 @@ func (l *txList) filterPrice(txPool *TxPool, address common.Address) (types.Pool
 	l.costcap = new(big.Int).Set(costLimit) // Lower the caps to the thresholds
 	l.gascap = gasLimit
 
-	return l.filterWithError(func(tx types.PoolTransaction) error {
+	return l.Filter(func(tx types.PoolTransaction) bool {
 		cost, err := tx.Cost()
 		if err != nil {
-			return err // failure should lead to removal of the tx
+			return true // failure should lead to removal of the tx
 		}
-		if cost.Cmp(costLimit) > 0 {
-			return errors.New("not enough balance")
+		if _, ok := tx.(*staking.StakingTransaction); ok {
+			err := txPool.validateTx(tx, false)
+			return err != nil
 		}
-		if tx.GasLimit() > gasLimit {
-			return errors.New("exceed max transaction gas limit")
-		}
-		return nil
-	})
-}
-
-// filterStaking validates and return invalid staking transaction with error, and trending
-// invalid transactions for high nonce.
-func (l *txList) filterStaking(txPool *TxPool) (types.PoolTransactions, []error) {
-	return l.filterWithError(func(tx types.PoolTransaction) error {
-		stkTxn, ok := tx.(*staking.StakingTransaction)
-		if !ok {
-			return nil
-		}
-		return txPool.validateStakingTx(stkTxn)
+		return cost.Cmp(costLimit) == 1 || tx.GasLimit() > gasLimit
 	})
 }
 
 // Filter iterates over the list of transactions and removes all of them for which
-// the specified function invalidates the tx. Moreover, it returns all transactions
-// that were invalidated from the filter.
-func (l *txList) filterWithError(filter func(types.PoolTransaction) error) (types.PoolTransactions, []error) {
-	return l.txs.FilterWithError(filter)
+// the specified function evaluates to true. Moreover, it returns all transactions
+// that were invalidated from the filter
+func (l *txList) Filter(
+	filter func(types.PoolTransaction) bool,
+) (types.PoolTransactions, types.PoolTransactions) {
+	// If the list was strict, filter anything above the lowest nonce
+	var invalids types.PoolTransactions
+
+	// Filter out all the transactions above the account's funds
+	removed := l.txs.Filter(filter)
+	if l.strict && len(removed) > 0 {
+		lowest := uint64(math.MaxUint64)
+		for _, tx := range removed {
+			if nonce := tx.Nonce(); lowest > nonce {
+				lowest = nonce
+			}
+		}
+		invalids = l.txs.Filter(func(tx types.PoolTransaction) bool { return tx.Nonce() > lowest })
+	}
+	return removed, invalids
 }
 
 // Cap places a hard limit on the number of items, returning all transactions

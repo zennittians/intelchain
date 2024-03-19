@@ -1,36 +1,54 @@
 package consensus
 
 import (
+	"github.com/ethereum/go-ethereum/rpc"
 	msg_pb "github.com/zennittians/intelchain/api/proto/message"
 	"github.com/zennittians/intelchain/consensus"
+	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/internal/utils"
 )
 
 // Service is the consensus service.
 type Service struct {
-	consensus   *consensus.Consensus
-	stopChan    chan struct{}
-	messageChan chan *msg_pb.Message
+	blockChannel chan *types.Block // The channel to receive new blocks from Node
+	consensus    *consensus.Consensus
+	stopChan     chan struct{}
+	stoppedChan  chan struct{}
+	startChan    chan struct{}
+	messageChan  chan *msg_pb.Message
 }
 
 // New returns consensus service.
-func New(consensus *consensus.Consensus) *Service {
-	return &Service{consensus: consensus}
+func New(blockChannel chan *types.Block, consensus *consensus.Consensus, startChan chan struct{}) *Service {
+	return &Service{blockChannel: blockChannel, consensus: consensus, startChan: startChan}
 }
 
-// Start starts consensus service.
-func (s *Service) Start() error {
+// StartService starts consensus service.
+func (s *Service) StartService() {
 	utils.Logger().Info().Msg("[consensus/service] Starting consensus service.")
 	s.stopChan = make(chan struct{})
-	s.consensus.Start(s.stopChan)
+	s.stoppedChan = make(chan struct{})
+	s.consensus.Start(s.blockChannel, s.stopChan, s.stoppedChan, s.startChan)
 	s.consensus.WaitForNewRandomness()
-	return nil
 }
 
-// Stop stops consensus service.
-func (s *Service) Stop() error {
+// StopService stops consensus service.
+func (s *Service) StopService() {
 	utils.Logger().Info().Msg("Stopping consensus service.")
-	close(s.stopChan)
+	s.stopChan <- struct{}{}
+	<-s.stoppedChan
 	utils.Logger().Info().Msg("Consensus service stopped.")
+}
+
+// NotifyService notify service
+func (s *Service) NotifyService(params map[string]interface{}) {}
+
+// SetMessageChan sets up message channel to service.
+func (s *Service) SetMessageChan(messageChan chan *msg_pb.Message) {
+	s.messageChan = messageChan
+}
+
+// APIs for the services.
+func (s *Service) APIs() []rpc.API {
 	return nil
 }

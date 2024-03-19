@@ -399,7 +399,7 @@ func New(code string) (*Tracer, error) {
 		return 1
 	})
 	tracer.vm.PushGlobalGoFunction("isPrecompiled", func(ctx *duktape.Context) int {
-		_, ok := vm.PrecompiledContractsVRF[common.BytesToAddress(popSlice(ctx))]
+		_, ok := vm.PrecompiledContractsIstanbul[common.BytesToAddress(popSlice(ctx))]
 		ctx.PushBoolean(ok)
 		return 1
 	})
@@ -526,7 +526,7 @@ func wrapError(context string, err error) error {
 }
 
 // CaptureStart implements the Tracer interface to initialize the tracing operation.
-func (jst *Tracer) CaptureStart(env *vm.EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
+func (jst *Tracer) CaptureStart(from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) error {
 	jst.ctx["type"] = "CALL"
 	if create {
 		jst.ctx["type"] = "CREATE"
@@ -536,14 +536,12 @@ func (jst *Tracer) CaptureStart(env *vm.EVM, from common.Address, to common.Addr
 	jst.ctx["input"] = input
 	jst.ctx["gas"] = gas
 	jst.ctx["value"] = value
-	jst.ctx["blockHash"] = env.StateDB.BlockHash()
-	jst.ctx["transactionPosition"] = uint64(env.StateDB.TxIndex())
-	jst.ctx["transactionHash"] = env.StateDB.TxHash()
+
 	return nil
 }
 
 // CaptureState implements the Tracer interface to trace a single step of VM execution.
-func (jst *Tracer) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) (vm.HookAfter, error) {
+func (jst *Tracer) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost uint64, memory *vm.Memory, stack *vm.Stack, contract *vm.Contract, depth int, err error) error {
 	if jst.err == nil {
 		// Initialize the context if it wasn't done yet
 		if !jst.inited {
@@ -553,7 +551,7 @@ func (jst *Tracer) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost 
 		// If tracing was interrupted, set the error and stop
 		if atomic.LoadUint32(&jst.interrupt) > 0 {
 			jst.err = jst.reason
-			return nil, nil
+			return nil
 		}
 		jst.opWrapper.op = op
 		jst.stackWrapper.stack = stack
@@ -577,7 +575,7 @@ func (jst *Tracer) CaptureState(env *vm.EVM, pc uint64, op vm.OpCode, gas, cost 
 			jst.err = wrapError("step", err)
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 // CaptureFault implements the Tracer interface to trace an execution fault
@@ -628,10 +626,6 @@ func (jst *Tracer) GetResult() (json.RawMessage, error) {
 		case common.Address:
 			ptr := jst.vm.PushFixedBuffer(20)
 			copy(makeSlice(ptr, 20), val[:])
-
-		case common.Hash:
-			ptr := jst.vm.PushFixedBuffer(32)
-			copy(makeSlice(ptr, 32), val[:])
 
 		case *big.Int:
 			pushBigInt(val, jst.vm)
