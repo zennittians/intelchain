@@ -15,7 +15,7 @@ import (
 func (consensus *Consensus) didReachPrepareQuorum() error {
 	logger := utils.Logger()
 	logger.Info().Msg("[OnPrepare] Received Enough Prepare Signatures")
-	leaderPriKey, err := consensus.getConsensusLeaderPrivateKey()
+	leaderPriKey, err := consensus.GetConsensusLeaderPrivateKey()
 	if err != nil {
 		utils.Logger().Warn().Err(err).Msg("[OnPrepare] leader not found")
 		return err
@@ -36,17 +36,17 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 		networkMessage.OptionalAggregateSignature
 
 	consensus.aggregatedPrepareSig = aggSig
-	consensus.fBFTLog.AddVerifiedMessage(FBFTMsg)
+	consensus.FBFTLog.AddVerifiedMessage(FBFTMsg)
 	// Leader add commit phase signature
 	var blockObj types.Block
 	if err := rlp.DecodeBytes(consensus.block, &blockObj); err != nil {
 		consensus.getLogger().Warn().
 			Err(err).
-			Uint64("BlockNum", consensus.BlockNum()).
+			Uint64("BlockNum", consensus.blockNum).
 			Msg("[didReachPrepareQuorum] Unparseable block data")
 		return err
 	}
-	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain().Config(),
+	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
 		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
 
 	// so by this point, everyone has committed to the blockhash of this block
@@ -57,7 +57,7 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 			continue
 		}
 
-		if _, err := consensus.decider.AddNewVote(
+		if _, err := consensus.Decider.AddNewVote(
 			quorum.Commit,
 			[]*bls.PublicKeyWrapper{key.Pub},
 			key.Pri.SignHash(commitPayload),
@@ -69,7 +69,7 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 		}
 	}
 	if err := consensus.msgSender.SendWithRetry(
-		consensus.BlockNum(),
+		consensus.blockNum,
 		msg_pb.MessageType_PREPARED, []nodeconfig.GroupID{
 			nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(consensus.ShardID)),
 		},
@@ -79,7 +79,7 @@ func (consensus *Consensus) didReachPrepareQuorum() error {
 	} else {
 		consensus.getLogger().Info().
 			Hex("blockHash", consensus.blockHash[:]).
-			Uint64("blockNum", consensus.BlockNum()).
+			Uint64("blockNum", consensus.blockNum).
 			Msg("[OnPrepare] Sent Prepared Message!!")
 	}
 	consensus.msgSender.StopRetry(msg_pb.MessageType_ANNOUNCE)

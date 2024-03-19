@@ -27,11 +27,9 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/block"
-
 	consensus_engine "github.com/zennittians/intelchain/consensus/engine"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/internal/params"
 )
 
@@ -40,13 +38,17 @@ import (
 //
 // BlockValidator implements validator.
 type BlockValidator struct {
-	bc BlockChain // Canonical blockchain
+	config *params.ChainConfig     // Chain configuration options
+	bc     *BlockChain             // Canonical block chain
+	engine consensus_engine.Engine // Consensus engine used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
-func NewBlockValidator(blockchain BlockChain) *BlockValidator {
+func NewBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engine consensus_engine.Engine) *BlockValidator {
 	validator := &BlockValidator{
-		bc: blockchain,
+		config: config,
+		engine: engine,
+		bc:     blockchain,
 	}
 	return validator
 }
@@ -56,7 +58,7 @@ func NewBlockValidator(blockchain BlockChain) *BlockValidator {
 func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Check whether the block's known, and if not, that it's linkable
 	if v.bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
-		return errors.WithMessage(ErrKnownBlock, "validate body: has block and state")
+		return ErrKnownBlock
 	}
 	if !v.bc.HasBlockAndState(block.ParentHash(), block.NumberU64()-1) {
 		if !v.bc.HasBlock(block.ParentHash(), block.NumberU64()-1) {
@@ -99,7 +101,7 @@ func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.DB, re
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash(), receiptSha)
 	}
 
-	if v.bc.Config().AcceptsCrossTx(block.Epoch()) {
+	if v.config.AcceptsCrossTx(block.Epoch()) {
 		cxsSha := cxReceipts.ComputeMerkleRoot()
 		if cxsSha != header.OutgoingReceiptHash() {
 			legacySha := types.DeriveMultipleShardsSha(cxReceipts)
@@ -111,7 +113,7 @@ func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.DB, re
 
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	if root := statedb.IntermediateRoot(v.bc.Config().IsS3(header.Epoch())); header.Root() != root {
+	if root := statedb.IntermediateRoot(v.config.IsS3(header.Epoch())); header.Root() != root {
 		dump, _ := rlp.EncodeToBytes(header)
 		const msg = "invalid merkle root (remote: %x local: %x, rlp dump %s)"
 		return fmt.Errorf(msg, header.Root(), root, hex.EncodeToString(dump))
@@ -127,16 +129,30 @@ func (v *BlockValidator) ValidateHeader(block *types.Block, seal bool) error {
 		return errors.New("block is nil")
 	}
 	if h := block.Header(); h != nil {
-		return v.bc.Engine().VerifyHeader(v.bc, h, true)
+		return v.engine.VerifyHeader(v.bc, h, true)
 	}
 	return errors.New("header field was nil")
+}
+
+// ValidateHeaders verifies a batch of blocks' headers concurrently. The method returns a quit channel
+// to abort the operations and a results channel to retrieve the async verifications
+func (v *BlockValidator) ValidateHeaders(chain []*types.Block) (chan<- struct{}, <-chan error) {
+	// Start the parallel header verifier
+	headers := make([]*block.Header, len(chain))
+	seals := make([]bool, len(chain))
+
+	for i, block := range chain {
+		headers[i] = block.Header()
+		seals[i] = true
+	}
+	return v.engine.VerifyHeaders(v.bc, headers, seals)
 }
 
 // CalcGasLimit computes the gas limit of the next block after parent. It aims
 // to keep the baseline gas above the provided floor, and increase it towards the
 // ceil if the blocks are full. If the ceil is exceeded, it will always decrease
 // the gas allowance.
-func CalcGasLimit(parent *block.Header, gasFloor, gasCeil uint64) uint64 {
+func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 	// contrib = (parentGasUsed * 3 / 2) / 1024
 	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
 
@@ -171,7 +187,7 @@ func CalcGasLimit(parent *block.Header, gasFloor, gasCeil uint64) uint64 {
 
 // ValidateCXReceiptsProof checks whether the given CXReceiptsProof is consistency with itself
 func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) error {
-	if !v.bc.Config().AcceptsCrossTx(cxp.Header.Epoch()) {
+	if !v.config.AcceptsCrossTx(cxp.Header.Epoch()) {
 		return errors.New("[ValidateCXReceiptsProof] cross shard receipt received before cx fork")
 	}
 
@@ -229,7 +245,5 @@ func (v *BlockValidator) ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) err
 	}
 
 	// (4) verify blockHeader with seal
-	var commitSig bls.SerializedSignature
-	copy(commitSig[:], cxp.CommitSig)
-	return v.bc.Engine().VerifyHeaderSignature(v.bc, cxp.Header, commitSig, cxp.CommitBitmap)
+	return v.engine.VerifyHeaderWithSignature(v.bc, cxp.Header, cxp.CommitSig, cxp.CommitBitmap, true)
 }

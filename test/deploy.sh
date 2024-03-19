@@ -54,7 +54,7 @@ function setup() {
 
 function launch_bootnode() {
   echo "launching boot node ..."
-  ${DRYRUN} ${ROOT}/bin/bootnode -port 19876 -max_conn_per_ip 100 -force_public true >"${log_folder}"/bootnode.log 2>&1 | tee -a "${LOG_FILE}" &
+  ${DRYRUN} ${ROOT}/bin/bootnode -port 19876 >"${log_folder}"/bootnode.log 2>&1 | tee -a "${LOG_FILE}" &
   sleep 1
   BN_MA=$(grep "BN_MA" "${log_folder}"/bootnode.log | awk -F\= ' { print $2 } ')
   echo "bootnode launched." + " $BN_MA"
@@ -72,7 +72,7 @@ function launch_localnet() {
     verbosity=3
   fi
 
-  base_args=(--log_folder "${log_folder}" --min_peers "${MIN}" --bootnodes "${BN_MA}" "--network_type=$NETWORK" --blspass file:"${ROOT}/.itc/blspass.txt" "--dns=false" "--verbosity=${verbosity}" "--p2p.security.max-conn-per-ip=100")
+  base_args=(--log_folder "${log_folder}" --min_peers "${MIN}" --bootnodes "${BN_MA}" "--network_type=$NETWORK" --blspass file:"${ROOT}/.itc/blspass.txt" "--dns=false" "--verbosity=${verbosity}")
   sleep 2
 
   # Start nodes
@@ -81,10 +81,10 @@ function launch_localnet() {
     i=$((i + 1))
 
     # Read config for i-th node form config file
-    IFS=' ' read -r ip port mode bls_key shard node_config <<<"${line}"
+    IFS=' ' read -r ip port mode bls_key shard <<<"${line}"
     args=("${base_args[@]}" --ip "${ip}" --port "${port}" --key "/tmp/${ip}-${port}.key" --db_dir "${ROOT}/db-${ip}-${port}" "--broadcast_invalid_tx=false")
-    if [[ -z "$ip" || -z "$port" || "$ip" == "#" ]]; then
-      echo "skip empty line or node or comment"
+    if [[ -z "$ip" || -z "$port" ]]; then
+      echo "skip empty node"
       continue
     fi
     if [[ $EXPOSEAPIS == "true" ]]; then
@@ -101,12 +101,6 @@ function launch_localnet() {
     else
       echo "skipping unknown node"
       continue
-    fi
-
-    # Setup node config for i-th localnet node
-    if [[ -f "$node_config" ]]; then
-      echo "node ${i} configuration is loaded from: ${node_config}"
-      args=("${args[@]}" --config "${node_config}")
     fi
 
     # Setup flags for i-th node based on config
@@ -163,7 +157,7 @@ EXAMPLES:
 }
 
 DURATION=60000
-MIN=4
+MIN=3
 SHARDS=2
 DRYRUN=
 NETWORK=localnet

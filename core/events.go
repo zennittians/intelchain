@@ -19,11 +19,10 @@ package core
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/itc/tracers"
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.
-type NewTxsEvent struct{ Txs []types.PoolTransaction }
+type NewTxsEvent struct{ Txs []*types.Transaction }
 
 // PendingLogsEvent is posted pre mining and notifies of pending logs.
 type PendingLogsEvent struct {
@@ -41,10 +40,6 @@ type ChainEvent struct {
 	Block *types.Block
 	Hash  common.Hash
 	Logs  []*types.Log
-}
-
-type TraceEvent struct {
-	Tracer *tracers.ParityBlockTracer
 }
 
 // ChainSideEvent is chain side event.

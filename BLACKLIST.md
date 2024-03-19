@@ -4,9 +4,7 @@ The black list is a newline delimited file of wallet addresses. It can also supp
 
 ## Default Location
 
-By default, the Intelchain binary looks for the file `./.itc/blaklist.txt`.
-
-
+By default, the intelchain binary looks for the file `./.itc/blaklist.txt`.
 
 ## Details
 

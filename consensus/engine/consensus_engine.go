@@ -4,13 +4,10 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/consensus/reward"
 	"github.com/zennittians/intelchain/core/state"
-	"github.com/zennittians/intelchain/core/state/snapshot"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/shard"
 	"github.com/zennittians/intelchain/shard/committee"
@@ -24,30 +21,6 @@ import (
 type ChainReader interface {
 	// Config retrieves the blockchain's chain configuration.
 	Config() *params.ChainConfig
-
-	// TrieDB returns trie database
-	TrieDB() *trie.Database
-
-	// TrieNode retrieves a blob of data associated with a trie node
-	// either from ephemeral in-memory cache, or from persistent storage.
-	TrieNode(hash common.Hash) ([]byte, error)
-
-	// ContractCode retrieves a blob of data associated with a contract
-	// hash either from ephemeral in-memory cache, or from persistent storage.
-	//
-	// If the code doesn't exist in the in-memory cache, check the storage with
-	// new code scheme.
-	ContractCode(hash common.Hash) ([]byte, error)
-
-	// ValidatorCode retrieves a blob of data associated with a validator
-	// hash either from ephemeral in-memory cache, or from persistent storage.
-	//
-	// If the code doesn't exist in the in-memory cache, check the storage with
-	// new code scheme.
-	ValidatorCode(hash common.Hash) ([]byte, error)
-
-	// GetReceiptsByHash retrieves the receipts for all transactions in a given block.
-	GetReceiptsByHash(hash common.Hash) types.Receipts
 
 	// CurrentHeader retrieves the current header from the local chain.
 	CurrentHeader() *block.Header
@@ -66,9 +39,6 @@ type ChainReader interface {
 
 	// GetBlock retrieves a block from the database by hash and number.
 	GetBlock(hash common.Hash, number uint64) *types.Block
-
-	// Snapshots returns the blockchain snapshot tree.
-	Snapshots() *snapshot.Tree
 
 	// ReadShardState retrieves sharding state given the epoch number.
 	// This api reads the shard state cached or saved on the chaindb.
@@ -95,9 +65,6 @@ type ChainReader interface {
 	SuperCommitteeForNextEpoch(
 		beacon ChainReader, header *block.Header, isVerify bool,
 	) (*shard.State, error)
-
-	// ReadCommitSig read the commit sig of a given block number
-	ReadCommitSig(blockNum uint64) ([]byte, error)
 }
 
 // Engine is an algorithm agnostic consensus engine.
@@ -112,12 +79,11 @@ type Engine interface {
 	// is used for verifying "incoming" block header against commit signature and bitmap sent from the other chain cross-shard via libp2p.
 	// i.e. this header verification api is more flexible since the caller specifies which commit signature and bitmap to use
 	// for verifying the block header, which is necessary for cross-shard block header verification. Example of such is cross-shard transaction.
-	VerifyHeaderSignature(
-		chain ChainReader, header *block.Header, commitSig bls.SerializedSignature, commitBitmap []byte,
+	// (TODO) For now, when doing cross shard, we need recalcualte the shard state since we don't have shard state of other shards
+	VerifyHeaderWithSignature(
+		chain ChainReader, header *block.Header,
+		commitSig, commitBitmap []byte, reCalculate bool,
 	) error
-
-	// VerifyCrossLink verify cross link
-	VerifyCrossLink(ChainReader, types.CrossLink) error
 
 	// VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 	// concurrently. The method returns a quit channel to abort the operations and
@@ -134,8 +100,11 @@ type Engine interface {
 	// VerifyShardState verifies the shard state during epoch transition is valid
 	VerifyShardState(chain ChainReader, beacon ChainReader, header *block.Header) error
 
-	// VerifyVRF verifies the vrf of the block
-	VerifyVRF(chain ChainReader, header *block.Header) error
+	// Beaconchain provides the handle for Beaconchain
+	Beaconchain() ChainReader
+
+	// SetBeaconchain sets the beaconchain handler on engine
+	SetBeaconchain(ChainReader)
 
 	// Finalize runs any post-transaction state modifications (e.g. block rewards)
 	// and assembles the final block.
@@ -144,9 +113,7 @@ type Engine interface {
 	// sigsReady signal indicates whether the commit sigs are populated in the header object.
 	// Finalize() will block on sigsReady signal until the first value is send to the channel.
 	Finalize(
-		chain ChainReader,
-		beacon ChainReader,
-		header *block.Header,
+		chain ChainReader, header *block.Header,
 		state *state.DB, txs []*types.Transaction,
 		receipts []*types.Receipt, outcxs []*types.CXReceipt,
 		incxs []*types.CXReceiptsProof, stks staking.StakingTransactions,

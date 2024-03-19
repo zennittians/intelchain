@@ -3,10 +3,10 @@ package consensus
 import (
 	"time"
 
-	"github.com/zennittians/intelchain/consensus/signature"
 	"github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/internal/common"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
+
+	"github.com/zennittians/intelchain/consensus/signature"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
@@ -16,7 +16,6 @@ import (
 	"github.com/zennittians/intelchain/p2p"
 )
 
-// announce fires leader
 func (consensus *Consensus) announce(block *types.Block) {
 	blockHash := block.Hash()
 
@@ -27,10 +26,14 @@ func (consensus *Consensus) announce(block *types.Block) {
 		return
 	}
 
+	//// Lock Write - Start
+	consensus.mutex.Lock()
 	copy(consensus.blockHash[:], blockHash[:])
-	consensus.block = encodedBlock // Must set block bytes before consensus.construct()
+	consensus.block = encodedBlock
+	consensus.mutex.Unlock()
+	//// Lock Write - End
 
-	key, err := consensus.getConsensusLeaderPrivateKey()
+	key, err := consensus.GetConsensusLeaderPrivateKey()
 	if err != nil {
 		consensus.getLogger().Warn().Err(err).Msg("[Announce] Node not a leader")
 		return
@@ -45,13 +48,13 @@ func (consensus *Consensus) announce(block *types.Block) {
 	}
 	msgToSend, FPBTMsg := networkMessage.Bytes, networkMessage.FBFTMsg
 
-	consensus.fBFTLog.AddVerifiedMessage(FPBTMsg)
+	consensus.FBFTLog.AddVerifiedMessage(FPBTMsg)
 	consensus.getLogger().Debug().
 		Str("MsgBlockHash", FPBTMsg.BlockHash.Hex()).
 		Uint64("MsgViewID", FPBTMsg.ViewID).
 		Uint64("MsgBlockNum", FPBTMsg.BlockNum).
 		Msg("[Announce] Added Announce message in FPBT")
-	consensus.fBFTLog.AddBlock(block)
+	consensus.FBFTLog.AddBlock(block)
 
 	// Leader sign the block hash itself
 	for i, key := range consensus.priKey {
@@ -62,7 +65,7 @@ func (consensus *Consensus) announce(block *types.Block) {
 			continue
 		}
 
-		if _, err := consensus.decider.AddNewVote(
+		if _, err := consensus.Decider.AddNewVote(
 			quorum.Prepare,
 			[]*bls.PublicKeyWrapper{key.Pub},
 			key.Pri.SignHash(consensus.blockHash[:]),
@@ -75,7 +78,7 @@ func (consensus *Consensus) announce(block *types.Block) {
 	}
 	// Construct broadcast p2p message
 	if err := consensus.msgSender.SendWithRetry(
-		consensus.getBlockNum(), msg_pb.MessageType_ANNOUNCE, []nodeconfig.GroupID{
+		consensus.blockNum, msg_pb.MessageType_ANNOUNCE, []nodeconfig.GroupID{
 			nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(consensus.ShardID)),
 		}, p2p.ConstructMessage(msgToSend)); err != nil {
 		consensus.getLogger().Warn().
@@ -93,17 +96,21 @@ func (consensus *Consensus) announce(block *types.Block) {
 	consensus.switchPhase("Announce", FBFTPrepare)
 }
 
-// this method is called for each validator sent their vote message
 func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 	// TODO(audit): make FBFT lookup using map instead of looping through all items.
-	if !consensus.fBFTLog.HasMatchingViewAnnounce(
-		consensus.getBlockNum(), consensus.getCurBlockViewID(), recvMsg.BlockHash,
+	if !consensus.FBFTLog.HasMatchingViewAnnounce(
+		consensus.blockNum, consensus.GetCurBlockViewID(), recvMsg.BlockHash,
 	) {
 		consensus.getLogger().Debug().
 			Uint64("MsgViewID", recvMsg.ViewID).
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("[OnPrepare] No Matching Announce message")
 	}
+
+	//// Read - Start
+	consensus.mutex.Lock()
+	defer consensus.mutex.Unlock()
+
 	if !consensus.isRightBlockNumAndViewID(recvMsg) {
 		return
 	}
@@ -112,7 +119,7 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 	prepareBitmap := consensus.prepareBitmap
 	// proceed only when the message is not received before
 	for _, signer := range recvMsg.SenderPubkeys {
-		signed := consensus.decider.ReadBallot(quorum.Prepare, signer.Bytes)
+		signed := consensus.Decider.ReadBallot(quorum.Prepare, signer.Bytes)
 		if signed != nil {
 			consensus.getLogger().Debug().
 				Str("validatorPubKey", signer.Bytes.Hex()).
@@ -121,14 +128,14 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 		}
 	}
 
-	if consensus.decider.IsQuorumAchieved(quorum.Prepare) {
+	if consensus.Decider.IsQuorumAchieved(quorum.Prepare) {
 		// already have enough signatures
 		consensus.getLogger().Debug().
 			Interface("validatorPubKeys", recvMsg.SenderPubkeys).
 			Msg("[OnPrepare] Received Additional Prepare Message")
 		return
 	}
-	signerCount := consensus.decider.SignersCount(quorum.Prepare)
+	signerCount := consensus.Decider.SignersCount(quorum.Prepare)
 	//// Read - End
 
 	// Check BLS signature for the multi-sig
@@ -149,23 +156,17 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 		}
 	}
 	if !sign.VerifyHash(signerPubKey, blockHash) {
-		consensus.getLogger().
-			Error().
-			Msgf(
-				"[OnPrepare] Received invalid BLS signature: hash %s, key %s",
-				common.BytesToHash(blockHash).Hex(),
-				signerPubKey.SerializeToHexStr(),
-			)
+		consensus.getLogger().Error().Msg("[OnPrepare] Received invalid BLS signature")
 		return
 	}
 
 	consensus.getLogger().Debug().
 		Int64("NumReceivedSoFar", signerCount).
-		Int64("PublicKeys", consensus.decider.ParticipantsCount()).
+		Int64("PublicKeys", consensus.Decider.ParticipantsCount()).
 		Msg("[OnPrepare] Received New Prepare Signature")
 
 	//// Write - Start
-	if _, err := consensus.decider.AddNewVote(
+	if _, err := consensus.Decider.AddNewVote(
 		quorum.Prepare, recvMsg.SenderPubkeys,
 		&sign, recvMsg.BlockHash,
 		recvMsg.BlockNum, recvMsg.ViewID,
@@ -181,7 +182,7 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 	//// Write - End
 
 	//// Read - Start
-	if consensus.decider.IsQuorumAchieved(quorum.Prepare) {
+	if consensus.Decider.IsQuorumAchieved(quorum.Prepare) {
 		// NOTE Let it handle its own logs
 		if err := consensus.didReachPrepareQuorum(); err != nil {
 			return
@@ -191,15 +192,16 @@ func (consensus *Consensus) onPrepare(recvMsg *FBFTMessage) {
 	//// Read - End
 }
 
-// this method is called by leader
 func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
+	consensus.mutex.Lock()
+	defer consensus.mutex.Unlock()
 	//// Read - Start
 	if !consensus.isRightBlockNumAndViewID(recvMsg) {
 		return
 	}
 	// proceed only when the message is not received before
 	for _, signer := range recvMsg.SenderPubkeys {
-		signed := consensus.decider.ReadBallot(quorum.Commit, signer.Bytes)
+		signed := consensus.Decider.ReadBallot(quorum.Commit, signer.Bytes)
 		if signed != nil {
 			consensus.getLogger().Debug().
 				Str("validatorPubKey", signer.Bytes.Hex()).
@@ -211,9 +213,9 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 	commitBitmap := consensus.commitBitmap
 
 	// has to be called before verifying signature
-	quorumWasMet := consensus.decider.IsQuorumAchieved(quorum.Commit)
+	quorumWasMet := consensus.Decider.IsQuorumAchieved(quorum.Commit)
 
-	signerCount := consensus.decider.SignersCount(quorum.Commit)
+	signerCount := consensus.Decider.SignersCount(quorum.Commit)
 	//// Read - End
 
 	// Verify the signature on commitPayload is correct
@@ -229,7 +231,7 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 	}
 
 	// Must have the corresponding block to verify commit signature.
-	blockObj := consensus.fBFTLog.GetBlockByHash(recvMsg.BlockHash)
+	blockObj := consensus.FBFTLog.GetBlockByHash(recvMsg.BlockHash)
 	if blockObj == nil {
 		consensus.getLogger().Info().
 			Uint64("blockNum", recvMsg.BlockNum).
@@ -238,7 +240,7 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 			Msg("[OnCommit] Failed finding a matching block for committed message")
 		return
 	}
-	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain().Config(),
+	commitPayload := signature.ConstructCommitPayload(consensus.Blockchain,
 		blockObj.Epoch(), blockObj.Hash(), blockObj.NumberU64(), blockObj.Header().ViewID().Uint64())
 	logger = logger.With().
 		Uint64("MsgViewID", recvMsg.ViewID).
@@ -260,14 +262,10 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 
 	//// Write - Start
 	// Check for potential double signing
-
-	// FIXME (leo): failed view change, will comeback later
-	/*
-		if consensus.checkDoubleSign(recvMsg) {
-			return
-		}
-	*/
-	if _, err := consensus.decider.AddNewVote(
+	if consensus.checkDoubleSign(recvMsg) {
+		return
+	}
+	if _, err := consensus.Decider.AddNewVote(
 		quorum.Commit, recvMsg.SenderPubkeys,
 		&sign, recvMsg.BlockHash,
 		recvMsg.BlockNum, recvMsg.ViewID,
@@ -283,14 +281,21 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 	//// Write - End
 
 	//// Read - Start
-	viewID := consensus.getCurBlockViewID()
+	viewID := consensus.GetCurBlockViewID()
 
-	quorumIsMet := consensus.decider.IsQuorumAchieved(quorum.Commit)
+	if consensus.Decider.IsAllSigsCollected() {
+		logger.Info().Msg("[OnCommit] 100% Enough commits received")
+		consensus.finalCommit()
+
+		consensus.msgSender.StopRetry(msg_pb.MessageType_PREPARED)
+		return
+	}
+
+	quorumIsMet := consensus.Decider.IsQuorumAchieved(quorum.Commit)
 	//// Read - End
 
 	if !quorumWasMet && quorumIsMet {
 		logger.Info().Msg("[OnCommit] 2/3 Enough commits received")
-		consensus.fBFTLog.MarkBlockVerified(blockObj)
 
 		if !blockObj.IsLastBlockInEpoch() {
 			// only do early commit if it's not epoch block to avoid problems
@@ -310,7 +315,7 @@ func (consensus *Consensus) onCommit(recvMsg *FBFTMessage) {
 
 			consensus.mutex.Lock()
 			defer consensus.mutex.Unlock()
-			if viewID == consensus.getCurBlockViewID() {
+			if viewID == consensus.GetCurBlockViewID() {
 				consensus.finalCommit()
 			}
 		}(viewID)

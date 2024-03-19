@@ -4,19 +4,11 @@ import (
 	"bytes"
 	"math/big"
 	"sort"
-	"time"
 
-	"github.com/zennittians/intelchain/common/denominations"
-	"github.com/zennittians/intelchain/internal/params"
-	"github.com/zennittians/intelchain/numeric"
-
-	bls2 "github.com/zennittians/bls/ffi/go/bls"
-	blsvrf "github.com/zennittians/intelchain/crypto/vrf/bls"
+	intelchain_bls "github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
-
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/consensus/engine"
 	"github.com/zennittians/intelchain/consensus/quorum"
@@ -24,9 +16,8 @@ import (
 	"github.com/zennittians/intelchain/consensus/signature"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/crypto/bls"
-	bls_cosi "github.com/zennittians/intelchain/crypto/bls"
 	"github.com/zennittians/intelchain/internal/utils"
+	"github.com/zennittians/intelchain/multibls"
 	"github.com/zennittians/intelchain/shard"
 	"github.com/zennittians/intelchain/shard/committee"
 	"github.com/zennittians/intelchain/staking/availability"
@@ -34,27 +25,20 @@ import (
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
-const (
-	verifiedSigCache = 100
-	epochCtxCache    = 20
-	vrfBeta          = 32 // 32 bytes randomness
-	vrfProof         = 96 // 96 bytes proof (bls sig)
-)
-
 type engineImpl struct {
-	// Caching field
-	epochCtxCache    *lru.Cache // epochCtxKey -> epochCtx
-	verifiedSigCache *lru.Cache // verifiedSigKey -> struct{}{}
+	beacon engine.ChainReader
 }
 
-// NewEngine creates Engine with some cache
-func NewEngine() *engineImpl {
-	sigCache, _ := lru.New(verifiedSigCache)
-	epochCtxCache, _ := lru.New(epochCtxCache)
-	return &engineImpl{
-		epochCtxCache:    epochCtxCache,
-		verifiedSigCache: sigCache,
-	}
+// Engine is an algorithm-agnostic consensus engine.
+var Engine = &engineImpl{nil}
+
+func (e *engineImpl) Beaconchain() engine.ChainReader {
+	return e.beacon
+}
+
+// SetBeaconchain assigns the beaconchain handle used
+func (e *engineImpl) SetBeaconchain(beaconchain engine.ChainReader) {
+	e.beacon = beaconchain
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the bft engine.
@@ -75,9 +59,6 @@ func (e *engineImpl) VerifyHeader(chain engine.ChainReader, header *block.Header
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications.
-// WARN: Do not use VerifyHeaders for now. Currently a header verification can only
-// success when the previous header is written to block chain
-// TODO: Revisit and correct this function when adding epochChain
 func (e *engineImpl) VerifyHeaders(chain engine.ChainReader, headers []*block.Header, seals []bool) (chan<- struct{}, <-chan error) {
 	abort, results := make(chan struct{}), make(chan error, len(headers))
 
@@ -94,6 +75,14 @@ func (e *engineImpl) VerifyHeaders(chain engine.ChainReader, headers []*block.He
 	}()
 
 	return abort, results
+}
+
+// ReadPublicKeysFromLastBlock finds the public keys of last block's committee
+func ReadPublicKeysFromLastBlock(
+	bc engine.ChainReader, header *block.Header,
+) ([]intelchain_bls.PublicKeyWrapper, error) {
+	parentHeader := bc.GetHeaderByHash(header.ParentHash())
+	return GetPublicKeys(bc, parentHeader, false)
 }
 
 // VerifyShardState implements Engine, checking the shardstate is valid at epoch transition
@@ -133,104 +122,6 @@ func (e *engineImpl) VerifyShardState(
 	return nil
 }
 
-// VerifyVRF implements Engine, checking the vrf is valid
-func (e *engineImpl) VerifyVRF(
-	bc engine.ChainReader, header *block.Header,
-) error {
-	if bc.ShardID() != header.ShardID() {
-		return errors.Errorf(
-			"[VerifyVRF] shardID not match %d %d", bc.ShardID(), header.ShardID(),
-		)
-	}
-
-	if bc.Config().IsVRF(header.Epoch()) && len(header.Vrf()) != vrfBeta+vrfProof {
-		return errors.Errorf(
-			"[VerifyVRF] invalid vrf data format or no vrf proposed %x", header.Vrf(),
-		)
-	}
-	if !bc.Config().IsVRF(header.Epoch()) {
-		if len(header.Vrf()) != 0 {
-			return errors.Errorf(
-				"[VerifyVRF] vrf data present in pre-vrf epoch %x", header.Vrf(),
-			)
-		}
-		return nil
-	}
-
-	leaderPubKey, err := GetLeaderPubKeyFromCoinbase(bc, header)
-
-	if leaderPubKey == nil || err != nil {
-		return err
-	}
-
-	vrfPk := blsvrf.NewVRFVerifier(leaderPubKey.Object)
-
-	previousHeader := bc.GetHeaderByNumber(
-		header.Number().Uint64() - 1,
-	)
-	if previousHeader == nil {
-		return errors.New("[VerifyVRF] no parent header found")
-	}
-
-	previousHash := previousHeader.Hash()
-	vrfProof := [vrfProof]byte{}
-	copy(vrfProof[:], header.Vrf()[vrfBeta:])
-	hash, err := vrfPk.ProofToHash(previousHash[:], vrfProof[:])
-
-	if err != nil {
-		return errors.New("[VerifyVRF] Failed VRF verification")
-	}
-
-	if !bytes.Equal(hash[:], header.Vrf()[:vrfBeta]) {
-		return errors.New("[VerifyVRF] VRF proof is not valid")
-	}
-
-	return nil
-}
-
-// GetLeaderPubKeyFromCoinbase retrieve corresponding blsPublicKey from Coinbase Address
-func GetLeaderPubKeyFromCoinbase(
-	blockchain engine.ChainReader, h *block.Header,
-) (*bls.PublicKeyWrapper, error) {
-	shardState, err := blockchain.ReadShardState(h.Epoch())
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot read shard state %v %s",
-			h.Epoch(),
-			h.Coinbase().Hash().Hex(),
-		)
-	}
-
-	committee, err := shardState.FindCommitteeByID(h.ShardID())
-	if err != nil {
-		return nil, err
-	}
-
-	committerKey := new(bls2.PublicKey)
-	isStaking := blockchain.Config().IsStaking(h.Epoch())
-	for _, member := range committee.Slots {
-		if isStaking {
-			// After staking the coinbase address will be the address of bls public key
-			if utils.GetAddressFromBLSPubKeyBytes(member.BLSPublicKey[:]) == h.Coinbase() {
-				if committerKey, err = bls.BytesToBLSPublicKey(member.BLSPublicKey[:]); err != nil {
-					return nil, err
-				}
-				return &bls.PublicKeyWrapper{Object: committerKey, Bytes: member.BLSPublicKey}, nil
-			}
-		} else {
-			if member.EcdsaAddress == h.Coinbase() {
-				if committerKey, err = bls.BytesToBLSPublicKey(member.BLSPublicKey[:]); err != nil {
-					return nil, err
-				}
-				return &bls.PublicKeyWrapper{Object: committerKey, Bytes: member.BLSPublicKey}, nil
-			}
-		}
-	}
-	return nil, errors.Errorf(
-		"cannot find corresponding BLS Public Key coinbase %s",
-		h.Coinbase().Hex(),
-	)
-}
-
 // VerifySeal implements Engine, checking whether the given block's parent block satisfies
 // the PoS difficulty requirements, i.e. >= 2f+1 valid signatures from the committee
 // Note that each block header contains the bls signature of the parent block
@@ -241,21 +132,71 @@ func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) 
 	if header == nil {
 		return errors.New("[VerifySeal] nil block header")
 	}
+	publicKeys, err := ReadPublicKeysFromLastBlock(chain, header)
 
+	if err != nil {
+		return errors.New("[VerifySeal] Cannot retrieve publickeys from last block")
+	}
+	sig := header.LastCommitSignature()
+	payload := append(sig[:], header.LastCommitBitmap()...)
+	aggSig, mask, err := ReadSignatureBitmapByPublicKeys(payload, publicKeys)
+	if err != nil {
+		return errors.New(
+			"[VerifySeal] Unable to deserialize the LastCommitSignature" +
+				" and LastCommitBitmap in Block Header",
+		)
+	}
 	parentHash := header.ParentHash()
 	parentHeader := chain.GetHeader(parentHash, header.Number().Uint64()-1)
 	if parentHeader == nil {
-		return errors.New("[VerifySeal] no parent header found")
+		return errors.New(
+			"[VerifySeal] no parent header found",
+		)
+	}
+	if chain.Config().IsStaking(parentHeader.Epoch()) {
+		slotList, err := chain.ReadShardState(parentHeader.Epoch())
+		if err != nil {
+			return errors.Wrapf(err, "cannot decoded shard state")
+		}
+		subComm, err := slotList.FindCommitteeByID(parentHeader.ShardID())
+		if err != nil {
+			return err
+		}
+		// TODO(audit): reuse a singleton decider and not recreate it for every single block
+		d := quorum.NewDecider(
+			quorum.SuperMajorityStake, subComm.ShardID,
+		)
+		d.SetMyPublicKeyProvider(func() (multibls.PublicKeys, error) {
+			return nil, nil
+		})
+
+		if _, err := d.SetVoters(subComm, slotList.Epoch); err != nil {
+			return err
+		}
+		if !d.IsQuorumAchievedByMask(mask) {
+			return errors.New(
+				"[VerifySeal] Not enough voting power in LastCommitSignature from Block Header",
+			)
+		}
+	} else {
+		parentQuorum, err := QuorumForBlock(chain, parentHeader, false)
+		if err != nil {
+			return errors.Wrapf(err,
+				"cannot calculate quorum for block %s", header.Number())
+		}
+		if count := utils.CountOneBits(mask.Bitmap); count < int64(parentQuorum) {
+			return errors.Errorf(
+				"[VerifySeal] need %d signature in LastCommitSignature have %d",
+				parentQuorum, count,
+			)
+		}
 	}
 
-	pas := payloadArgsFromHeader(parentHeader)
-	sas := sigArgs{
-		sig:    header.LastCommitSignature(),
-		bitmap: header.LastCommitBitmap(),
-	}
-
-	if err := e.verifySignatureCached(chain, pas, sas); err != nil {
-		return errors.Wrapf(err, "verify signature for parent %s", parentHash.String())
+	lastCommitPayload := signature.ConstructCommitPayload(chain,
+		parentHeader.Epoch(), parentHeader.Hash(), parentHeader.Number().Uint64(), parentHeader.ViewID().Uint64())
+	if !aggSig.VerifyHash(mask.AggregatePublic, lastCommitPayload) {
+		const msg = "[VerifySeal] Unable to verify aggregated signature from last block: %x"
+		return errors.Errorf(msg, payload)
 	}
 	return nil
 }
@@ -264,7 +205,7 @@ func (e *engineImpl) VerifySeal(chain engine.ChainReader, header *block.Header) 
 // setting the final state and assembling the block.
 // sigsReady signal indicates whether the commit sigs are populated in the header object.
 func (e *engineImpl) Finalize(
-	chain engine.ChainReader, beacon engine.ChainReader, header *block.Header,
+	chain engine.ChainReader, header *block.Header,
 	state *state.DB, txs []*types.Transaction,
 	receipts []*types.Receipt, outcxs []*types.CXReceipt,
 	incxs []*types.CXReceiptsProof, stks staking.StakingTransactions,
@@ -277,26 +218,20 @@ func (e *engineImpl) Finalize(
 	// Process Undelegations, set LastEpochInCommittee and set EPoS status
 	// Needs to be before AccumulateRewardsAndCountSigs
 	if IsCommitteeSelectionBlock(chain, header) {
-		startTime := time.Now()
 		if err := payoutUndelegations(chain, header, state); err != nil {
 			return nil, nil, err
 		}
-		utils.Logger().Debug().Int64("elapsed time", time.Now().Sub(startTime).Milliseconds()).Msg("PayoutUndelegations")
 
 		// Needs to be after payoutUndelegations because payoutUndelegations
 		// depends on the old LastEpochInCommittee
-
-		startTime = time.Now()
-		if err := setElectionEpochAndMinFee(chain, header, state, chain.Config()); err != nil {
+		if err := setLastEpochInCommittee(header, state); err != nil {
 			return nil, nil, err
 		}
-		utils.Logger().Debug().Int64("elapsed time", time.Now().Sub(startTime).Milliseconds()).Msg("SetElectionEpochAndMinFee")
 
 		curShardState, err := chain.ReadShardState(chain.CurrentBlock().Epoch())
 		if err != nil {
 			return nil, nil, err
 		}
-		startTime = time.Now()
 		// Needs to be before AccumulateRewardsAndCountSigs because
 		// ComputeAndMutateEPOSStatus depends on the signing counts that's
 		// consistent with the counts when the new shardState was proposed.
@@ -308,13 +243,12 @@ func (e *engineImpl) Finalize(
 				return nil, nil, err
 			}
 		}
-		utils.Logger().Debug().Int64("elapsed time", time.Now().Sub(startTime).Milliseconds()).Msg("ComputeAndMutateEPOSStatus")
 	}
 
 	// Accumulate block rewards and commit the final state root
 	// Header seems complete, assemble into a block and return
-	remainder, payout, err := AccumulateRewardsAndCountSigs(
-		chain, state, header, beacon, sigsReady,
+	payout, err := AccumulateRewardsAndCountSigs(
+		chain, state, header, e.Beaconchain(), sigsReady,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -333,23 +267,6 @@ func (e *engineImpl) Finalize(
 	// TODO: make the viewID fetch from caller of the block proposal.
 	header.SetViewID(new(big.Int).SetUint64(viewID()))
 
-	// Add the emission recovery split to the balance
-	if chain.Config().IsHIP30(header.Epoch()) {
-		// convert to ONE - note that numeric.Dec
-		// is designed for staking decimals and not
-		// ONE balances so we use big.Int for this math
-		remainderOne := new(big.Int).Div(
-			remainder.Int, big.NewInt(denominations.Itc),
-		)
-		// this goes directly to the balance (on shard 0, of course)
-		// because the reward mechanism isn't built to handle
-		// rewards not obtained from any delegations
-		state.AddBalance(
-			shard.Schedule.InstanceForEpoch(header.Epoch()).
-				HIP30RecoveryAddress(),
-			remainderOne,
-		)
-	}
 	// Finalize the state root
 	header.SetRoot(state.IntermediateRoot(chain.Config().IsS3(header.Epoch())))
 	return types.NewBlock(header, txs, receipts, outcxs, incxs, stks), payout, nil
@@ -370,35 +287,26 @@ func payoutUndelegations(
 		const msg = "[Finalize] failed to read all validators"
 		return errors.New(msg)
 	}
-	// Payout undelegated/unlocked tokens at the end of each epoch
-	lockPeriod := GetLockPeriodInEpoch(chain, header.Epoch())
-	noEarlyUnlock := chain.Config().IsNoEarlyUnlock(header.Epoch())
-	newShardState, err := header.GetShardState()
-	if err != nil {
-		const msg = "[Finalize] failed to read shard state"
-		return errors.New(msg)
-	}
-	isMaxRate := chain.Config().IsMaxRate(newShardState.Epoch)
+	// Payout undelegated/unlocked tokens
 	for _, validator := range validators {
-		wrapper, err := state.ValidatorWrapper(validator, true, false)
+		wrapper, err := state.ValidatorWrapper(validator)
 		if err != nil {
 			return errors.New(
 				"[Finalize] failed to get validator from state to finalize",
 			)
 		}
+		lockPeriod := GetLockPeriodInEpoch(chain, header.Epoch())
 		for i := range wrapper.Delegations {
 			delegation := &wrapper.Delegations[i]
 			totalWithdraw := delegation.RemoveUnlockedUndelegations(
-				header.Epoch(), wrapper.LastEpochInCommittee, lockPeriod, noEarlyUnlock, isMaxRate,
+				header.Epoch(), wrapper.LastEpochInCommittee, lockPeriod,
 			)
-			if totalWithdraw.Sign() != 0 {
-				state.AddBalance(delegation.DelegatorAddress, totalWithdraw)
-			}
+			state.AddBalance(delegation.DelegatorAddress, totalWithdraw)
 		}
 		countTrack[validator] = len(wrapper.Delegations)
 	}
 
-	utils.Logger().Debug().
+	utils.Logger().Info().
 		Uint64("epoch", header.Epoch().Uint64()).
 		Uint64("block-number", header.Number().Uint64()).
 		Interface("count-track", countTrack).
@@ -415,86 +323,21 @@ func IsCommitteeSelectionBlock(chain engine.ChainReader, header *block.Header) b
 	return isBeaconChain && header.IsLastBlockInEpoch() && inPreStakingEra
 }
 
-func setElectionEpochAndMinFee(chain engine.ChainReader, header *block.Header, state *state.DB, config *params.ChainConfig) error {
+func setLastEpochInCommittee(header *block.Header, state *state.DB) error {
 	newShardState, err := header.GetShardState()
 	if err != nil {
 		const msg = "[Finalize] failed to read shard state"
 		return errors.New(msg)
 	}
-	// these 2 should be created outside of loop to optimize
-	minRate := availability.MinCommissionRate(
-		config.IsMinCommissionRate(newShardState.Epoch),
-		config.IsHIP30(newShardState.Epoch),
-	)
-	minRateNotZero := !minRate.Equal(numeric.ZeroDec())
-	// elected validators have their fee updated, if required to do so
-	isElected := make(
-		map[common.Address]struct{},
-		len(newShardState.StakedValidators().Addrs),
-	)
-	// this loop is for elected validators only
 	for _, addr := range newShardState.StakedValidators().Addrs {
-		wrapper, err := state.ValidatorWrapper(addr, true, false)
+		wrapper, err := state.ValidatorWrapper(addr)
 		if err != nil {
 			return errors.New(
 				"[Finalize] failed to get validator from state to finalize",
 			)
 		}
-		// Set last epoch in committee
 		wrapper.LastEpochInCommittee = newShardState.Epoch
-		if minRateNotZero {
-			// Set first election epoch (applies only if previously unset)
-			state.SetValidatorFirstElectionEpoch(addr, newShardState.Epoch)
-			// Update minimum commission fee
-			if _, err := availability.UpdateMinimumCommissionFee(
-				newShardState.Epoch, state, addr, minRate,
-				config.MinCommissionPromoPeriod.Uint64(),
-			); err != nil {
-				return err
-			}
-		}
-		isElected[addr] = struct{}{}
 	}
-
-	if config.IsMaxRate(newShardState.Epoch) {
-		for _, addr := range chain.ValidatorCandidates() {
-			if _, err := availability.UpdateMaxCommissionFee(state, addr, minRate); err != nil {
-				return err
-			}
-		}
-	}
-	// due to a bug in the old implementation of the minimum fee,
-	// unelected validators did not have their fee updated even
-	// when the protocol required them to do so. here we fix it,
-	// but only after the HIP-30 hard fork is effective
-	// this loop applies to all validators, but excludes the ones in isElected
-	if config.IsHIP30(newShardState.Epoch) && minRateNotZero {
-		for _, addr := range chain.ValidatorCandidates() {
-			// skip elected validator
-			if _, ok := isElected[addr]; ok {
-				continue
-			}
-			if _, err := availability.UpdateMinimumCommissionFee(
-				newShardState.Epoch, state, addr, minRate,
-				config.MinCommissionPromoPeriod.Uint64(),
-			); err != nil {
-				return err
-			}
-		}
-	}
-
-	// for all validators which have MaxRate < minRate + maxChangeRate
-	// set their MaxRate equal to the minRate + MaxChangeRate
-	// this will allow the wrapper.SanityCheck to pass if Rate is set to a value
-	// higher than the the MaxRate by UpdateMinimumCommissionFee above
-	if config.IsMaxRate(newShardState.Epoch) && minRateNotZero {
-		for _, addr := range chain.ValidatorCandidates() {
-			if _, err := availability.UpdateMaxCommissionFee(state, addr, minRate); err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -542,30 +385,45 @@ func applySlashes(
 		return false
 	})
 
-	// The Leader of the block gets all slashing rewards.
-	slashRewardBeneficiary := header.Coinbase()
-
 	// Do the slashing by groups in the sorted order
 	for _, key := range sortedKeys {
 		records := groupedRecords[key]
+		superCommittee, err := chain.ReadShardState(big.NewInt(int64(key.epoch)))
 
-		utils.Logger().Info().
-			RawJSON("records", []byte(records.String())).
-			Msg("now applying slash to state during block finalization")
+		if err != nil {
+			return errors.New("could not read shard state")
+		}
+
+		subComm, err := superCommittee.FindCommitteeByID(key.shardID)
+
+		if err != nil {
+			return errors.New("could not find shard committee")
+		}
 
 		// Apply the slashes, invariant: assume been verified as legit slash by this point
-		slashApplied, err := slash.Apply(
+		var slashApplied *slash.Application
+		votingPower, err := lookupVotingPower(
+			big.NewInt(int64(key.epoch)), subComm,
+		)
+		if err != nil {
+			return errors.Wrapf(err, "could not lookup cached voting power in slash application")
+		}
+		rate := slash.Rate(votingPower, records)
+		utils.Logger().Info().
+			Str("rate", rate.String()).
+			RawJSON("records", []byte(records.String())).
+			Msg("now applying slash to state during block finalization")
+		if slashApplied, err = slash.Apply(
 			chain,
 			state,
 			records,
-			slashRewardBeneficiary,
-		)
-
-		if err != nil {
+			rate,
+		); err != nil {
 			return errors.New("[Finalize] could not apply slash")
 		}
 
 		utils.Logger().Info().
+			Str("rate", rate.String()).
 			RawJSON("records", []byte(records.String())).
 			RawJSON("applied", []byte(slashApplied.String())).
 			Msg("slash applied successfully")
@@ -573,220 +431,127 @@ func applySlashes(
 	return nil
 }
 
-// VerifyHeaderSignature verifies the signature of the given header.
+// QuorumForBlock returns the quorum for the given block header.
+func QuorumForBlock(
+	chain engine.ChainReader, h *block.Header, reCalculate bool,
+) (quorum int, err error) {
+	ss := new(shard.State)
+	if reCalculate {
+		ss, _ = committee.WithStakingEnabled.Compute(h.Epoch(), chain)
+	} else {
+		ss, err = chain.ReadShardState(h.Epoch())
+		if err != nil {
+			return 0, errors.Wrapf(
+				err, "failed to read shard state of epoch %d", h.Epoch().Uint64(),
+			)
+		}
+	}
+
+	subComm, err := ss.FindCommitteeByID(h.ShardID())
+	if err != nil {
+		return 0, errors.Errorf("cannot find shard %d in shard state", h.ShardID())
+	}
+	return (len(subComm.Slots))*2/3 + 1, nil
+}
+
 // Similiar to VerifyHeader, which is only for verifying the block headers of one's own chain, this verification
 // is used for verifying "incoming" block header against commit signature and bitmap sent from the other chain cross-shard via libp2p.
 // i.e. this header verification api is more flexible since the caller specifies which commit signature and bitmap to use
 // for verifying the block header, which is necessary for cross-shard block header verification. Example of such is cross-shard transaction.
-func (e *engineImpl) VerifyHeaderSignature(chain engine.ChainReader, header *block.Header, commitSig bls_cosi.SerializedSignature, commitBitmap []byte) error {
-	if chain.CurrentHeader().Number().Uint64() <= uint64(1) {
-		return nil
+func (e *engineImpl) VerifyHeaderWithSignature(chain engine.ChainReader, header *block.Header, commitSig []byte, commitBitmap []byte, reCalculate bool) error {
+	if chain.Config().IsStaking(header.Epoch()) {
+		// Never recalculate after staking is enabled
+		reCalculate = false
 	}
-	pas := payloadArgsFromHeader(header)
-	sas := sigArgs{commitSig, commitBitmap}
-
-	return e.verifySignatureCached(chain, pas, sas)
-}
-
-// VerifyCrossLink verifies the signature of the given CrossLink.
-func (e *engineImpl) VerifyCrossLink(chain engine.ChainReader, cl types.CrossLink) error {
-	if cl.BlockNum() <= 1 {
-		return errors.New("crossLink BlockNumber should greater than 1")
-	}
-	if !chain.Config().IsCrossLink(cl.Epoch()) {
-		return errors.Errorf("not cross-link epoch: %v", cl.Epoch())
-	}
-
-	pas := payloadArgsFromCrossLink(cl)
-	sas := sigArgs{cl.Signature(), cl.Bitmap()}
-
-	return e.verifySignatureCached(chain, pas, sas)
-}
-
-func (e *engineImpl) verifySignatureCached(chain engine.ChainReader, pas payloadArgs, sas sigArgs) error {
-	verifiedKey := newVerifiedSigKey(pas.blockHash, sas.sig, sas.bitmap)
-	if _, ok := e.verifiedSigCache.Get(verifiedKey); ok {
-		return nil
-	}
-	// Not in cache, do verify.
-	if err := e.verifySignature(chain, pas, sas); err != nil {
-		return err
-	}
-	e.verifiedSigCache.Add(verifiedKey, struct{}{})
-	return nil
-}
-
-func (e *engineImpl) verifySignature(chain engine.ChainReader, pas payloadArgs, sas sigArgs) error {
-	ec, err := e.getEpochCtxCached(chain, pas.shardID, pas.epoch.Uint64())
+	publicKeys, err := GetPublicKeys(chain, header, reCalculate)
 	if err != nil {
-		return err
+		return errors.New("[VerifyHeaderWithSignature] Cannot get publickeys for block header")
 	}
-	var (
-		pubKeys      = ec.pubKeys
-		qrVerifier   = ec.qrVerifier
-		commitSig    = sas.sig
-		commitBitmap = sas.bitmap
-	)
-	aggSig, mask, err := DecodeSigBitmap(commitSig, commitBitmap, pubKeys)
+
+	payload := append(commitSig[:], commitBitmap[:]...)
+	aggSig, mask, err := ReadSignatureBitmapByPublicKeys(payload, publicKeys)
 	if err != nil {
-		return errors.Wrap(err, "deserialize signature and bitmap")
-	}
-	if !qrVerifier.IsQuorumAchievedByMask(mask) {
-		return errors.New("not enough signature collected")
-	}
-	commitPayload := pas.constructPayload(chain)
-	if !aggSig.VerifyHash(mask.AggregatePublic, commitPayload) {
-		return errors.New("Unable to verify aggregated signature for block")
-	}
-	return nil
-}
-
-func (e *engineImpl) getEpochCtxCached(chain engine.ChainReader, shardID uint32, epoch uint64) (epochCtx, error) {
-	ecKey := epochCtxKey{
-		shardID: shardID,
-		epoch:   epoch,
-	}
-	cached, ok := e.epochCtxCache.Get(ecKey)
-	if ok && cached != nil {
-		return cached.(epochCtx), nil
-	}
-	ec, err := readEpochCtxFromChain(chain, ecKey)
-	if err != nil {
-		return epochCtx{}, err
-	}
-	e.epochCtxCache.Add(ecKey, ec)
-	return ec, nil
-}
-
-// Support 512 at most validator nodes
-const bitmapKeyBytes = 64
-
-// verifiedSigKey is the key for caching header verification results
-type verifiedSigKey struct {
-	blockHash common.Hash
-	signature bls_cosi.SerializedSignature
-	bitmap    [bitmapKeyBytes]byte
-}
-
-func newVerifiedSigKey(blockHash common.Hash, sig bls_cosi.SerializedSignature, bitmap []byte) verifiedSigKey {
-	var keyBM [bitmapKeyBytes]byte
-	copy(keyBM[:], bitmap)
-
-	return verifiedSigKey{
-		blockHash: blockHash,
-		signature: sig,
-		bitmap:    keyBM,
-	}
-}
-
-// payloadArgs is the arguments for constructing the payload for signature verification.
-type payloadArgs struct {
-	blockHash common.Hash
-	shardID   uint32
-	epoch     *big.Int
-	number    uint64
-	viewID    uint64
-}
-
-func payloadArgsFromHeader(header *block.Header) payloadArgs {
-	return payloadArgs{
-		blockHash: header.Hash(),
-		shardID:   header.ShardID(),
-		epoch:     header.Epoch(),
-		number:    header.Number().Uint64(),
-		viewID:    header.ViewID().Uint64(),
-	}
-}
-
-func payloadArgsFromCrossLink(cl types.CrossLink) payloadArgs {
-	return payloadArgs{
-		blockHash: cl.Hash(),
-		shardID:   cl.ShardID(),
-		epoch:     cl.Epoch(),
-		number:    cl.Number().Uint64(),
-		viewID:    cl.ViewID().Uint64(),
-	}
-}
-
-func (args payloadArgs) constructPayload(chain engine.ChainReader) []byte {
-	return signature.ConstructCommitPayload(chain.Config(), args.epoch, args.blockHash, args.number, args.viewID)
-}
-
-type sigArgs struct {
-	sig    bls_cosi.SerializedSignature
-	bitmap []byte
-}
-
-type (
-	// epochCtxKey is the key for caching epochCtx
-	epochCtxKey struct {
-		shardID uint32
-		epoch   uint64
+		return errors.Wrapf(
+			err,
+			"[VerifyHeaderWithSignature] Unable to deserialize signatures",
+		)
 	}
 
-	// epochCtx is the epoch's context used for signature verification.
-	// The value is fixed for each epoch and is cached in engineImpl.
-	epochCtx struct {
-		qrVerifier quorum.Verifier
-		pubKeys    []bls.PublicKeyWrapper
-	}
-)
-
-func readEpochCtxFromChain(chain engine.ChainReader, key epochCtxKey) (epochCtx, error) {
-	var (
-		epoch         = new(big.Int).SetUint64(key.epoch)
-		targetShardID = key.shardID
-	)
-	ss, err := readShardState(chain, epoch, targetShardID)
-	if err != nil {
-		return epochCtx{}, err
-	}
-	shardComm, err := ss.FindCommitteeByID(targetShardID)
-	if err != nil {
-		return epochCtx{}, err
-	}
-	pubKeys, err := shardComm.BLSPublicKeys()
-	if err != nil {
-		return epochCtx{}, err
-	}
-	isStaking := chain.Config().IsStaking(epoch)
-	qrVerifier, err := quorum.NewVerifier(shardComm, epoch, isStaking)
-	if err != nil {
-		return epochCtx{}, err
-	}
-	return epochCtx{
-		qrVerifier: qrVerifier,
-		pubKeys:    pubKeys,
-	}, nil
-}
-
-func readShardState(chain engine.ChainReader, epoch *big.Int, targetShardID uint32) (*shard.State, error) {
-	// When doing cross shard, we need recalculate the shard state since we don't have
-	// shard state of other shards
-	if needRecalculateStateShard(chain, epoch, targetShardID) {
-		shardState, err := committee.WithStakingEnabled.Compute(epoch, chain)
+	if e := header.Epoch(); chain.Config().IsStaking(e) {
+		slotList, err := chain.ReadShardState(e)
 		if err != nil {
-			return nil, errors.Wrapf(err, "compute shard state for epoch %v", epoch)
+			return errors.Wrapf(err, "cannot read shard state")
 		}
-		return shardState, nil
 
+		subComm, err := slotList.FindCommitteeByID(header.ShardID())
+		if err != nil {
+			return err
+		}
+		// TODO(audit): reuse a singleton decider and not recreate it for every single block
+		d := quorum.NewDecider(quorum.SuperMajorityStake, subComm.ShardID)
+		d.SetMyPublicKeyProvider(func() (multibls.PublicKeys, error) {
+			return nil, nil
+		})
+
+		if _, err := d.SetVoters(subComm, e); err != nil {
+			return err
+		}
+		if !d.IsQuorumAchievedByMask(mask) {
+			return errors.New(
+				"[VerifySeal] Not enough voting power in commitSignature from Block Header",
+			)
+		}
 	} else {
-		//shardState, err := chain.ReadShardState(epoch)
-		shardState, err := committee.WithStakingEnabled.ReadFromDB(epoch, chain)
+		quorumCount, err := QuorumForBlock(chain, header, reCalculate)
 		if err != nil {
-			return nil, errors.Wrapf(err, "read shard state for epoch %v", epoch)
+			return errors.Wrapf(err,
+				"cannot calculate quorum for block %s", header.Number())
 		}
-		return shardState, nil
+		if count := utils.CountOneBits(mask.Bitmap); count < int64(quorumCount) {
+			return errors.New(
+				"[VerifyHeaderWithSignature] Not enough signature in commitSignature from Block Header",
+			)
+		}
 	}
+	commitPayload := signature.ConstructCommitPayload(chain,
+		header.Epoch(), header.Hash(), header.Number().Uint64(), header.ViewID().Uint64())
+
+	if !aggSig.VerifyHash(mask.AggregatePublic, commitPayload) {
+		return errors.New("[VerifySeal] Unable to verify aggregated signature for block")
+	}
+	return nil
 }
 
-// only recalculate for non-staking epoch and targetShardID is not the same
-// as engine
-func needRecalculateStateShard(chain engine.ChainReader, epoch *big.Int, targetShardID uint32) bool {
-	if chain.Config().IsStaking(epoch) {
-		return false
+// GetPublicKeys finds the public keys of the committee that signed the block header
+func GetPublicKeys(
+	chain engine.ChainReader, header *block.Header, reCalculate bool,
+) ([]intelchain_bls.PublicKeyWrapper, error) {
+	if header == nil {
+		return nil, errors.New("nil header provided")
 	}
-	return targetShardID != chain.ShardID()
+	shardState := new(shard.State)
+	var err error
+	if reCalculate {
+		shardState, _ = committee.WithStakingEnabled.Compute(header.Epoch(), chain)
+	} else {
+		shardState, err = chain.ReadShardState(header.Epoch())
+		if err != nil {
+			return nil, errors.Wrapf(
+				err, "failed to read shard state of epoch %d", header.Epoch().Uint64(),
+			)
+		}
+	}
+
+	subCommittee, err := shardState.FindCommitteeByID(header.ShardID())
+	if err != nil {
+		return nil, errors.Wrapf(
+			err,
+			"cannot find shard in the shard state at block %d shard %d",
+			header.Number(),
+			header.ShardID(),
+		)
+	}
+	return subCommittee.BLSPublicKeys()
 }
 
 // GetLockPeriodInEpoch returns the delegation lock period for the given chain

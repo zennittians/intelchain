@@ -6,8 +6,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/zennittians/intelchain/core/rawdb"
-	chain2 "github.com/zennittians/intelchain/test/chain/chain"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -54,7 +53,7 @@ var (
 	allRandomUserAddress  []common.Address
 	allRandomUserKey      []*ecdsa.PrivateKey
 	faucetContractAddress common.Address
-	chain                 core.BlockChain
+	chain                 *core.BlockChain
 	err                   error
 	state                 *core_state.DB
 )
@@ -85,15 +84,15 @@ func init() {
 type testWorkerBackend struct {
 	db     ethdb.Database
 	txPool *core.TxPool
-	chain  *core.BlockChainImpl
+	chain  *core.BlockChain
 }
 
-func fundFaucetContract(chain core.BlockChain) {
+func fundFaucetContract(chain *core.BlockChain) {
 	fmt.Println()
 	fmt.Println("--------- Funding addresses for Faucet Contract Call ---------")
 	fmt.Println()
 
-	contractworker = pkgworker.New(chain, nil)
+	contractworker = pkgworker.New(params.TestChainConfig, chain, chain.Engine())
 	nonce = contractworker.GetCurrentState().GetNonce(crypto.PubkeyToAddress(FaucetPriKey.PublicKey))
 	dataEnc = common.FromHex(FaucetContractBinary)
 	ftx, _ := types.SignTx(
@@ -149,7 +148,7 @@ func fundFaucetContract(chain core.BlockChain) {
 	fmt.Println("--------- Funding addresses for Faucet Contract Call DONE ---------")
 }
 
-func callFaucetContractToFundAnAddress(chain core.BlockChain) {
+func callFaucetContractToFundAnAddress(chain *core.BlockChain) {
 	// Send Faucet Contract Transaction ///
 	fmt.Println("--------- Now Setting up Faucet Contract Call ---------")
 	fmt.Println()
@@ -198,14 +197,14 @@ func callFaucetContractToFundAnAddress(chain core.BlockChain) {
 	fmt.Println("--------- Faucet Contract Call DONE ---------")
 }
 
-func playFaucetContract(chain core.BlockChain) {
+func playFaucetContract(chain *core.BlockChain) {
 	fundFaucetContract(chain)
 	callFaucetContractToFundAnAddress(chain)
 }
 
 func main() {
 	genesis := gspec.MustCommit(database)
-	chain, _ := core.NewBlockChain(database, nil, nil, nil, gspec.Config, chain.Engine(), vm.Config{})
+	chain, _ := core.NewBlockChain(database, nil, gspec.Config, chain.Engine(), vm.Config{}, nil)
 	txpool := core.NewTxPool(core.DefaultTxPoolConfig, chainConfig, chain, types.NewTransactionErrorSink())
 
 	backend := &testWorkerBackend{
@@ -222,7 +221,7 @@ func main() {
 	//// Generate a small n-block chain and an uncle block for it
 	n := 3
 	if n > 0 {
-		blocks, _ := chain2.GenerateChain(chainConfig, genesis.Header(), chain.Engine(), database, n, func(i int, gen *chain2.BlockGen) {
+		blocks, _ := core.GenerateChain(chainConfig, genesis, chain.Engine(), database, n, func(i int, gen *core.BlockGen) {
 			gen.SetCoinbase(FaucetAddress)
 			gen.SetShardID(0)
 			gen.AddTx(pendingTxs[i].(*types.Transaction))

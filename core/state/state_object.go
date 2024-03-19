@@ -23,22 +23,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/metrics"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/zennittians/intelchain/staking"
 )
 
-var (
-	// EmptyRootHash is the known root hash of an empty trie.
-	EmptyRootHash = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-
-	// EmptyCodeHash is the known hash of the empty EVM bytecode.
-	EmptyCodeHash = crypto.Keccak256Hash(nil) // c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
-)
+var emptyCodeHash = crypto.Keccak256(nil)
 
 // Code ...
 type Code []byte
@@ -60,7 +54,7 @@ func (s Storage) String() (str string) {
 
 // Copy ...
 func (s Storage) Copy() Storage {
-	cpy := make(Storage, len(s))
+	cpy := make(Storage)
 	for key, value := range s {
 		cpy[key] = value
 	}
@@ -73,18 +67,18 @@ func (s Storage) Copy() Storage {
 // The usage pattern is as follows:
 // First you need to obtain a state object.
 // Account values can be accessed and modified through the object.
-// Finally, call commitTrie to write the modified storage trie into a database.
+// Finally, call CommitTrie to write the modified storage trie into a database.
 type Object struct {
 	address  common.Address
 	addrHash common.Hash // hash of ethereum address of the account
-	data     types.StateAccount
+	data     Account
 	db       *DB
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
 	// unable to deal with database-level errors. Any error that occurs
 	// during a database read is memoized here and will eventually be returned
-	// by DB.Commit.
+	// by StateDB.Commit.
 	dbErr error
 
 	// Write caches.
@@ -99,15 +93,14 @@ type Object struct {
 	// Cache flags.
 	// When an object is marked suicided it will be delete from the trie
 	// during the "update" phase of the state transition.
-	validatorWrapper bool // true if the code belongs to validator wrapper
-	dirtyCode        bool // true if the code was updated
-	suicided         bool
-	deleted          bool
+	dirtyCode bool // true if the code was updated
+	suicided  bool
+	deleted   bool
 }
 
 // empty returns whether the account is considered empty.
 func (s *Object) empty() bool {
-	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, EmptyCodeHash.Bytes())
+	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
 // Account is the Ethereum consensus representation of accounts.
@@ -120,15 +113,15 @@ type Account struct {
 }
 
 // newObject creates a state object.
-func newObject(db *DB, address common.Address, data types.StateAccount) *Object {
+func newObject(db *DB, address common.Address, data Account) *Object {
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
 	}
 	if data.CodeHash == nil {
-		data.CodeHash = EmptyCodeHash.Bytes()
+		data.CodeHash = emptyCodeHash
 	}
 	if data.Root == (common.Hash{}) {
-		data.Root = EmptyRootHash
+		data.Root = emptyRoot
 	}
 	return &Object{
 		db:             db,
@@ -143,7 +136,7 @@ func newObject(db *DB, address common.Address, data types.StateAccount) *Object 
 
 // EncodeRLP implements rlp.Encoder.
 func (s *Object) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &s.data)
+	return rlp.Encode(w, s.data)
 }
 
 // setError remembers the first non-nil error it is called with.
@@ -168,27 +161,16 @@ func (s *Object) touch() {
 	}
 }
 
-// getTrie returns the associated storage trie. The trie will be opened
-// if it's not loaded previously. An error will be returned if trie can't
-// be loaded.
-func (s *Object) getTrie(db Database) (Trie, error) {
+func (s *Object) getTrie(db Database) Trie {
 	if s.trie == nil {
-		// Try fetching from prefetcher first
-		// We don't prefetch empty tries
-		if s.data.Root != EmptyRootHash && s.db.prefetcher != nil {
-			// When the miner is creating the pending state, there is no
-			// prefetcher
-			s.trie = s.db.prefetcher.trie(s.addrHash, s.data.Root)
-		}
-		if s.trie == nil {
-			tr, err := db.OpenStorageTrie(s.db.originalRoot, s.addrHash, s.data.Root)
-			if err != nil {
-				return nil, err
-			}
-			s.trie = tr
+		var err error
+		s.trie, err = db.OpenStorageTrie(s.addrHash, s.data.Root)
+		if err != nil {
+			s.trie, _ = db.OpenStorageTrie(s.addrHash, common.Hash{})
+			s.setError(fmt.Errorf("can't create storage trie: %v", err))
 		}
 	}
-	return s.trie, nil
+	return s.trie
 }
 
 // GetState retrieves a value from the account storage trie.
@@ -219,43 +201,15 @@ func (s *Object) GetCommittedState(db Database, key common.Hash) common.Hash {
 	if value, cached := s.originStorage[key]; cached {
 		return value
 	}
-	// If the object was destructed in *this* block (and potentially resurrected),
-	// the storage has been cleared out, and we should *not* consult the previous
-	// database about any storage values. The only possible alternatives are:
-	//   1) resurrect happened, and new slot values were set -- those should
-	//      have been handles via pendingStorage above.
-	//   2) we don't have new values, and can deliver empty response back
-	if _, destructed := s.db.stateObjectsDestruct[s.address]; destructed {
+	// Track the amount of time wasted on reading the storage trie
+	if metrics.EnabledExpensive {
+		defer func(start time.Time) { s.db.StorageReads += time.Since(start) }(time.Now())
+	}
+	// Otherwise load the value from the database
+	enc, err := s.getTrie(db).TryGet(key[:])
+	if err != nil {
+		s.setError(err)
 		return common.Hash{}
-	}
-	// If no live objects are available, attempt to use snapshots
-	var (
-		enc []byte
-		err error
-	)
-	if s.db.snap != nil {
-		start := time.Now()
-		enc, err = s.db.snap.Storage(s.addrHash, crypto.Keccak256Hash(key.Bytes()))
-		if metrics.EnabledExpensive {
-			s.db.SnapshotStorageReads += time.Since(start)
-		}
-	}
-	// If the snapshot is unavailable or reading from it fails, load from the database.
-	if s.db.snap == nil || err != nil {
-		start := time.Now()
-		tr, err := s.getTrie(db)
-		if err != nil {
-			s.setError(err)
-			return common.Hash{}
-		}
-		enc, err = tr.TryGet(key.Bytes())
-		if metrics.EnabledExpensive {
-			s.db.StorageReads += time.Since(start)
-		}
-		if err != nil {
-			s.setError(err)
-			return common.Hash{}
-		}
 	}
 	var value common.Hash
 	if len(enc) > 0 {
@@ -314,16 +268,9 @@ func (s *Object) setState(key, value common.Hash) {
 
 // finalise moves all dirty storage slots into the pending area to be hashed or
 // committed later. It is invoked at the end of every transaction.
-func (s *Object) finalise(prefetch bool) {
-	slotsToPrefetch := make([][]byte, 0, len(s.dirtyStorage))
+func (s *Object) finalise() {
 	for key, value := range s.dirtyStorage {
 		s.pendingStorage[key] = value
-		if value != s.originStorage[key] {
-			slotsToPrefetch = append(slotsToPrefetch, common.CopyBytes(key[:])) // Copy needed for closure
-		}
-	}
-	if s.db.prefetcher != nil && prefetch && len(slotsToPrefetch) > 0 && s.data.Root != EmptyRootHash {
-		s.db.prefetcher.prefetch(s.addrHash, s.data.Root, slotsToPrefetch)
 	}
 	if len(s.dirtyStorage) > 0 {
 		s.dirtyStorage = make(Storage)
@@ -331,30 +278,16 @@ func (s *Object) finalise(prefetch bool) {
 }
 
 // updateTrie writes cached storage modifications into the object's storage trie.
-// It will return nil if the trie has not been loaded and no changes have been
-// made. An error will be returned if the trie can't be loaded/updated correctly.
-func (s *Object) updateTrie(db Database) (Trie, error) {
+func (s *Object) updateTrie(db Database) Trie {
 	// Make sure all dirty slots are finalized into the pending storage area
-	s.finalise(false) // Don't prefetch anymore, pull directly if need be
-	if len(s.pendingStorage) == 0 {
-		return s.trie, nil
-	}
-	// Track the amount of time wasted on updating the storage trie
+	s.finalise()
+
+	// Track the amount of time wasted on updating the storge trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.db.StorageUpdates += time.Since(start) }(time.Now())
 	}
-	// The snapshot storage map for the object
-	var (
-		storage map[common.Hash][]byte
-		hasher  = s.db.hasher
-	)
-	tr, err := s.getTrie(db)
-	if err != nil {
-		s.setError(err)
-		return nil, err
-	}
 	// Insert all the pending updates into the trie
-	usedStorage := make([][]byte, 0, len(s.pendingStorage))
+	tr := s.getTrie(db)
 	for key, value := range s.pendingStorage {
 		// Skip noop changes, persist actual changes
 		if value == s.originStorage[key] {
@@ -362,101 +295,65 @@ func (s *Object) updateTrie(db Database) (Trie, error) {
 		}
 		s.originStorage[key] = value
 
-		var v []byte
 		if (value == common.Hash{}) {
-			if err := tr.TryDelete(key[:]); err != nil {
-				s.setError(err)
-				return nil, err
-			}
-			s.db.StorageDeleted += 1
-		} else {
-			// Encoding []byte cannot fail, ok to ignore the error.
-			v, _ = rlp.EncodeToBytes(common.TrimLeftZeroes(value[:]))
-			if err := tr.TryUpdate(key[:], v); err != nil {
-				s.setError(err)
-				return nil, err
-			}
-			s.db.StorageUpdated += 1
+			s.setError(tr.TryDelete(key[:]))
+			continue
 		}
-		// If state snapshotting is active, cache the data til commit
-		if s.db.snap != nil {
-			if storage == nil {
-				// Retrieve the old storage map, if available, create a new one otherwise
-				if storage = s.db.snapStorage[s.addrHash]; storage == nil {
-					storage = make(map[common.Hash][]byte)
-					s.db.snapStorage[s.addrHash] = storage
-				}
-			}
-			storage[crypto.HashData(hasher, key[:])] = v // v will be nil if it's deleted
-		}
-		usedStorage = append(usedStorage, common.CopyBytes(key[:])) // Copy needed for closure
-	}
-	if s.db.prefetcher != nil {
-		s.db.prefetcher.used(s.addrHash, s.data.Root, usedStorage)
+		// Encoding []byte cannot fail, ok to ignore the error.
+		v, _ := rlp.EncodeToBytes(common.TrimLeftZeroes(value[:]))
+		s.setError(tr.TryUpdate(key[:], v))
 	}
 	if len(s.pendingStorage) > 0 {
 		s.pendingStorage = make(Storage)
 	}
-	return tr, nil
+	return tr
 }
 
-// UpdateRoot sets the trie root to the current root hash of. An error
-// will be returned if trie root hash is not computed correctly.
+// UpdateRoot sets the trie root to the current root hash of
 func (s *Object) updateRoot(db Database) {
-	tr, err := s.updateTrie(db)
-	if err != nil {
-		s.setError(fmt.Errorf("updateRoot (%x) error: %w", s.address, err))
-		return
-	}
-	// If nothing changed, don't bother with hashing anything
-	if tr == nil {
-		return
-	}
-	// Track the amount of time wasted on hashing the storage trie
+	s.updateTrie(db)
+
+	// Track the amount of time wasted on hashing the storge trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.db.StorageHashes += time.Since(start) }(time.Now())
 	}
-	s.data.Root = tr.Hash()
+	s.data.Root = s.trie.Hash()
 }
 
-// commitTrie submits the storage changes into the storage trie and re-computes
-// the root. Besides, all trie changes will be collected in a nodeset and returned.
-func (s *Object) commitTrie(db Database) (*trie.NodeSet, error) {
-	tr, err := s.updateTrie(db)
-	if err != nil {
-		return nil, err
-	}
+// CommitTrie the storage trie of the object to db.
+// This updates the trie root.
+func (s *Object) CommitTrie(db Database) error {
+	s.updateTrie(db)
 	if s.dbErr != nil {
-		return nil, s.dbErr
+		return s.dbErr
 	}
-	// If nothing changed, don't bother with committing anything
-	if tr == nil {
-		return nil, nil
-	}
-	// Track the amount of time wasted on committing the storage trie
+	// Track the amount of time wasted on committing the storge trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.db.StorageCommits += time.Since(start) }(time.Now())
 	}
-	root, nodes := tr.Commit(false)
-	s.data.Root = root
-	return nodes, err
+	root, err := s.trie.Commit(nil)
+	if err == nil {
+		s.data.Root = root
+	}
+	return err
 }
 
-// AddBalance adds amount to s's balance.
+// AddBalance removes amount from c's balance.
 // It is used to add funds to the destination account of a transfer.
 func (s *Object) AddBalance(amount *big.Int) {
-	// EIP161: We must check emptiness for the objects such that the account
+	// EIP158: We must check emptiness for the objects such that the account
 	// clearing (0,0,0 objects) can take effect.
 	if amount.Sign() == 0 {
 		if s.empty() {
 			s.touch()
 		}
+
 		return
 	}
 	s.SetBalance(new(big.Int).Add(s.Balance(), amount))
 }
 
-// SubBalance removes amount from s's balance.
+// SubBalance removes amount from c's balance.
 // It is used to remove funds from the origin account of a transfer.
 func (s *Object) SubBalance(amount *big.Int) {
 	if amount.Sign() == 0 {
@@ -465,6 +362,7 @@ func (s *Object) SubBalance(amount *big.Int) {
 	s.SetBalance(new(big.Int).Sub(s.Balance(), amount))
 }
 
+// SetBalance ...
 func (s *Object) SetBalance(amount *big.Int) {
 	s.db.journal.append(balanceChange{
 		account: &s.address,
@@ -504,93 +402,40 @@ func (s *Object) Address() common.Address {
 	return s.address
 }
 
-// Code returns the contract/validator code associated with this object, if any.
+// Code returns the contract code associated with this object, if any.
 func (s *Object) Code(db Database) []byte {
 	if s.code != nil {
 		return s.code
 	}
-	if bytes.Equal(s.CodeHash(), EmptyCodeHash.Bytes()) {
+	if bytes.Equal(s.CodeHash(), emptyCodeHash) {
 		return nil
 	}
-	var err error
-	code := []byte{}
-	// if it's not set for validator wrapper, then it may be either contract code or validator wrapper (old version of db
-	// don't have any prefix to differentiate between them)
-	// so, if it's not set for validator wrapper, we need to check contract code as well
-	if !s.validatorWrapper {
-		code, err = db.ContractCode(s.addrHash, common.BytesToHash(s.CodeHash()))
-	}
-	// if it couldn't load contract code or it is set to validator wrapper, then it tries to fetch validator wrapper code
-	if s.validatorWrapper || err != nil {
-		vCode, errVCode := db.ValidatorCode(s.addrHash, common.BytesToHash(s.CodeHash()))
-		if errVCode == nil && vCode != nil {
-			s.code = vCode
-			return vCode
-		}
-		if s.validatorWrapper {
-			s.setError(fmt.Errorf("can't load validator code hash %x for account address hash %x : %v", s.CodeHash(), s.addrHash, err))
-		} else {
-			s.setError(fmt.Errorf("can't load contract/validator code hash %x for account address hash %x : contract code error: %v, validator code error: %v",
-				s.CodeHash(), s.addrHash, err, errVCode))
-		}
+	code, err := db.ContractCode(s.addrHash, common.BytesToHash(s.CodeHash()))
+	if err != nil {
+		s.setError(fmt.Errorf("can't load code hash %x: %v", s.CodeHash(), err))
 	}
 	s.code = code
 	return code
 }
 
-// CodeSize returns the size of the contract/validator code associated with this object,
-// or zero if none. This method is an almost mirror of Code, but uses a cache
-// inside the database to avoid loading codes seen recently.
-func (s *Object) CodeSize(db Database) int {
-	if s.code != nil {
-		return len(s.code)
-	}
-	if bytes.Equal(s.CodeHash(), EmptyCodeHash.Bytes()) {
-		return 0
-	}
-	var err error
-	size := int(0)
-
-	// if it's not set for validator wrapper, then it may be either contract code or validator wrapper (old version of db
-	// don't have any prefix to differentiate between them)
-	// so, if it's not set for validator wrapper, we need to check contract code as well
-	if !s.validatorWrapper {
-		size, err = db.ContractCodeSize(s.addrHash, common.BytesToHash(s.CodeHash()))
-	}
-	// if it couldn't get contract code or it is set to validator wrapper, then it tries to retrieve validator wrapper code
-	if s.validatorWrapper || err != nil {
-		vcSize, errVCSize := db.ValidatorCodeSize(s.addrHash, common.BytesToHash(s.CodeHash()))
-		if errVCSize == nil && vcSize > 0 {
-			return vcSize
-		}
-		if s.validatorWrapper {
-			s.setError(fmt.Errorf("can't load validator code size %x for account address hash %x : %v", s.CodeHash(), s.addrHash, err))
-		} else {
-			s.setError(fmt.Errorf("can't load contract/validator code size %x for account address hash %x : contract code size error: %v, validator code size error: %v",
-				s.CodeHash(), s.addrHash, err, errVCSize))
-		}
-		s.setError(fmt.Errorf("can't load code size %x (validator wrapper: %t): %v", s.CodeHash(), s.validatorWrapper, err))
-	}
-	return size
-}
-
-func (s *Object) SetCode(codeHash common.Hash, code []byte, isValidatorCode bool) {
+// SetCode ...
+func (s *Object) SetCode(codeHash common.Hash, code []byte) {
 	prevcode := s.Code(s.db.db)
 	s.db.journal.append(codeChange{
 		account:  &s.address,
 		prevhash: s.CodeHash(),
 		prevcode: prevcode,
 	})
-	s.setCode(codeHash, code, isValidatorCode)
+	s.setCode(codeHash, code)
 }
 
-func (s *Object) setCode(codeHash common.Hash, code []byte, isValidatorCode bool) {
+func (s *Object) setCode(codeHash common.Hash, code []byte) {
 	s.code = code
 	s.data.CodeHash = codeHash[:]
 	s.dirtyCode = true
-	s.validatorWrapper = isValidatorCode
 }
 
+// SetNonce ...
 func (s *Object) SetNonce(nonce uint64) {
 	s.db.journal.append(nonceChange{
 		account: &s.address,
@@ -603,23 +448,26 @@ func (s *Object) setNonce(nonce uint64) {
 	s.data.Nonce = nonce
 }
 
+// CodeHash ...
 func (s *Object) CodeHash() []byte {
 	return s.data.CodeHash
 }
 
+// Balance ...
 func (s *Object) Balance() *big.Int {
 	return s.data.Balance
 }
 
+// Nonce ...
 func (s *Object) Nonce() uint64 {
 	return s.data.Nonce
 }
 
-// Value is never called, but must be present to allow Object to be used
+// Value Never called, but must be present to allow stateObject to be used
 // as a vm.Account interface that also satisfies the vm.ContractRef
 // interface. Interfaces are awesome.
 func (s *Object) Value() *big.Int {
-	panic("Value on state object should never be called")
+	panic("Value on stateObject should never be called")
 }
 
 // IsValidator checks whether it is a validator object

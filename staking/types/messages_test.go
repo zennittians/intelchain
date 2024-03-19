@@ -289,7 +289,7 @@ func cpTestDataSetup() {
 	description := Description{
 		Name:            "Wayne",
 		Identity:        "wen",
-		Website:         "Intelchain.org.wen",
+		Website:         "intelchain.org.wen",
 		SecurityContact: "wenSecurity",
 		Details:         "wenDetails",
 	}

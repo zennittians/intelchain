@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"sync"
 	"time"
 
@@ -50,14 +49,13 @@ func SetLogVerbosity(verbosity log.Lvl) {
 	if glogger != nil {
 		glogger.Verbosity(logVerbosity)
 	}
-	updateZeroLogLevel(int(logVerbosity))
+	updateZeroLogLevel(int(verbosity))
 }
 
 // AddLogFile creates a StreamHandler that outputs JSON logs
-// into rotating files with specified max file size and storing at
-// max rotateCount files
-func AddLogFile(filepath string, maxSize int, rotateCount int, rotateMaxAge int) {
-	setZeroLoggerFileOutput(filepath, maxSize, rotateCount, rotateMaxAge)
+// into rotating files with specified max file size
+func AddLogFile(filepath string, maxSize int) {
+	setZeroLoggerFileOutput(filepath, maxSize)
 }
 
 // AddLogHandler add a log handler
@@ -99,7 +97,7 @@ func setZeroLogContext(port string, ip string) {
 
 // SetZeroLoggerFileOutput sets zeroLogger's output stream
 // to destinated filepath with log file rotation.
-func setZeroLoggerFileOutput(filepath string, maxSize int, rotateCount int, rotateMaxAge int) error {
+func setZeroLoggerFileOutput(filepath string, maxSize int) error {
 	dir := path.Dir(filepath)
 	filename := path.Base(filepath)
 
@@ -107,11 +105,9 @@ func setZeroLoggerFileOutput(filepath string, maxSize int, rotateCount int, rota
 	// TODO: zerolog filename prefix can be removed once all loggers
 	// has been replaced
 	childLogger := Logger().Output(&lumberjack.Logger{
-		Filename:   fmt.Sprintf("%s/zerolog-%s", dir, filename),
-		MaxSize:    maxSize,
-		MaxBackups: rotateCount,
-		MaxAge:     rotateMaxAge,
-		Compress:   true,
+		Filename: fmt.Sprintf("%s/zerolog-%s", dir, filename),
+		MaxSize:  maxSize,
+		Compress: true,
 	})
 	zeroLogger = &childLogger
 
@@ -138,10 +134,6 @@ func AnalysisStart(name string, more ...interface{}) {
 // AnalysisEnd ..
 func AnalysisEnd(name string, more ...interface{}) {
 	ds().Debug().Msgf("ds-%s-end %s", name, fmt.Sprint(more...))
-}
-
-func init() {
-	zeroLogger = Logger()
 }
 
 // Logger returns a zerolog.Logger singleton
@@ -195,20 +187,4 @@ func updateZeroLogLevel(level int) {
 	}
 	childLogger := Logger().Level(zeroLoggerLevel)
 	zeroLogger = &childLogger
-}
-
-// GetPort is useful for debugging, returns `--port` flag provided to executable.
-func GetPort() int {
-	ok := false
-	for _, x := range os.Args {
-		if x == "--port" {
-			ok = true
-			continue
-		}
-		if ok {
-			rs, _ := strconv.ParseInt(x, 10, 64)
-			return int(rs)
-		}
-	}
-	return 0
 }

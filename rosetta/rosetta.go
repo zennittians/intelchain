@@ -24,7 +24,7 @@ var listener net.Listener
 
 // StartServers starts the rosetta http server
 // TODO (dm): optimize rosetta to use single flight & use extra caching type DB to avoid re-processing data
-func StartServers(itc *itc.Intelchain, config nodeconfig.RosettaServerConfig, limiterEnable bool, rateLimit int) error {
+func StartServers(itc *itc.Intelchain, config nodeconfig.RosettaServerConfig) error {
 	if !config.HTTPEnabled {
 		utils.Logger().Info().Msg("Rosetta http server disabled...")
 		return nil
@@ -37,13 +37,13 @@ func StartServers(itc *itc.Intelchain, config nodeconfig.RosettaServerConfig, li
 	serverAsserter, err := asserter.NewServer(
 		append(common.PlainOperationTypes, common.StakingOperationTypes...),
 		nodeconfig.GetShardConfig(itc.ShardID).Role() == nodeconfig.ExplorerNode,
-		[]*types.NetworkIdentifier{network}, services.CallMethod, false, "",
+		[]*types.NetworkIdentifier{network},
 	)
 	if err != nil {
 		return err
 	}
 
-	router := recoverMiddleware(server.CorsMiddleware(loggerMiddleware(getRouter(serverAsserter, itc, limiterEnable, rateLimit))))
+	router := recoverMiddleware(server.CorsMiddleware(loggerMiddleware(getRouter(serverAsserter, itc))))
 	utils.Logger().Info().
 		Int("port", config.HTTPPort).
 		Str("ip", config.HTTPIp).
@@ -59,9 +59,6 @@ func StartServers(itc *itc.Intelchain, config nodeconfig.RosettaServerConfig, li
 
 // StopServers stops the rosetta http server
 func StopServers() error {
-	if listener == nil {
-		return nil
-	}
 	if err := listener.Close(); err != nil {
 		return err
 	}
@@ -77,20 +74,13 @@ func newHTTPServer(handler http.Handler) *http.Server {
 	}
 }
 
-func getRouter(asserter *asserter.Asserter, itc *itc.Intelchain, limiterEnable bool, rateLimit int) http.Handler {
+func getRouter(asserter *asserter.Asserter, itc *itc.Intelchain) http.Handler {
 	return server.NewRouter(
 		server.NewAccountAPIController(services.NewAccountAPI(itc), asserter),
 		server.NewBlockAPIController(services.NewBlockAPI(itc), asserter),
 		server.NewMempoolAPIController(services.NewMempoolAPI(itc), asserter),
 		server.NewNetworkAPIController(services.NewNetworkAPI(itc), asserter),
 		server.NewConstructionAPIController(services.NewConstructionAPI(itc), asserter),
-		server.NewCallAPIController(
-			services.NewCallAPIService(itc, limiterEnable, rateLimit,
-				itc.NodeAPI.GetConfig().NodeConfig.RPCServer.EvmCallTimeout),
-			asserter,
-		),
-		server.NewEventsAPIController(services.NewEventAPI(itc), asserter),
-		server.NewSearchAPIController(services.NewSearchAPI(itc), asserter),
 	)
 }
 

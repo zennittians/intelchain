@@ -21,7 +21,6 @@ import (
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/core/vm"
-	stakingTypes "github.com/zennittians/intelchain/staking/types"
 )
 
 // Validator is an interface which defines the standard for block validation. It
@@ -40,6 +39,10 @@ type Validator interface {
 	// via the VerifySeal method.
 	ValidateHeader(block *types.Block, seal bool) error
 
+	// ValidateHeaders verifies a batch of blocks' headers concurrently. The method returns a quit channel
+	// to abort the operations and a results channel to retrieve the async verifications
+	ValidateHeaders(chain []*types.Block) (chan<- struct{}, <-chan error)
+
 	// ValidateCXReceiptsProof checks whether the given CXReceiptsProof is consistency with itself
 	ValidateCXReceiptsProof(cxp *types.CXReceiptsProof) error
 }
@@ -50,12 +53,9 @@ type Validator interface {
 // initial state is based. It should return the receipts generated, amount
 // of gas used in the process and return an error if any of the internal rules
 // failed.
-// Process will cache the result of successfully processed blocks.
-// readCache decides whether the method will try reading from result cache.
 type Processor interface {
-	Process(block *types.Block, statedb *state.DB, cfg vm.Config, readCache bool) (
-		types.Receipts, types.CXReceipts, []stakingTypes.StakeMsg,
-		[]*types.Log, uint64, reward.Reader, *state.DB, error,
+	Process(block *types.Block, statedb *state.DB, cfg vm.Config) (
+		types.Receipts, types.CXReceipts,
+		[]*types.Log, uint64, reward.Reader, error,
 	)
-	CacheProcessorResult(cacheKey interface{}, result *ProcessorResult)
 }

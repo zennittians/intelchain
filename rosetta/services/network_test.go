@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/zennittians/intelchain/rosetta/common"
 	commonRPC "github.com/zennittians/intelchain/rpc/common"
 )

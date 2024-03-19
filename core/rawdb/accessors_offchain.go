@@ -1,12 +1,9 @@
 package rawdb
 
 import (
-	"encoding/binary"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/core/types"
@@ -21,9 +18,7 @@ func ReadShardState(
 ) (*shard.State, error) {
 	data, err := db.Get(shardStateKey(epoch))
 	if err != nil {
-		return nil, errors.Errorf(
-			MsgNoShardStateFromDB, "epoch: %d", epoch.Uint64(),
-		)
+		return nil, errors.New(MsgNoShardStateFromDB)
 	}
 	ss, err2 := shard.DecodeWrapper(data)
 	if err2 != nil {
@@ -43,7 +38,7 @@ func WriteShardStateBytes(db DatabaseWriter, epoch *big.Int, data []byte) error 
 	}
 	utils.Logger().Info().
 		Str("epoch", epoch.String()).
-		Int("size", len(data)).Msgf("wrote sharding state, epoch %d", epoch.Uint64())
+		Int("size", len(data)).Msg("wrote sharding state")
 	return nil
 }
 
@@ -93,7 +88,7 @@ func WritePendingSlashingCandidates(db DatabaseWriter, bytes []byte) error {
 func ReadCXReceipts(db DatabaseReader, shardID uint32, number uint64, hash common.Hash) (types.CXReceipts, error) {
 	data, err := db.Get(cxReceiptKey(shardID, number, hash))
 	if err != nil || len(data) == 0 {
-		utils.Logger().Error().Err(err).Uint64("number", number).Int("dataLen", len(data)).Msg("ReadCXReceipts")
+		utils.Logger().Info().Err(err).Uint64("number", number).Int("dataLen", len(data)).Msg("ReadCXReceipts")
 		return nil, err
 	}
 	cxReceipts := types.CXReceipts{}
@@ -161,7 +156,7 @@ func ReadValidatorSnapshot(
 			Msg("Unable to decode validator snapshot from database")
 		return nil, err
 	}
-	s := staking.ValidatorSnapshot{Validator: &v, Epoch: epoch}
+	s := staking.ValidatorSnapshot{&v, epoch}
 	return &s, nil
 }
 
@@ -186,95 +181,6 @@ func DeleteValidatorSnapshot(db DatabaseDeleter, addr common.Address, epoch *big
 		return err
 	}
 	return nil
-}
-
-func IteratorValidatorSnapshot(iterator DatabaseIterator, cb func(addr common.Address, epoch *big.Int) bool) (minKey []byte, maxKey []byte) {
-	iter := iterator.NewIterator(validatorSnapshotPrefix, nil)
-	defer iter.Release()
-
-	minKey = validatorSnapshotPrefix
-	for iter.Next() {
-		// validatorSnapshotKey = validatorSnapshotPrefix + addr bytes (20 bytes) + epoch bytes
-		key := iter.Key()
-
-		maxKey = key
-		addressBytes := key[len(validatorSnapshotPrefix) : len(validatorSnapshotPrefix)+20]
-		epochBytes := key[len(validatorSnapshotPrefix)+20:]
-
-		if !cb(common.BytesToAddress(addressBytes), big.NewInt(0).SetBytes(epochBytes)) {
-			return
-		}
-	}
-
-	return
-}
-
-func IteratorCXReceipt(iterator DatabaseIterator, cb func(it ethdb.Iterator, shardID uint32, number uint64, hash common.Hash) bool) {
-	preifxKey := cxReceiptPrefix
-	iter := iterator.NewIterator(preifxKey, nil)
-	defer iter.Release()
-	shardOffset := len(preifxKey)
-	numberOffset := shardOffset + 4
-	hashOffset := numberOffset + 8
-
-	for iter.Next() {
-		// validatorSnapshotKey = validatorSnapshotPrefix + addr bytes (20 bytes) + epoch bytes
-		key := iter.Key()
-		shardID := binary.BigEndian.Uint32(key[shardOffset : shardOffset+4])
-		number := binary.BigEndian.Uint64(key[numberOffset : numberOffset+8])
-		hash := common.BytesToHash(key[hashOffset : hashOffset+20])
-		if !cb(iter, shardID, number, hash) {
-			return
-		}
-	}
-}
-
-func IteratorCXReceiptsProofSpent(iterator DatabaseIterator, cb func(it ethdb.Iterator, shardID uint32, number uint64) bool) {
-	preifxKey := cxReceiptSpentPrefix
-	iter := iterator.NewIterator(preifxKey, nil)
-	defer iter.Release()
-	shardOffset := len(preifxKey)
-	numberOffset := shardOffset + 4
-
-	for iter.Next() {
-		// validatorSnapshotKey = validatorSnapshotPrefix + addr bytes (20 bytes) + epoch bytes
-		key := iter.Key()
-		shardID := binary.BigEndian.Uint32(key[shardOffset : shardOffset+4])
-		number := binary.BigEndian.Uint64(key[numberOffset : numberOffset+8])
-		if !cb(iter, shardID, number) {
-			return
-		}
-	}
-}
-func IteratorValidatorStats(iterator DatabaseIterator, cb func(it ethdb.Iterator, addr common.Address) bool) {
-	preifxKey := validatorStatsPrefix
-	iter := iterator.NewIterator(preifxKey, nil)
-	defer iter.Release()
-	addrOffset := len(preifxKey)
-
-	for iter.Next() {
-		// validatorSnapshotKey = validatorSnapshotPrefix + addr bytes (20 bytes) + epoch bytes
-		key := iter.Key()
-		addr := common.BytesToAddress(key[addrOffset : addrOffset+20])
-		if !cb(iter, addr) {
-			return
-		}
-	}
-}
-func IteratorDelegatorDelegations(iterator DatabaseIterator, cb func(it ethdb.Iterator, delegator common.Address) bool) {
-	preifxKey := delegatorValidatorListPrefix
-	iter := iterator.NewIterator(preifxKey, nil)
-	defer iter.Release()
-	addrOffset := len(preifxKey)
-
-	for iter.Next() {
-		// validatorSnapshotKey = validatorSnapshotPrefix + addr bytes (20 bytes) + epoch bytes
-		key := iter.Key()
-		addr := common.BytesToAddress(key[addrOffset : addrOffset+20])
-		if !cb(iter, addr) {
-			return
-		}
-	}
 }
 
 // DeleteValidatorStats ..
@@ -395,7 +301,7 @@ func ReadBlockCommitSig(db DatabaseReader, blockNum uint64) ([]byte, error) {
 		//       this is only needed for the compatibility in the migration moment.
 		data, err = db.Get(lastCommitsKey)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("cannot read commit sig for block: %d ", blockNum))
+			return nil, errors.New("cannot read commit sig for block " + string(blockNum))
 		}
 	}
 	return data, nil

@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/zennittians/intelchain/core/rawdb"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/vm"
 	"github.com/zennittians/intelchain/internal/params"
@@ -38,7 +38,6 @@ type Config struct {
 	Coinbase    common.Address
 	BlockNumber *big.Int
 	EpochNumber *big.Int
-	VRF         common.Hash
 	Time        *big.Int
 	GasLimit    uint64
 	GasPrice    *big.Int
@@ -103,7 +102,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, *state.DB, error) {
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 	}
 	var (
 		address = common.BytesToAddress([]byte("contract"))
@@ -112,7 +111,7 @@ func Execute(code, input []byte, cfg *Config) ([]byte, *state.DB, error) {
 	)
 	cfg.State.CreateAccount(address)
 	// set the receiver's (the executing contract) code for execution.
-	cfg.State.SetCode(address, code, false)
+	cfg.State.SetCode(address, code)
 	// Call the code with the given configuration.
 	ret, _, err := vmenv.Call(
 		sender,
@@ -133,7 +132,7 @@ func Create(input []byte, cfg *Config) ([]byte, common.Address, uint64, error) {
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 	}
 	var (
 		vmenv  = NewEnv(cfg)

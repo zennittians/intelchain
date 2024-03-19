@@ -107,7 +107,7 @@ type Header interface {
 
 	// MixDigest is the mixhash.
 	//
-	// This field is a remnant from Ethereum, and intelchain does not use it and always
+	// This field is a remnant from Ethereum, and Intelchain does not use it and always
 	// zeroes it out.
 	MixDigest() common.Hash
 
@@ -223,7 +223,7 @@ type Header interface {
 	Logger(logger *zerolog.Logger) *zerolog.Logger
 
 	// GetShardState returns the deserialized shard state object.
-	// Note that header encoded shard state only exists in the last block of the previous epoch
+	// Note that header encoded shard state only exists in the first block of the epoch
 	GetShardState() (shard.State, error)
 
 	// Copy returns a copy of the header.

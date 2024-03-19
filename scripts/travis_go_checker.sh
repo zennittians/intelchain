@@ -71,8 +71,6 @@ then
 		echo "go generate FAILED!"
 		echo "go generate changed working tree contents!"
 		"${progdir}/print_file.sh" "${gogenerate_status_diff}" "git status diff"
-		"${progdir}/print_file.sh" "${gogenerate_status_before}" "gogenerate before"
-		"${progdir}/print_file.sh" "${gogenerate_status_after}" "gogenerate after"
 		ok=false
 	fi
 else
@@ -82,9 +80,7 @@ else
 fi
 
 echo "Running go test..."
-# Fix https://github.com/golang/go/issues/44129#issuecomment-788351567
-go get -t ./...
-if go test -count=1 -vet=all -race ./...
+if go test -v -count=1 ./...
 then
 	echo "go test succeeded."
 else

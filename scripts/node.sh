@@ -199,7 +199,7 @@ if ${download_only}; then
    exit 0
 fi
 
-color "36" "Starting intelchain $1 ${*:2}"
+color "36" "Starting Intelchain $1 ${*:2}"
 
 exec -a "$0 ${process}" "./${process}" "${@:2}"
 

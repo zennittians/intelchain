@@ -65,9 +65,6 @@ func (k *PrivateKey) Evaluate(alpha []byte) ([32]byte, []byte) {
 	//pi = VRF_prove(SK, alpha)
 	msgHash := sha256.Sum256(alpha)
 	pi := k.SignHash(msgHash[:])
-	if pi == nil {
-		return [32]byte{}, nil
-	}
 
 	//hash the signature and output as VRF beta
 	//beta = VRF_proof2hash(pi)

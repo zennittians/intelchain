@@ -56,20 +56,6 @@ var (
 			"type",
 		},
 	)
-
-	// nodeCrossLinkMessageCounterVec is used to keep track of node new/invalid/duplicate crosslink messages received
-	nodeCrossLinkMessageCounterVec = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "itc",
-			Subsystem: "p2p",
-			Name:      "crosslink_msg",
-			Help:      "number of crosslink messages",
-		},
-		[]string{
-			"type",
-		},
-	)
-
 	onceMetrics sync.Once
 )
 
@@ -80,7 +66,6 @@ func initMetrics() {
 			nodeP2PMessageCounterVec,
 			nodeConsensusMessageCounterVec,
 			nodeNodeMessageCounterVec,
-			nodeCrossLinkMessageCounterVec,
 		)
 	})
 }

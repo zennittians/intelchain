@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/coinbase/rosetta-sdk-go/server"
 	"github.com/coinbase/rosetta-sdk-go/types"
@@ -20,24 +19,22 @@ import (
 
 const (
 	// DefaultGasPrice ..
-	DefaultGasPrice = 100 * denominations.Intello
+	DefaultGasPrice = denominations.Intello
 )
 
 // ConstructAPI implements the server.ConstructAPIServicer interface.
 type ConstructAPI struct {
-	itc            *itc.Intelchain
-	signer         itcTypes.Signer
-	stakingSigner  stakingTypes.Signer
-	evmCallTimeout time.Duration
+	itc           *itc.Intelchain
+	signer        itcTypes.Signer
+	stakingSigner stakingTypes.Signer
 }
 
 // NewConstructionAPI creates a new instance of a ConstructAPI.
 func NewConstructionAPI(itc *itc.Intelchain) server.ConstructionAPIServicer {
 	return &ConstructAPI{
-		itc:            itc,
-		signer:         itcTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
-		stakingSigner:  stakingTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
-		evmCallTimeout: itc.NodeAPI.GetConfig().NodeConfig.RPCServer.EvmCallTimeout,
+		itc:           itc,
+		signer:        itcTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
+		stakingSigner: stakingTypes.NewEIP155Signer(new(big.Int).SetUint64(itc.ChainID)),
 	}
 }
 

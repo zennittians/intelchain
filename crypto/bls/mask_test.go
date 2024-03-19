@@ -16,8 +16,7 @@ func TestNewMask(test *testing.T) {
 	pubKey1.Bytes.FromLibBLSPublicKey(pubKey1.Object)
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -52,12 +51,16 @@ func TestNewMaskWithAbsentPublicKey(test *testing.T) {
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
 	pubKey4.Bytes.FromLibBLSPublicKey(pubKey4.Object)
 
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey4.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey4)
 
 	if err == nil {
-		test.Errorf("Failed to set a key: %s", err)
+		test.Errorf("Failed to create a new Mask: %s", err)
 	}
+
+	if mask != nil {
+		test.Errorf("Expected failure to create a new mask")
+	}
+
 }
 
 func TestThreshHoldPolicy(test *testing.T) {
@@ -68,8 +71,7 @@ func TestThreshHoldPolicy(test *testing.T) {
 	pubKey1.Bytes.FromLibBLSPublicKey(pubKey1.Object)
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -108,8 +110,7 @@ func TestCompletePolicy(test *testing.T) {
 	pubKey1.Bytes.FromLibBLSPublicKey(pubKey1.Object)
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -183,8 +184,7 @@ func TestEnableKeyFunctions(test *testing.T) {
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
 	pubKey4.Bytes.FromLibBLSPublicKey(pubKey4.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -238,8 +238,7 @@ func TestGetSignedPubKeysFromBitmap(test *testing.T) {
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
 	pubKey4.Bytes.FromLibBLSPublicKey(pubKey4.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -274,8 +273,7 @@ func TestSetKeyAtomic(test *testing.T) {
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
 	pubKey3.Bytes.FromLibBLSPublicKey(pubKey3.Object)
 	pubKey4.Bytes.FromLibBLSPublicKey(pubKey4.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3})
-	err := mask.SetKey(pubKey1.Bytes, true)
+	mask, err := NewMask([]PublicKeyWrapper{pubKey1, pubKey2, pubKey3}, &pubKey1)
 
 	if err != nil {
 		test.Errorf("Failed to create a new Mask: %s", err)
@@ -317,8 +315,7 @@ func TestCopyParticipatingMask(test *testing.T) {
 
 	pubKey1.Bytes.FromLibBLSPublicKey(pubKey1.Object)
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2})
-	_ = mask.SetKey(pubKey1.Bytes, true)
+	mask, _ := NewMask([]PublicKeyWrapper{pubKey1, pubKey2}, &pubKey1)
 
 	clonedMask := mask.Mask()
 
@@ -334,8 +331,7 @@ func TestSetMask(test *testing.T) {
 
 	pubKey1.Bytes.FromLibBLSPublicKey(pubKey1.Object)
 	pubKey2.Bytes.FromLibBLSPublicKey(pubKey2.Object)
-	mask := NewMask([]PublicKeyWrapper{pubKey1, pubKey2})
-	_ = mask.SetKey(pubKey1.Bytes, true)
+	mask, _ := NewMask([]PublicKeyWrapper{pubKey1, pubKey2}, &pubKey1)
 
 	_ = mask
 	maskBytes := []byte{3}

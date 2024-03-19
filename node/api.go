@@ -1,13 +1,10 @@
 package node
 
 import (
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/zennittians/intelchain/consensus/quorum"
-	"github.com/zennittians/intelchain/consensus/votepower"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/zennittians/intelchain/api/service/prometheus"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/eth/rpc"
-	"github.com/zennittians/intelchain/internal/tikv"
 	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta"
 	itc_rpc "github.com/zennittians/intelchain/rpc"
@@ -22,7 +19,7 @@ func (node *Node) IsCurrentlyLeader() bool {
 
 // PeerConnectivity ..
 func (node *Node) PeerConnectivity() (int, int, int) {
-	return node.host.PeerConnectivity()
+	return node.host.C()
 }
 
 // ListPeer return list of peers for a certain topic
@@ -73,7 +70,11 @@ func (node *Node) StartRPC() error {
 	// Gather all the possible APIs to surface
 	apis := node.APIs(intelchain)
 
-	return itc_rpc.StartServers(intelchain, apis, node.NodeConfig.RPCServer, node.IntelchainConfig.RPCOpt)
+	for _, service := range node.serviceManager.GetServices() {
+		apis = append(apis, service.APIs()...)
+	}
+
+	return itc_rpc.StartServers(intelchain, apis, node.NodeConfig.RPCServer)
 }
 
 // StopRPC stop RPC service
@@ -81,10 +82,21 @@ func (node *Node) StopRPC() error {
 	return itc_rpc.StopServers()
 }
 
+// StartPrometheus start promtheus metrics service
+func (node *Node) StartPrometheus(cfg prometheus.Config) error {
+	prometheus.NewService(cfg)
+	return nil
+}
+
+// StopPrometheus stop prometheus metrics service
+func (node *Node) StopPrometheus() error {
+	return prometheus.StopService()
+}
+
 // StartRosetta start rosetta service
 func (node *Node) StartRosetta() error {
 	intelchain := itc.New(node, node.TxPool, node.CxPool, node.Consensus.ShardID)
-	return rosetta.StartServers(intelchain, node.NodeConfig.RosettaServer, node.NodeConfig.RPCServer.RateLimiterEnabled, node.NodeConfig.RPCServer.RequestsPerSecond)
+	return rosetta.StartServers(intelchain, node.NodeConfig.RosettaServer)
 }
 
 // StopRosetta stops rosetta service
@@ -95,22 +107,17 @@ func (node *Node) StopRosetta() error {
 // APIs return the collection of local RPC services.
 // NOTE, some of these services probably need to be moved to somewhere else.
 func (node *Node) APIs(intelchain *itc.Intelchain) []rpc.API {
-	itcFilter := filters.NewPublicFilterAPI(intelchain, false, "itc", intelchain.ShardID)
-	ethFilter := filters.NewPublicFilterAPI(intelchain, false, "eth", intelchain.ShardID)
-
-	if node.IntelchainConfig.General.RunElasticMode && node.IntelchainConfig.TiKV.Role == tikv.RoleReader {
-		itcFilter.Service.(*filters.PublicFilterAPI).SyncNewFilterFromOtherReaders()
-		ethFilter.Service.(*filters.PublicFilterAPI).SyncNewFilterFromOtherReaders()
-	}
-
 	// Append all the local APIs and return
 	return []rpc.API{
 		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.V1),
 		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.V2),
+		{
+			Namespace: "itc",
+			Version:   itc_rpc.APIVersion,
+			Service:   filters.NewPublicFilterAPI(intelchain, false),
+			Public:    true,
+		},
 		itc_rpc.NewPublicNetAPI(node.host, intelchain.ChainID, itc_rpc.Eth),
-		itc_rpc.NewPublicWeb3API(),
-		itcFilter,
-		ethFilter,
 	}
 }
 
@@ -136,7 +143,7 @@ func (node *Node) GetConsensusCurViewID() uint64 {
 
 // GetConsensusBlockNum returns the current block number of the consensus
 func (node *Node) GetConsensusBlockNum() uint64 {
-	return node.Consensus.BlockNum()
+	return node.Consensus.GetBlockNum()
 }
 
 // GetConsensusInternal returns consensus internal data
@@ -149,65 +156,4 @@ func (node *Node) GetConsensusInternal() rpc_common.ConsensusInternal {
 		BlockNum:      node.GetConsensusBlockNum(),
 		ConsensusTime: node.Consensus.GetFinality(),
 	}
-}
-
-// IsBackup returns the node is in backup mode
-func (node *Node) IsBackup() bool {
-	return node.Consensus.IsBackup()
-}
-
-// SetNodeBackupMode change node backup mode
-func (node *Node) SetNodeBackupMode(isBackup bool) bool {
-	if node.Consensus.IsBackup() == isBackup {
-		return false
-	}
-
-	node.Consensus.SetIsBackup(isBackup)
-	node.Consensus.ResetViewChangeState()
-	return true
-}
-
-func (node *Node) GetConfig() rpc_common.Config {
-	return rpc_common.Config{
-		IntelchainConfig: *node.IntelchainConfig,
-		NodeConfig:       *node.NodeConfig,
-		ChainConfig:      node.chainConfig,
-	}
-}
-
-// GetLastSigningPower get last signed power
-func (node *Node) GetLastSigningPower() (float64, error) {
-	power, err := node.Consensus.Decider().CurrentTotalPower(quorum.Commit)
-	if err != nil {
-		return 0, err
-	}
-
-	round := float64(power.MulInt64(10000).RoundInt64()) / 10000
-	return round, nil
-}
-
-func (node *Node) GetLastSigningPower2() (float64, error) {
-	bc := node.Consensus.Blockchain()
-	cur := bc.CurrentBlock()
-	ss, err := bc.ReadShardState(cur.Epoch())
-	if err != nil {
-		return 0, err
-	}
-	roster, err := votepower.Compute(&ss.Shards[bc.ShardID()], cur.Epoch())
-	if err != nil {
-		return 0, err
-	}
-	blsPubKeys, err := ss.Shards[bc.ShardID()].BLSPublicKeys()
-	if err != nil {
-		return 0, err
-	}
-
-	mask := bls.NewMask(blsPubKeys)
-	err = mask.SetMask(cur.Header().LastCommitBitmap())
-	if err != nil {
-		return 0, err
-	}
-	power := roster.VotePowerByMask(mask)
-	round := float64(power.MulInt64(10000).RoundInt64()) / 10000
-	return round, nil
 }

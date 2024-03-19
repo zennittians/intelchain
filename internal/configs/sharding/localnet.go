@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/numeric"
 
@@ -15,34 +14,22 @@ import (
 // configuration schedule.
 var LocalnetSchedule localnetSchedule
 
-var feeCollectorsLocalnet = FeeCollectors{
-	// pk: 0x1111111111111111111111111111111111111111111111111111111111111111
-	mustAddress("0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A"): numeric.MustNewDecFromStr("0.5"),
-	// pk: 0x2222222222222222222222222222222222222222222222222222222222222222
-	mustAddress("0x1563915e194D8CfBA1943570603F7606A3115508"): numeric.MustNewDecFromStr("0.5"),
-}
-
-// pk: 0x3333333333333333333333333333333333333333333333333333333333333333
-var hip30CollectionAddressLocalnet = mustAddress("0x5CbDd86a2FA8Dc4bDdd8a8f69dBa48572EeC07FB")
-
 type localnetSchedule struct{}
 
 const (
 	localnetV1Epoch = 1
 
-	localnetEpochBlock1      = 5
-	localnetBlocksPerEpoch   = 64
-	localnetBlocksPerEpochV2 = 64
+	localnetEpochBlock1      = 10
+	localnetBlocksPerEpoch   = 5
+	localnetBlocksPerEpochV2 = 10
 
 	localnetVdfDifficulty = 5000 // This takes about 10s to finish the vdf
+
+	localnetRandomnessStartingEpoch = 0
 )
 
 func (ls localnetSchedule) InstanceForEpoch(epoch *big.Int) Instance {
 	switch {
-	case params.LocalnetChainConfig.IsHIP30(epoch):
-		return localnetV4
-	case params.LocalnetChainConfig.IsFeeCollectEpoch(epoch):
-		return localnetV3_2
 	case params.LocalnetChainConfig.IsSixtyPercent(epoch):
 		return localnetV3_1
 	case params.LocalnetChainConfig.IsTwoSeconds(epoch):
@@ -72,23 +59,27 @@ func (ls localnetSchedule) twoSecondsFirstBlock() uint64 {
 }
 
 func (ls localnetSchedule) CalcEpochNumber(blockNum uint64) *big.Int {
-	firstBlock2s := ls.twoSecondsFirstBlock()
+	blocks := ls.BlocksPerEpochOld()
+	var oldEpochNumber int64
 	switch {
-	case blockNum < localnetEpochBlock1:
-		return big.NewInt(0)
-	case blockNum < firstBlock2s:
-		return big.NewInt(int64((blockNum-localnetEpochBlock1)/ls.BlocksPerEpochOld() + 1))
+	case blockNum >= localnetEpochBlock1:
+		oldEpochNumber = int64((blockNum-localnetEpochBlock1)/blocks) + 1
 	default:
-		extra := uint64(0)
-		if firstBlock2s == 0 {
-			blockNum -= localnetEpochBlock1
-			extra = 1
-		}
-		return big.NewInt(int64(extra + (blockNum-firstBlock2s)/ls.BlocksPerEpoch() + params.LocalnetChainConfig.TwoSecondsEpoch.Uint64()))
+		oldEpochNumber = 0
+	}
+
+	firstBlock2s := ls.twoSecondsFirstBlock()
+
+	switch {
+	case params.LocalnetChainConfig.IsTwoSeconds(big.NewInt(oldEpochNumber)):
+		return big.NewInt(int64((blockNum-firstBlock2s)/ls.BlocksPerEpoch() + params.LocalnetChainConfig.TwoSecondsEpoch.Uint64()))
+	default: // genesis
+		return big.NewInt(oldEpochNumber)
 	}
 }
 
 func (ls localnetSchedule) IsLastBlock(blockNum uint64) bool {
+	blocks := ls.BlocksPerEpochOld()
 	switch {
 	case blockNum < localnetEpochBlock1-1:
 		return false
@@ -98,40 +89,37 @@ func (ls localnetSchedule) IsLastBlock(blockNum uint64) bool {
 		firstBlock2s := ls.twoSecondsFirstBlock()
 		switch {
 		case blockNum >= firstBlock2s:
-			if firstBlock2s == 0 {
-				blockNum -= localnetEpochBlock1
-			}
 			return ((blockNum-firstBlock2s)%ls.BlocksPerEpoch() == ls.BlocksPerEpoch()-1)
 		default: // genesis
-			blocks := ls.BlocksPerEpochOld()
 			return ((blockNum-localnetEpochBlock1)%blocks == blocks-1)
 		}
 	}
 }
 
 func (ls localnetSchedule) EpochLastBlock(epochNum uint64) uint64 {
+	blocks := ls.BlocksPerEpochOld()
 	switch {
 	case epochNum == 0:
 		return localnetEpochBlock1 - 1
 	default:
+		firstBlock2s := ls.twoSecondsFirstBlock()
 		switch {
 		case params.LocalnetChainConfig.IsTwoSeconds(big.NewInt(int64(epochNum))):
-			blocks := ls.BlocksPerEpoch()
-			firstBlock2s := ls.twoSecondsFirstBlock()
-			block2s := (1 + epochNum - params.LocalnetChainConfig.TwoSecondsEpoch.Uint64()) * blocks
-			if firstBlock2s == 0 {
-				return block2s - blocks + localnetEpochBlock1 - 1
-			}
-			return firstBlock2s + block2s - 1
+			return firstBlock2s - 1 + ls.BlocksPerEpoch()*(epochNum-params.LocalnetChainConfig.TwoSecondsEpoch.Uint64()+1)
 		default: // genesis
-			blocks := ls.BlocksPerEpochOld()
-			return localnetEpochBlock1 + blocks*epochNum - 1
+			return localnetEpochBlock1 - 1 + blocks*epochNum
 		}
 	}
 }
 
 func (ls localnetSchedule) VdfDifficulty() int {
 	return localnetVdfDifficulty
+}
+
+// TODO: remove it after randomness feature turned on mainnet
+// RandonnessStartingEpoch returns starting epoch of randonness generation
+func (ls localnetSchedule) RandomnessStartingEpoch() uint64 {
+	return localnetRandomnessStartingEpoch
 }
 
 func (ls localnetSchedule) GetNetworkID() NetworkID {
@@ -145,8 +133,8 @@ func (ls localnetSchedule) GetShardingStructure(numShard, shardID int) []map[str
 		res = append(res, map[string]interface{}{
 			"current": int(shardID) == i,
 			"shardID": i,
-			"http":    fmt.Sprintf("http://127.0.0.1:%d", 9500+2*i),
-			"ws":      fmt.Sprintf("ws://127.0.0.1:%d", 9800+2*i),
+			"http":    fmt.Sprintf("http://127.0.0.1:%d", 9500+i),
+			"ws":      fmt.Sprintf("ws://127.0.0.1:%d", 9800+i),
 		})
 	}
 	return res
@@ -162,57 +150,9 @@ var (
 		big.NewInt(0), big.NewInt(localnetV1Epoch), params.LocalnetChainConfig.StakingEpoch, params.LocalnetChainConfig.TwoSecondsEpoch,
 	}
 	// Number of shards, how many slots on each , how many slots owned by Intelchain
-	localnetV0 = MustNewInstance(
-		2, 7, 5, 0,
-		numeric.OneDec(), genesis.LocalIntelchainAccounts,
-		genesis.LocalFnAccounts, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
-	)
-	localnetV1 = MustNewInstance(
-		2, 8, 5, 0,
-		numeric.OneDec(), genesis.LocalIntelchainAccountsV1,
-		genesis.LocalFnAccountsV1, emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
-	)
-	localnetV2 = MustNewInstance(
-		2, 9, 6, 0,
-		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
-		emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld(),
-	)
-	localnetV3 = MustNewInstance(
-		2, 9, 6, 0,
-		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
-		emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
-	)
-	localnetV3_1 = MustNewInstance(
-		2, 9, 6, 0,
-		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
-		emptyAllowlist, nil,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
-	)
-	localnetV3_2 = MustNewInstance(
-		2, 9, 6, 0,
-		numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
-		emptyAllowlist, feeCollectorsLocalnet,
-		numeric.ZeroDec(), ethCommon.Address{},
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
-	)
-	localnetV4 = MustNewInstance(
-		2, 9, 6, 0, numeric.MustNewDecFromStr("0.68"),
-		genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2,
-		emptyAllowlist, feeCollectorsLocalnet,
-		numeric.MustNewDecFromStr("0.25"), hip30CollectionAddressLocalnet,
-		localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch(),
-	)
+	localnetV0   = MustNewInstance(2, 7, 5, numeric.OneDec(), genesis.LocalIntelchainAccounts, genesis.LocalFnAccounts, localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld())
+	localnetV1   = MustNewInstance(2, 8, 5, numeric.OneDec(), genesis.LocalIntelchainAccountsV1, genesis.LocalFnAccountsV1, localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld())
+	localnetV2   = MustNewInstance(2, 9, 6, numeric.MustNewDecFromStr("0.68"), genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2, localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpochOld())
+	localnetV3   = MustNewInstance(2, 9, 6, numeric.MustNewDecFromStr("0.68"), genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2, localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch())
+	localnetV3_1 = MustNewInstance(2, 9, 6, numeric.MustNewDecFromStr("0.68"), genesis.LocalIntelchainAccountsV2, genesis.LocalFnAccountsV2, localnetReshardingEpoch, LocalnetSchedule.BlocksPerEpoch())
 )

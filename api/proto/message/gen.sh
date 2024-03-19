@@ -1,3 +1,2 @@
-#!/bin/bash
-
-docker run --platform linux/amd64 -v ${PWD}:/tmp ${PROTOC_IMAGE}  /tmp/message.proto
+protoc -I ./ message.proto --go_out=plugins=grpc:./
+# protoc -I ./ message.proto --go_out=./

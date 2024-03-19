@@ -7,9 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zennittians/intelchain/internal/params"
-
-	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 
 	"github.com/zennittians/intelchain/crypto/bls"
 
@@ -20,7 +18,6 @@ import (
 	"github.com/zennittians/intelchain/core/vm"
 	"github.com/zennittians/intelchain/crypto/hash"
 	"github.com/zennittians/intelchain/numeric"
-	"github.com/zennittians/intelchain/shard"
 	"github.com/zennittians/intelchain/staking/effective"
 	staking "github.com/zennittians/intelchain/staking/types"
 	staketest "github.com/zennittians/intelchain/staking/types/test"
@@ -56,10 +53,8 @@ var (
 	hundredKOnes    = new(big.Int).Mul(big.NewInt(100000), oneBig)
 
 	negRate           = numeric.NewDecWithPrec(-1, 10)
-	pointZeroOneDec   = numeric.NewDecWithPrec(1, 2)
 	pointOneDec       = numeric.NewDecWithPrec(1, 1)
 	pointTwoDec       = numeric.NewDecWithPrec(2, 1)
-	pointFourDec      = numeric.NewDecWithPrec(4, 1)
 	pointFiveDec      = numeric.NewDecWithPrec(5, 1)
 	pointSevenDec     = numeric.NewDecWithPrec(7, 1)
 	pointEightFiveDec = numeric.NewDecWithPrec(85, 2)
@@ -135,7 +130,7 @@ func TestCheckDuplicateFields(t *testing.T) {
 			bc: makeFakeChainContextForStake(),
 			sdb: func(t *testing.T) *state.DB {
 				sdb := makeStateDBForStake(t)
-				vw, err := sdb.ValidatorWrapper(makeTestAddr(0), false, true)
+				vw, err := sdb.ValidatorWrapper(makeTestAddr(0))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -152,6 +147,16 @@ func TestCheckDuplicateFields(t *testing.T) {
 			pubs:      []bls.SerializedPublicKey{blsKeys[11].pub},
 
 			expErr: nil,
+		},
+		{
+			// chain error
+			bc:        &fakeErrChainContext{},
+			sdb:       makeStateDBForStake(t),
+			validator: createValidatorAddr,
+			identity:  makeIdentityStr("new validator"),
+			pubs:      []bls.SerializedPublicKey{blsKeys[11].pub},
+
+			expErr: errors.New("error intended"),
 		},
 		{
 			// validators read from chain not in state
@@ -191,11 +196,7 @@ func TestCheckDuplicateFields(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		addrs, err := test.bc.ReadValidatorList()
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = checkDuplicateFields(addrs, test.sdb, test.validator, test.identity, test.pubs)
+		err := checkDuplicateFields(test.bc, test.sdb, test.validator, test.identity, test.pubs)
 
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
@@ -462,7 +463,7 @@ func TestVerifyAndEditValidatorFromMsg(t *testing.T) {
 			expWrapper: func() staking.ValidatorWrapper {
 				vw := defaultExpWrapperEditValidator()
 				vw.UpdateHeight = big.NewInt(defaultSnapBlockNumber)
-				vw.Rate = pointFourDec
+				vw.Rate = pointFiveDec
 				return vw
 			}(),
 		},
@@ -635,7 +636,7 @@ func TestVerifyAndEditValidatorFromMsg(t *testing.T) {
 			// 13: cannot update a banned validator
 			sdb: func(t *testing.T) *state.DB {
 				sdb := makeStateDBForStake(t)
-				vw, err := sdb.ValidatorWrapper(validatorAddr, false, true)
+				vw, err := sdb.ValidatorWrapper(validatorAddr)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -651,51 +652,6 @@ func TestVerifyAndEditValidatorFromMsg(t *testing.T) {
 			msg:      defaultMsgEditValidator(),
 
 			expErr: errors.New("banned status"),
-		},
-		{
-			// 14: Rate is lower than min rate of 5%
-			sdb: makeStateDBForStake(t),
-			bc: func() *fakeChainContext {
-				chain := makeFakeChainContextForStake()
-				vw := chain.vWrappers[validatorAddr]
-				vw.Rate = pointFourDec
-				chain.vWrappers[validatorAddr] = vw
-				return chain
-			}(),
-			epoch:    big.NewInt(20),
-			blockNum: big.NewInt(defaultBlockNumber),
-			msg: func() staking.EditValidator {
-				msg := defaultMsgEditValidator()
-				msg.CommissionRate = &pointZeroOneDec
-				return msg
-			}(),
-
-			expErr: errCommissionRateChangeTooLowT,
-		},
-		{
-			// 15: Rate is ok within the promo period
-			sdb: makeStateDBForStake(t),
-			bc: func() *fakeChainContext {
-				chain := makeFakeChainContextForStake()
-				vw := chain.vWrappers[validatorAddr]
-				vw.Rate = pointFourDec
-				chain.vWrappers[validatorAddr] = vw
-				return chain
-			}(),
-			epoch:    big.NewInt(15),
-			blockNum: big.NewInt(defaultBlockNumber),
-			msg: func() staking.EditValidator {
-				msg := defaultMsgEditValidator()
-				msg.CommissionRate = &pointZeroOneDec
-				return msg
-			}(),
-
-			expWrapper: func() staking.ValidatorWrapper {
-				vw := defaultExpWrapperEditValidator()
-				vw.UpdateHeight = big.NewInt(defaultBlockNumber)
-				vw.Rate = pointZeroOneDec
-				return vw
-			}(),
 		},
 	}
 	for i, test := range tests {
@@ -1044,49 +1000,9 @@ func TestVerifyAndDelegateFromMsg(t *testing.T) {
 			}(),
 			expAmt: tenKOnes,
 		},
-		{
-			// 17: small amount v2
-			sdb: makeStateDBForStake(t),
-			msg: func() staking.Delegate {
-				msg := defaultMsgDelegate()
-				msg.Amount = new(big.Int).Mul(big.NewInt(90), oneBig)
-				return msg
-			}(),
-			ds:         makeMsgCollectRewards(),
-			epoch:      big.NewInt(100),
-			redelegate: false,
-
-			expErr: errDelegationTooSmallV2,
-		},
-		{
-			// 18: valid amount v2
-			sdb: makeStateDBForStake(t),
-			msg: func() staking.Delegate {
-				msg := defaultMsgDelegate()
-				msg.Amount = new(big.Int).Mul(big.NewInt(500), oneBig)
-				return msg
-			}(),
-			ds:         makeMsgCollectRewards(),
-			epoch:      big.NewInt(100),
-			redelegate: false,
-
-			expVWrappers: func() []staking.ValidatorWrapper {
-				wrapper := defaultExpVWrapperDelegate()
-				wrapper.Delegations[1].Amount = new(big.Int).Mul(big.NewInt(500), oneBig)
-				return []staking.ValidatorWrapper{wrapper}
-			}(),
-			expAmt: new(big.Int).Mul(big.NewInt(500), oneBig),
-		},
 	}
 	for i, test := range tests {
-		config := &params.ChainConfig{}
-		config.MinDelegation100Epoch = big.NewInt(100)
-		if test.redelegate {
-			config.RedelegationEpoch = test.epoch
-		} else {
-			config.RedelegationEpoch = big.NewInt(test.epoch.Int64() + 1)
-		}
-		ws, amt, amtRedel, err := VerifyAndDelegateFromMsg(test.sdb, test.epoch, &test.msg, test.ds, config)
+		ws, amt, amtRedel, err := VerifyAndDelegateFromMsg(test.sdb, test.epoch, &test.msg, test.ds, test.redelegate)
 
 		if assErr := assertError(err, test.expErr); assErr != nil {
 			t.Errorf("Test %v: %v", i, assErr)
@@ -1135,7 +1051,7 @@ func makeStateForRedelegate(t *testing.T) *state.DB {
 }
 
 func addStateUndelegationForAddr(sdb *state.DB, addr common.Address, epoch *big.Int) error {
-	w, err := sdb.ValidatorWrapper(addr, false, true)
+	w, err := sdb.ValidatorWrapper(addr)
 	if err != nil {
 		return err
 	}
@@ -1248,7 +1164,7 @@ func TestVerifyAndUndelegateFromMsg(t *testing.T) {
 			// 4: Extract tokens from banned validator
 			sdb: func(t *testing.T) *state.DB {
 				sdb := makeDefaultStateForUndelegate(t)
-				w, err := sdb.ValidatorWrapper(validatorAddr, false, true)
+				w, err := sdb.ValidatorWrapper(validatorAddr)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1569,7 +1485,7 @@ func makeStateForReward(t *testing.T) *state.DB {
 }
 
 func addStateRewardForAddr(sdb *state.DB, addr common.Address, rewards []*big.Int) error {
-	w, err := sdb.ValidatorWrapper(addr, false, true)
+	w, err := sdb.ValidatorWrapper(addr)
 	if err != nil {
 		return err
 	}
@@ -1630,7 +1546,6 @@ func updateStateValidators(sdb *state.DB, ws []*staking.ValidatorWrapper) error 
 	for i, w := range ws {
 		sdb.SetValidatorFlag(w.Address)
 		sdb.AddBalance(w.Address, hundredKOnes)
-		sdb.SetValidatorFirstElectionEpoch(w.Address, big.NewInt(10))
 		if err := sdb.UpdateValidatorWrapper(w.Address, w); err != nil {
 			return fmt.Errorf("update %v vw error: %v", i, err)
 		}
@@ -1645,7 +1560,7 @@ func makeVWrapperByIndex(index int) staking.ValidatorWrapper {
 }
 
 func newTestStateDB() (*state.DB, error) {
-	return state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+	return state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 }
 
 // makeVWrappersForStake makes the default staking.ValidatorWrappers for
@@ -1718,27 +1633,12 @@ func (chain *fakeChainContext) Engine() consensus_engine.Engine {
 	return nil
 }
 
-func (chain *fakeChainContext) Config() *params.ChainConfig {
-	config := &params.ChainConfig{}
-	config.MinCommissionRateEpoch = big.NewInt(0)
-	config.MinCommissionPromoPeriod = big.NewInt(10)
-	return config
-}
-
 func (chain *fakeChainContext) GetHeader(common.Hash, uint64) *block.Header {
 	return nil
 }
 
 func (chain *fakeChainContext) ReadDelegationsByDelegator(common.Address) (staking.DelegationIndexes, error) {
 	return nil, nil
-}
-
-func (chain *fakeChainContext) ReadDelegationsByDelegatorAt(delegator common.Address, blockNum *big.Int) (staking.DelegationIndexes, error) {
-	return nil, nil
-}
-
-func (chain *fakeChainContext) ShardID() uint32 {
-	return shard.BeaconChainShardID
 }
 
 func (chain *fakeChainContext) ReadValidatorSnapshot(addr common.Address) (*staking.ValidatorSnapshot, error) {
@@ -1767,22 +1667,8 @@ func (chain *fakeErrChainContext) GetHeader(common.Hash, uint64) *block.Header {
 	return nil
 }
 
-func (chain *fakeErrChainContext) Config() *params.ChainConfig {
-	config := &params.ChainConfig{}
-	config.MinCommissionRateEpoch = big.NewInt(10)
-	return config
-}
-
 func (chain *fakeErrChainContext) ReadDelegationsByDelegator(common.Address) (staking.DelegationIndexes, error) {
 	return nil, nil
-}
-
-func (chain *fakeErrChainContext) ReadDelegationsByDelegatorAt(delegator common.Address, blockNum *big.Int) (staking.DelegationIndexes, error) {
-	return nil, nil
-}
-
-func (chain *fakeErrChainContext) ShardID() uint32 {
-	return 900 // arbitrary number different from BeaconChainShardID
 }
 
 func (chain *fakeErrChainContext) ReadValidatorSnapshot(common.Address) (*staking.ValidatorSnapshot, error) {

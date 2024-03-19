@@ -26,7 +26,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/zennittians/intelchain/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/zennittians/intelchain/core/state"
 )
 
@@ -83,9 +83,9 @@ func TestEIP2200(t *testing.T) {
 	for i, tt := range eip2200Tests {
 		address := common.BytesToAddress([]byte("contract"))
 
-		statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
+		statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 		statedb.CreateAccount(address)
-		statedb.SetCode(address, hexutil.MustDecode(tt.input), false)
+		statedb.SetCode(address, hexutil.MustDecode(tt.input))
 		statedb.SetState(address, common.Hash{}, common.BytesToHash([]byte{tt.original}))
 		statedb.Finalise(true) // Push the state into the "original" slot
 

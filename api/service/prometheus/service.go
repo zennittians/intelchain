@@ -8,12 +8,9 @@ import (
 	"net/http"
 	"runtime/debug"
 	"runtime/pprof"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	eth_prometheus "github.com/ethereum/go-ethereum/metrics/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -31,16 +28,11 @@ type Config struct {
 	Legacy     bool   // legacy or not, legacy is intelchain internal node
 	NodeType   string // node type, validator or exlorer node
 	Shard      uint32 // shard id, used as job suffix
-	Instance   string // identifier of the instance in prometheus metrics
-	TikvRole   string // use for tikv explorer node
+	Instance   string //identifier of the instance in prometheus metrics
 }
 
 func (p Config) String() string {
 	return fmt.Sprintf("%v, %v:%v, %v/%v, %v/%v/%v/%v:%v", p.Enabled, p.IP, p.Port, p.EnablePush, p.Gateway, p.Network, p.Legacy, p.NodeType, p.Shard, p.Instance)
-}
-
-func (p Config) IsUsedTiKV() bool {
-	return p.TikvRole != ""
 }
 
 // Service provides Prometheus metrics via the /metrics route. This route will
@@ -51,8 +43,6 @@ type Service struct {
 	pusher     *push.Pusher
 	failStatus error
 	config     Config
-
-	registryOnce sync.Once
 }
 
 // Handler represents a path and handler func to serve on the same port as /metrics, /healthz, /goroutinez, etc.
@@ -62,16 +52,15 @@ type Handler struct {
 }
 
 var (
-	initOnce sync.Once
-	svc      = &Service{}
+	registryOnce sync.Once
+	svc          = &Service{}
 )
 
 func (s *Service) getJobName() string {
 	var node string
 
-	if s.config.IsUsedTiKV() { // tikv node must be explorer node, eg: te_reader0, te_writer0
-		node = "te_" + strings.ToLower(s.config.TikvRole)
-	} else if s.config.Legacy { // legacy nodes are intelchain nodes: s0,s1,s2,s3
+	// legacy nodes are intelchain nodes: s0,s1,s2,s3
+	if s.config.Legacy {
 		node = "s"
 	} else {
 		if s.config.NodeType == "validator" {
@@ -87,18 +76,11 @@ func (s *Service) getJobName() string {
 }
 
 // NewService sets up a new instance for a given address host:port.
-// Anq empty host will match with any IP so an address like ":19000" is perfectly acceptable.
-func NewService(cfg Config, additionalHandlers ...Handler) *Service {
-	initOnce.Do(func() {
-		svc = newService(cfg, additionalHandlers...)
-	})
-	return svc
-}
-
-func newService(cfg Config, additionalHandlers ...Handler) *Service {
+// An empty host will match with any IP so an address like ":19000" is perfectly acceptable.
+func NewService(cfg Config, additionalHandlers ...Handler) {
 	if !cfg.Enabled {
 		utils.Logger().Info().Msg("Prometheus http server disabled...")
-		return nil
+		return
 	}
 
 	utils.Logger().Debug().Str("cfg", cfg.String()).Msg("Prometheus")
@@ -113,7 +95,6 @@ func newService(cfg Config, additionalHandlers ...Handler) *Service {
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
-	mux.Handle("/metrics/eth", eth_prometheus.Handler(metrics.DefaultRegistry))
 	mux.HandleFunc("/goroutinez", svc.goroutinezHandler)
 
 	// Register additional handlers.
@@ -126,11 +107,26 @@ func newService(cfg Config, additionalHandlers ...Handler) *Service {
 		Msg("Starting Prometheus server")
 	endpoint := fmt.Sprintf("%s:%d", svc.config.IP, svc.config.Port)
 	svc.server = &http.Server{Addr: endpoint, Handler: mux}
-	return svc
+	svc.Start()
 }
 
-// Start start the prometheus service
-func (s *Service) Start() error {
+// StopService stop the Prometheus service
+func StopService() error {
+	return svc.Stop()
+}
+
+func (s *Service) goroutinezHandler(w http.ResponseWriter, _ *http.Request) {
+	stack := debug.Stack()
+	if _, err := w.Write(stack); err != nil {
+		utils.Logger().Error().Err(err).Msg("Failed to write goroutines stack")
+	}
+	if err := pprof.Lookup("goroutine").WriteTo(w, 2); err != nil {
+		utils.Logger().Error().Err(err).Msg("Failed to write pprof goroutines")
+	}
+}
+
+// Start the prometheus service.
+func (s *Service) Start() {
 	go func() {
 		utils.Logger().Info().Str("address", s.server.Addr).Msg("Starting prometheus service")
 		err := s.server.ListenAndServe()
@@ -162,24 +158,13 @@ func (s *Service) Start() error {
 			}
 		}(s)
 	}
-	return nil
 }
 
-// Stop stop the Prometheus service
+// Stop the service gracefully.
 func (s *Service) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	return s.server.Shutdown(ctx)
-}
-
-func (s *Service) goroutinezHandler(w http.ResponseWriter, _ *http.Request) {
-	stack := debug.Stack()
-	if _, err := w.Write(stack); err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to write goroutines stack")
-	}
-	if err := pprof.Lookup("goroutine").WriteTo(w, 2); err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to write pprof goroutines")
-	}
 }
 
 // Status checks for any service failure conditions.
@@ -190,16 +175,12 @@ func (s *Service) Status() error {
 	return nil
 }
 
-func (s *Service) getRegistry() *prometheus.Registry {
-	s.registryOnce.Do(func() {
+// PromRegistry return the registry of prometheus service
+func PromRegistry() *prometheus.Registry {
+	registryOnce.Do(func() {
 		if svc.registry == nil {
 			svc.registry = prometheus.NewRegistry()
 		}
 	})
-	return s.registry
-}
-
-// PromRegistry return the registry of prometheus service
-func PromRegistry() *prometheus.Registry {
-	return svc.getRegistry()
+	return svc.registry
 }

@@ -20,9 +20,6 @@ import (
 	"io"
 	"math/big"
 	"sync/atomic"
-	"time"
-
-	"github.com/zennittians/intelchain/internal/params"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -44,9 +41,6 @@ type EthTransaction struct {
 	hash atomic.Value
 	size atomic.Value
 	from atomic.Value
-	// time at which the node received the tx
-	// and not the time set by the sender
-	time time.Time
 }
 
 type ethTxdata struct {
@@ -117,17 +111,12 @@ func newEthTransaction(nonce uint64, to *common.Address, amount *big.Int, gasLim
 		d.Price.Set(gasPrice)
 	}
 
-	return &EthTransaction{data: d, time: time.Now()}
+	return &EthTransaction{data: d}
 }
 
 // From returns the sender address of the transaction
 func (tx *EthTransaction) From() *atomic.Value {
 	return &tx.from
-}
-
-// Time returns the time at which the transaction was received by the node
-func (tx *EthTransaction) Time() time.Time {
-	return tx.time
 }
 
 // V value of the transaction signature
@@ -189,7 +178,6 @@ func (tx *EthTransaction) Protected() bool {
 func (tx *EthTransaction) Copy() *EthTransaction {
 	var tx2 EthTransaction
 	tx2.data.CopyFrom(&tx.data)
-	tx2.time = tx.time
 	return &tx2
 }
 
@@ -215,8 +203,6 @@ func (tx *EthTransaction) ConvertToItc() *Transaction {
 	copy := tx2.Hash()
 	d2.Hash = &copy
 
-	tx2.time = tx.time
-
 	return &tx2
 }
 
@@ -231,7 +217,6 @@ func (tx *EthTransaction) DecodeRLP(s *rlp.Stream) error {
 	err := s.Decode(&tx.data)
 	if err == nil {
 		tx.size.Store(common.StorageSize(rlp.ListSize(size)))
-		tx.time = time.Now()
 	}
 
 	return err
@@ -348,7 +333,7 @@ func (tx *EthTransaction) SenderAddress() (common.Address, error) {
 
 // IsEthCompatible returns whether the txn is ethereum compatible
 func (tx *EthTransaction) IsEthCompatible() bool {
-	return params.IsEthCompatible(tx.ChainID())
+	return true
 }
 
 // AsMessage returns the transaction as a core.Message.

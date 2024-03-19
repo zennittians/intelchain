@@ -28,11 +28,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/rawdb"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/eth/rpc"
 )
 
 // Type determines the kind of filter and is used to put the filter in to
@@ -104,7 +104,6 @@ type EventSystem struct {
 	logsCh    chan []*types.Log          // Channel to receive new log event
 	rmLogsCh  chan core.RemovedLogsEvent // Channel to receive removed log event
 	chainCh   chan core.ChainEvent       // Channel to receive new chain event
-	isEth     bool
 }
 
 // NewEventSystem creates a new manager that listens for event on the given mux,
@@ -113,7 +112,7 @@ type EventSystem struct {
 //
 // The returned manager has a loop that needs to be stopped with the Stop function
 // or by stopping the given mux.
-func NewEventSystem(backend Backend, lightMode bool, isEth bool) *EventSystem {
+func NewEventSystem(backend Backend, lightMode bool) *EventSystem {
 	m := &EventSystem{
 		mux:       backend.EventMux(),
 		backend:   backend,
@@ -124,7 +123,6 @@ func NewEventSystem(backend Backend, lightMode bool, isEth bool) *EventSystem {
 		logsCh:    make(chan []*types.Log, logsChanSize),
 		rmLogsCh:  make(chan core.RemovedLogsEvent, rmLogsChanSize),
 		chainCh:   make(chan core.ChainEvent, chainEvChanSize),
-		isEth:     isEth,
 	}
 
 	// Subscribe events
@@ -193,7 +191,7 @@ func (es *EventSystem) subscribe(sub *subscription) *Subscription {
 // SubscribeLogs creates a subscription that will write all logs matching the
 // given criteria to the given logs channel. Default value for the from and to
 // block is "latest". If the fromBlock > toBlock an error is returned.
-func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*types.Log, customID *rpc.ID) (*Subscription, error) {
+func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*types.Log) (*Subscription, error) {
 	var from, to rpc.BlockNumber
 	if crit.FromBlock == nil {
 		from = rpc.LatestBlockNumber
@@ -208,38 +206,32 @@ func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 
 	// only interested in pending logs
 	if from == rpc.PendingBlockNumber && to == rpc.PendingBlockNumber {
-		return es.subscribePendingLogs(crit, logs, customID), nil
+		return es.subscribePendingLogs(crit, logs), nil
 	}
 	// only interested in new mined logs
 	if from == rpc.LatestBlockNumber && to == rpc.LatestBlockNumber {
-		return es.subscribeLogs(crit, logs, customID), nil
+		return es.subscribeLogs(crit, logs), nil
 	}
 	// only interested in mined logs within a specific block range
 	if from >= 0 && to >= 0 && to >= from {
-		return es.subscribeLogs(crit, logs, customID), nil
+		return es.subscribeLogs(crit, logs), nil
 	}
 	// interested in mined logs from a specific block number, new logs and pending logs
 	if from >= rpc.LatestBlockNumber && to == rpc.PendingBlockNumber {
-		return es.subscribeMinedPendingLogs(crit, logs, customID), nil
+		return es.subscribeMinedPendingLogs(crit, logs), nil
 	}
 	// interested in logs from a specific block number to new mined blocks
 	if from >= 0 && to == rpc.LatestBlockNumber {
-		return es.subscribeLogs(crit, logs, customID), nil
+		return es.subscribeLogs(crit, logs), nil
 	}
 	return nil, fmt.Errorf("invalid from and to block combination: from > to")
 }
 
 // subscribeMinedPendingLogs creates a subscription that returned mined and
 // pending logs that match the given criteria.
-func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs chan []*types.Log, customID *rpc.ID) *Subscription {
-	var id rpc.ID
-	if customID != nil {
-		id = *customID
-	} else {
-		id = rpc.NewID()
-	}
+func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs chan []*types.Log) *Subscription {
 	sub := &subscription{
-		id:        id,
+		id:        rpc.NewID(),
 		typ:       MinedAndPendingLogsSubscription,
 		logsCrit:  crit,
 		created:   time.Now(),
@@ -254,15 +246,9 @@ func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs
 
 // subscribeLogs creates a subscription that will write all logs matching the
 // given criteria to the given logs channel.
-func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*types.Log, customID *rpc.ID) *Subscription {
-	var id rpc.ID
-	if customID != nil {
-		id = *customID
-	} else {
-		id = rpc.NewID()
-	}
+func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*types.Log) *Subscription {
 	sub := &subscription{
-		id:        id,
+		id:        rpc.NewID(),
 		typ:       LogsSubscription,
 		logsCrit:  crit,
 		created:   time.Now(),
@@ -277,15 +263,9 @@ func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 
 // subscribePendingLogs creates a subscription that writes transaction hashes for
 // transactions that enter the transaction pool.
-func (es *EventSystem) subscribePendingLogs(crit ethereum.FilterQuery, logs chan []*types.Log, customID *rpc.ID) *Subscription {
-	var id rpc.ID
-	if customID != nil {
-		id = *customID
-	} else {
-		id = rpc.NewID()
-	}
+func (es *EventSystem) subscribePendingLogs(crit ethereum.FilterQuery, logs chan []*types.Log) *Subscription {
 	sub := &subscription{
-		id:        id,
+		id:        rpc.NewID(),
 		typ:       PendingLogsSubscription,
 		logsCrit:  crit,
 		created:   time.Now(),
@@ -366,7 +346,7 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 	case core.NewTxsEvent:
 		hashes := make([]common.Hash, 0, len(e.Txs))
 		for _, tx := range e.Txs {
-			hashes = append(hashes, tx.Hash())
+			hashes = append(hashes, tx.HashByType())
 		}
 		for _, f := range filters[PendingTransactionsSubscription] {
 			f.hashes <- hashes
@@ -426,7 +406,7 @@ func (es *EventSystem) lightFilterLogs(header *block.Header, addresses []common.
 		// Get the logs of the block
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
-		logsList, err := es.backend.GetLogs(ctx, header.Hash(), es.isEth)
+		logsList, err := es.backend.GetLogs(ctx, header.Hash())
 		if err != nil {
 			return nil
 		}

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/zennittians/intelchain/core/state"
-
 	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,7 +12,6 @@ import (
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core/types"
 	common2 "github.com/zennittians/intelchain/internal/common"
-	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/internal/utils"
@@ -25,14 +22,23 @@ import (
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
+// ValidatorListProvider ..
+type ValidatorListProvider interface {
+	Compute(
+		epoch *big.Int, reader DataProvider,
+	) (*shard.State, error)
+	ReadFromDB(epoch *big.Int, reader DataProvider) (*shard.State, error)
+}
+
+// Reader is committee.Reader and it is the API that committee membership assignment needs
+type Reader interface {
+	ValidatorListProvider
+}
+
 // StakingCandidatesReader ..
 type StakingCandidatesReader interface {
 	CurrentBlock() *types.Block
-	StateAt(root common.Hash) (*state.DB, error)
 	ReadValidatorInformation(addr common.Address) (*staking.ValidatorWrapper, error)
-	ReadValidatorInformationAtState(
-		addr common.Address, state *state.DB,
-	) (*staking.ValidatorWrapper, error)
 	ReadValidatorSnapshot(addr common.Address) (*staking.ValidatorSnapshot, error)
 	ValidatorCandidates() []common.Address
 }
@@ -73,10 +79,10 @@ func (p CandidateOrder) MarshalJSON() ([]byte, error) {
 
 // NewEPoSRound runs a fresh computation of EPoS using
 // latest data always
-func NewEPoSRound(epoch *big.Int, stakedReader StakingCandidatesReader, isExtendedBound bool, slotsLimit, shardCount int) (
+func NewEPoSRound(epoch *big.Int, stakedReader StakingCandidatesReader) (
 	*CompletedEPoSRound, error,
 ) {
-	eligibleCandidate, err := prepareOrders(stakedReader, slotsLimit, shardCount)
+	eligibleCandidate, err := prepareOrders(stakedReader)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +90,7 @@ func NewEPoSRound(epoch *big.Int, stakedReader StakingCandidatesReader, isExtend
 		epoch,
 	)
 	median, winners := effective.Apply(
-		eligibleCandidate, maxExternalSlots, isExtendedBound,
+		eligibleCandidate, maxExternalSlots,
 	)
 	auctionCandidates := make([]*CandidateOrder, len(eligibleCandidate))
 
@@ -119,7 +125,6 @@ func NewEPoSRound(epoch *big.Int, stakedReader StakingCandidatesReader, isExtend
 
 func prepareOrders(
 	stakedReader StakingCandidatesReader,
-	slotsLimit, shardCount int,
 ) (map[common.Address]*effective.SlotOrder, error) {
 	candidates := stakedReader.ValidatorCandidates()
 	blsKeys := map[bls.SerializedPublicKey]struct{}{}
@@ -140,15 +145,9 @@ func prepareOrders(
 		blsKeys[pubKey] = struct{}{}
 	}
 
-	state, err := stakedReader.StateAt(stakedReader.CurrentBlock().Root())
-	if err != nil || state == nil {
-		return nil, errors.Wrapf(err, "not state found at root: %s", stakedReader.CurrentBlock().Root().Hex())
-	}
 	for i := range candidates {
-		// TODO: reading validator wrapper from DB could be a bottle net when there are hundreds of validators
-		// with thousands of delegator data.
-		validator, err := stakedReader.ReadValidatorInformationAtState(
-			candidates[i], state,
+		validator, err := stakedReader.ReadValidatorInformation(
+			candidates[i],
 		)
 		if err != nil {
 			return nil, err
@@ -163,19 +162,12 @@ func prepareOrders(
 			continue
 		}
 
-		slotPubKeysLimited := make([]bls.SerializedPublicKey, 0, len(validator.SlotPubKeys))
 		found := false
-		shardSlotsCount := make([]int, shardCount)
 		for _, key := range validator.SlotPubKeys {
 			if _, ok := blsKeys[key]; ok {
 				found = true
 			} else {
 				blsKeys[key] = struct{}{}
-				shard := new(big.Int).Mod(key.Big(), big.NewInt(int64(shardCount))).Int64()
-				if slotsLimit == 0 || shardSlotsCount[shard] < slotsLimit {
-					slotPubKeysLimited = append(slotPubKeysLimited, key)
-				}
-				shardSlotsCount[shard]++
 			}
 		}
 
@@ -193,9 +185,9 @@ func prepareOrders(
 		totalStaked.Add(totalStaked, validatorStake)
 
 		essentials[validator.Address] = &effective.SlotOrder{
-			Stake:       validatorStake,
-			SpreadAmong: slotPubKeysLimited,
-			Percentage:  tempZero,
+			validatorStake,
+			validator.SlotPubKeys,
+			tempZero,
 		}
 	}
 	totalStakedDec := numeric.NewDecFromBigInt(totalStaked)
@@ -259,13 +251,13 @@ type partialStakingEnabled struct{}
 
 var (
 	// WithStakingEnabled ..
-	WithStakingEnabled = partialStakingEnabled{}
+	WithStakingEnabled Reader = partialStakingEnabled{}
 	// ErrComputeForEpochInPast ..
 	ErrComputeForEpochInPast = errors.New("cannot compute for epoch in past")
 )
 
 // This is the shard state computation logic before staking epoch.
-func preStakingEnabledCommittee(s shardingconfig.Instance) (*shard.State, error) {
+func preStakingEnabledCommittee(s shardingconfig.Instance) *shard.State {
 	shardNum := int(s.NumShards())
 	shardIntelchainNodes := s.NumIntelchainOperatedNodesPerShard()
 	shardSize := s.NumNodesPerShard()
@@ -282,13 +274,10 @@ func preStakingEnabledCommittee(s shardingconfig.Instance) (*shard.State, error)
 			pubKey := bls.SerializedPublicKey{}
 			pubKey.FromLibBLSPublicKey(pub)
 			// TODO: directly read address for bls too
-			addr, err := common2.ParseAddr(itcAccounts[index].Address)
-			if err != nil {
-				return nil, err
-			}
 			curNodeID := shard.Slot{
-				EcdsaAddress: addr,
-				BLSPublicKey: pubKey,
+				common2.ParseAddr(itcAccounts[index].Address),
+				pubKey,
+				nil,
 			}
 			com.Slots = append(com.Slots, curNodeID)
 		}
@@ -300,19 +289,16 @@ func preStakingEnabledCommittee(s shardingconfig.Instance) (*shard.State, error)
 			pubKey := bls.SerializedPublicKey{}
 			pubKey.FromLibBLSPublicKey(pub)
 			// TODO: directly read address for bls too
-			addr, err := common2.ParseAddr(fnAccounts[index].Address)
-			if err != nil {
-				return nil, err
-			}
 			curNodeID := shard.Slot{
-				EcdsaAddress: addr,
-				BLSPublicKey: pubKey,
+				common2.ParseAddr(fnAccounts[index].Address),
+				pubKey,
+				nil,
 			}
 			com.Slots = append(com.Slots, curNodeID)
 		}
 		shardState.Shards = append(shardState.Shards, com)
 	}
-	return shardState, nil
+	return shardState
 }
 
 func eposStakedCommittee(
@@ -325,7 +311,7 @@ func eposStakedCommittee(
 	shardIntelchainNodes := s.NumIntelchainOperatedNodesPerShard()
 
 	for i := 0; i < shardCount; i++ {
-		shardState.Shards[i] = shard.Committee{ShardID: uint32(i), Slots: shard.SlotList{}}
+		shardState.Shards[i] = shard.Committee{uint32(i), shard.SlotList{}}
 		for j := 0; j < shardIntelchainNodes; j++ {
 			index := i + j*shardCount
 			pub := &bls_core.PublicKey{}
@@ -336,20 +322,16 @@ func eposStakedCommittee(
 			if err := pubKey.FromLibBLSPublicKey(pub); err != nil {
 				return nil, err
 			}
-
-			addr, err := common2.ParseAddr(hAccounts[index].Address)
-			if err != nil {
-				return nil, err
-			}
 			shardState.Shards[i].Slots = append(shardState.Shards[i].Slots, shard.Slot{
-				EcdsaAddress: addr,
-				BLSPublicKey: pubKey,
+				common2.ParseAddr(hAccounts[index].Address),
+				pubKey,
+				nil,
 			})
 		}
 	}
 
 	// TODO(audit): make sure external validator BLS key are also not duplicate to Intelchain's keys
-	completedEPoSRound, err := NewEPoSRound(epoch, stakerReader, stakerReader.Config().IsEPoSBound35(epoch), s.SlotsLimit(), shardCount)
+	completedEPoSRound, err := NewEPoSRound(epoch, stakerReader)
 
 	if err != nil {
 		return nil, err
@@ -361,26 +343,13 @@ func eposStakedCommittee(
 		shardID := int(new(big.Int).Mod(purchasedSlot.Key.Big(), shardBig).Int64())
 		shardState.Shards[shardID].Slots = append(
 			shardState.Shards[shardID].Slots, shard.Slot{
-				EcdsaAddress:   purchasedSlot.Addr,
-				BLSPublicKey:   purchasedSlot.Key,
-				EffectiveStake: &purchasedSlot.EPoSStake,
+				purchasedSlot.Addr,
+				purchasedSlot.Key,
+				&purchasedSlot.EPoSStake,
 			},
 		)
 	}
 
-	if len(completedEPoSRound.AuctionWinners) == 0 {
-		instance := shard.Schedule.InstanceForEpoch(epoch)
-		preInstance := shard.Schedule.InstanceForEpoch(new(big.Int).Sub(epoch, big.NewInt(1)))
-		isTestnet := nodeconfig.GetDefaultConfig().GetNetworkType() == nodeconfig.Testnet
-		isShardReduction := preInstance.NumShards() != instance.NumShards()
-		// If the shard-reduction happens, we cannot use the old committee.
-		if isTestnet && isShardReduction {
-			utils.Logger().Warn().Msg("No elected validators in the new epoch!!! But use the new committee due to Testnet Shard Reduction.")
-			return shardState, nil
-		}
-		utils.Logger().Warn().Msg("No elected validators in the new epoch!!! Reuse old shard state.")
-		return stakerReader.ReadShardState(big.NewInt(0).Sub(epoch, big.NewInt(1)))
-	}
 	return shardState, nil
 }
 
@@ -407,7 +376,7 @@ func (def partialStakingEnabled) Compute(
 	instance := shard.Schedule.InstanceForEpoch(epoch)
 	if preStaking {
 		// Pre-staking shard state doesn't need to set epoch (backward compatible)
-		return preStakingEnabledCommittee(instance)
+		return preStakingEnabledCommittee(instance), nil
 	}
 	// Sanity check, can't compute against epochs in past
 	if e := stakerReader.CurrentHeader().Epoch(); epoch.Cmp(e) == -1 {

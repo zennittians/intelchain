@@ -2,15 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
-
-	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 
 	"github.com/spf13/cobra"
-
-	"github.com/zennittians/intelchain/api/service/legacysync"
 	"github.com/zennittians/intelchain/internal/cli"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 )
@@ -30,27 +24,17 @@ var (
 		legacyShardIDFlag,
 		legacyIsArchiveFlag,
 		legacyDataDirFlag,
-
-		taraceFlag,
-	}
-
-	dnsSyncFlags = []cli.Flag{
-		dnsZoneFlag,
-		dnsPortFlag,
-		dnsServerPortFlag,
-		dnsClientFlag,
-		dnsServerFlag,
-
-		syncLegacyClientFlag,
-		syncLegacyServerFlag,
-		legacyDNSZoneFlag,
-		legacyDNSPortFlag,
-		legacyDNSFlag,
 	}
 
 	networkFlags = []cli.Flag{
 		networkTypeFlag,
 		bootNodeFlag,
+		dnsZoneFlag,
+		dnsPortFlag,
+
+		legacyDNSZoneFlag,
+		legacyDNSPortFlag,
+		legacyDNSFlag,
 		legacyNetworkTypeFlag,
 	}
 
@@ -58,14 +42,8 @@ var (
 		p2pPortFlag,
 		p2pIPFlag,
 		p2pKeyFileFlag,
-		p2pDHTDataStoreFlag,
-		p2pDiscoveryConcurrencyFlag,
+
 		legacyKeyFileFlag,
-		p2pDisablePrivateIPScanFlag,
-		maxConnPerIPFlag,
-		maxPeersFlag,
-		connManagerLowWatermarkFlag,
-		connManagerHighWatermarkFlag,
 	}
 
 	httpFlags = []cli.Flag{
@@ -73,30 +51,17 @@ var (
 		httpRosettaEnabledFlag,
 		httpIPFlag,
 		httpPortFlag,
-		httpAuthPortFlag,
 		httpRosettaPortFlag,
-		httpReadTimeoutFlag,
-		httpWriteTimeoutFlag,
-		httpIdleTimeoutFlag,
 	}
 
 	wsFlags = []cli.Flag{
 		wsEnabledFlag,
 		wsIPFlag,
 		wsPortFlag,
-		wsAuthPortFlag,
 	}
 
 	rpcOptFlags = []cli.Flag{
 		rpcDebugEnabledFlag,
-		rpcPreimagesEnabledFlag,
-		rpcEthRPCsEnabledFlag,
-		rpcStakingRPCsEnabledFlag,
-		rpcLegacyRPCsEnabledFlag,
-		rpcFilterFileFlag,
-		rpcRateLimiterEnabledFlag,
-		rpcRateLimitFlag,
-		rpcEvmCallTimeoutFlag,
 	}
 
 	blsFlags = append(newBLSFlags, legacyBLSFlags...)
@@ -139,41 +104,23 @@ var (
 	}
 
 	txPoolFlags = []cli.Flag{
-		tpAccountSlotsFlag,
-		tpGlobalSlotsFlag,
-		tpAccountQueueFlag,
-		tpGlobalQueueFlag,
-		tpLifetimeFlag,
-		rosettaFixFileFlag,
 		tpBlacklistFileFlag,
 		legacyTPBlacklistFileFlag,
-		localAccountsFileFlag,
-		allowedTxsFileFlag,
-		tpPriceLimitFlag,
-		tpPriceBumpFlag,
 	}
 
 	pprofFlags = []cli.Flag{
 		pprofEnabledFlag,
 		pprofListenAddrFlag,
-		pprofFolderFlag,
-		pprofProfileNamesFlag,
-		pprofProfileIntervalFlag,
-		pprofProfileDebugFlag,
 	}
 
 	logFlags = []cli.Flag{
 		logFolderFlag,
 		logRotateSizeFlag,
-		logRotateCountFlag,
-		logRotateMaxAgeFlag,
 		logFileNameFlag,
 		logContextIPFlag,
 		logContextPortFlag,
 		logVerbosityFlag,
-		logVerbosePrintsFlag,
 		legacyVerbosityFlag,
-		logConsoleFlag,
 
 		legacyLogFolderFlag,
 		legacyLogRotateSizeFlag,
@@ -205,13 +152,6 @@ var (
 		revertBeforeFlag,
 	}
 
-	preimageFlags = []cli.Flag{
-		preimageImportFlag,
-		preimageExportFlag,
-		preimageGenerateStartFlag,
-		preimageGenerateEndFlag,
-	}
-
 	legacyRevertFlags = []cli.Flag{
 		legacyRevertBeaconFlag,
 		legacyRevertBeforeFlag,
@@ -233,53 +173,6 @@ var (
 		prometheusPortFlag,
 		prometheusGatewayFlag,
 		prometheusEnablePushFlag,
-	}
-
-	syncFlags = []cli.Flag{
-		syncStreamEnabledFlag,
-		syncModeFlag,
-		syncDownloaderFlag,
-		syncStagedSyncFlag,
-		syncConcurrencyFlag,
-		syncMinPeersFlag,
-		syncInitStreamsFlag,
-		syncDiscSoftLowFlag,
-		syncDiscHardLowFlag,
-		syncDiscHighFlag,
-		syncDiscBatchFlag,
-	}
-
-	shardDataFlags = []cli.Flag{
-		enableShardDataFlag,
-		diskCountFlag,
-		shardCountFlag,
-		cacheTimeFlag,
-		cacheSizeFlag,
-	}
-
-	gpoFlags = []cli.Flag{
-		gpoBlocksFlag,
-		gpoTransactionsFlag,
-		gpoPercentileFlag,
-		gpoDefaultPriceFlag,
-		gpoMaxPriceFlag,
-		gpoLowUsageThresholdFlag,
-		gpoBlockGasLimitFlag,
-	}
-
-	cacheConfigFlags = []cli.Flag{
-		cacheDisabled,
-		cacheTrieNodeLimit,
-		cacheTriesInMemory,
-		cachePreimages,
-		cacheSnapshotLimit,
-		cacheSnapshotNoBuild,
-		cacheSnapshotWait,
-	}
-
-	metricsFlags = []cli.Flag{
-		metricsETHFlag,
-		metricsExpensiveETHFlag,
 	}
 )
 
@@ -314,11 +207,6 @@ var (
 		Name:     "run.offline",
 		Usage:    "run node in offline mode",
 		DefValue: defaultConfig.General.IsOffline,
-	}
-	isBackupFlag = cli.BoolFlag{
-		Name:     "run.backup",
-		Usage:    "run node in backup mode",
-		DefValue: defaultConfig.General.IsBackup,
 	}
 	dataDirFlag = cli.StringFlag{
 		Name:     "datadir",
@@ -355,12 +243,6 @@ var (
 		DefValue:   defaultConfig.General.DataDir,
 		Deprecated: "use --datadir",
 	}
-
-	taraceFlag = cli.BoolFlag{
-		Name:     "tracing",
-		Usage:    "indicates if full transaction tracing should be enabled",
-		DefValue: defaultConfig.General.TraceEnable,
-	}
 )
 
 func getRootFlags() []cli.Flag {
@@ -370,7 +252,6 @@ func getRootFlags() []cli.Flag {
 	flags = append(flags, configFlag)
 	flags = append(flags, generalFlags...)
 	flags = append(flags, networkFlags...)
-	flags = append(flags, dnsSyncFlags...)
 	flags = append(flags, p2pFlags...)
 	flags = append(flags, httpFlags...)
 	flags = append(flags, wsFlags...)
@@ -383,22 +264,21 @@ func getRootFlags() []cli.Flag {
 	flags = append(flags, sysFlags...)
 	flags = append(flags, devnetFlags...)
 	flags = append(flags, revertFlags...)
-	flags = append(flags, preimageFlags...)
 	flags = append(flags, legacyMiscFlags...)
 	flags = append(flags, prometheusFlags...)
-	flags = append(flags, syncFlags...)
-	flags = append(flags, shardDataFlags...)
-	flags = append(flags, gpoFlags...)
-	flags = append(flags, metricsFlags...)
 
 	return flags
 }
 
-func applyGeneralFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyGeneralFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, nodeTypeFlag) {
 		config.General.NodeType = cli.GetStringFlagValue(cmd, nodeTypeFlag)
 	} else if cli.IsFlagChanged(cmd, legacyNodeTypeFlag) {
 		config.General.NodeType = cli.GetStringFlagValue(cmd, legacyNodeTypeFlag)
+	}
+
+	if config.General.NodeType == nodeTypeExplorer {
+		config.General.IsArchival = true
 	}
 
 	if cli.IsFlagChanged(cmd, shardIDFlag) {
@@ -432,14 +312,6 @@ func applyGeneralFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainCo
 	if cli.IsFlagChanged(cmd, isOfflineFlag) {
 		config.General.IsOffline = cli.GetBoolFlagValue(cmd, isOfflineFlag)
 	}
-
-	if cli.IsFlagChanged(cmd, taraceFlag) {
-		config.General.TraceEnable = cli.GetBoolFlagValue(cmd, taraceFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, isBackupFlag) {
-		config.General.IsBackup = cli.GetBoolFlagValue(cmd, isBackupFlag)
-	}
 }
 
 // network flags
@@ -454,32 +326,6 @@ var (
 		Name:  "bootnodes",
 		Usage: "a list of bootnode multiaddress (delimited by ,)",
 	}
-	legacyDNSZoneFlag = cli.StringFlag{
-		Name:       "dns_zone",
-		Usage:      "use peers from the zone for state syncing",
-		Deprecated: "use --dns.zone",
-	}
-	legacyNetworkTypeFlag = cli.StringFlag{
-		Name:       "network_type",
-		Usage:      "network to join (mainnet, testnet, pangaea, localnet, partner, stressnet, devnet)",
-		Deprecated: "use --network",
-	}
-)
-
-// DNSSync flags
-var (
-	legacyDNSPortFlag = cli.IntFlag{
-		Name:       "dns_port",
-		Usage:      "port of dns node",
-		Deprecated: "use --dns.port",
-	}
-	legacyDNSFlag = cli.BoolFlag{
-		Name:       "dns",
-		DefValue:   true,
-		Hidden:     true,
-		Usage:      "use dns for syncing",
-		Deprecated: "only set to false to use self discovered peers for syncing",
-	}
 	dnsZoneFlag = cli.StringFlag{
 		Name:  "dns.zone",
 		Usage: "use customized peers from the zone for state syncing",
@@ -487,38 +333,28 @@ var (
 	dnsPortFlag = cli.IntFlag{
 		Name:     "dns.port",
 		DefValue: nodeconfig.DefaultDNSPort,
-		Usage:    "dns sync remote server port",
+		Usage:    "port of customized dns node",
 	}
-	dnsServerPortFlag = cli.IntFlag{
-		Name:     "dns.server-port",
-		DefValue: nodeconfig.DefaultDNSPort,
-		Usage:    "dns sync local server port",
+	legacyDNSZoneFlag = cli.StringFlag{
+		Name:       "dns_zone",
+		Usage:      "use peers from the zone for state syncing",
+		Deprecated: "use --dns.zone",
 	}
-	syncLegacyClientFlag = cli.BoolFlag{
-		Name:       "sync.legacy.client",
-		Usage:      "Enable the legacy centralized sync service for block synchronization",
-		Hidden:     true,
-		DefValue:   false,
-		Deprecated: "use dns.client instead",
+	legacyDNSPortFlag = cli.IntFlag{
+		Name:       "dns_port",
+		Usage:      "port of dns node",
+		Deprecated: "use --dns.zone",
 	}
-	dnsClientFlag = cli.BoolFlag{
-		Name:     "dns.client",
-		Usage:    "Enable the legacy centralized sync service for block synchronization",
-		Hidden:   true,
-		DefValue: false,
-	}
-	syncLegacyServerFlag = cli.BoolFlag{
-		Name:       "sync.legacy.server",
-		Usage:      "Enable the gRPC sync server for backward compatibility",
-		Hidden:     true,
+	legacyDNSFlag = cli.BoolFlag{
+		Name:       "dns",
 		DefValue:   true,
-		Deprecated: "use dns.server instead",
+		Usage:      "use dns for syncing",
+		Deprecated: "only set to false to use self discovered peers for syncing",
 	}
-	dnsServerFlag = cli.BoolFlag{
-		Name:     "dns.server",
-		Usage:    "Enable the gRPC sync server for backward compatibility",
-		Hidden:   true,
-		DefValue: true,
+	legacyNetworkTypeFlag = cli.StringFlag{
+		Name:       "network_type",
+		Usage:      "network to join (mainnet, testnet, pangaea, localnet, partner, stressnet, devnet)",
+		Deprecated: "use --network",
 	}
 )
 
@@ -535,41 +371,26 @@ func getNetworkType(cmd *cobra.Command) nodeconfig.NetworkType {
 	return parseNetworkType(raw)
 }
 
-func applyDNSSyncFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
+func applyNetworkFlags(cmd *cobra.Command, cfg *intelchainConfig) {
+	if cli.IsFlagChanged(cmd, bootNodeFlag) {
+		cfg.Network.BootNodes = cli.GetStringSliceFlagValue(cmd, bootNodeFlag)
+	}
+
 	if cli.IsFlagChanged(cmd, dnsZoneFlag) {
-		cfg.DNSSync.Zone = cli.GetStringFlagValue(cmd, dnsZoneFlag)
+		cfg.Network.DNSZone = cli.GetStringFlagValue(cmd, dnsZoneFlag)
 	} else if cli.IsFlagChanged(cmd, legacyDNSZoneFlag) {
-		cfg.DNSSync.Zone = cli.GetStringFlagValue(cmd, legacyDNSZoneFlag)
+		cfg.Network.DNSZone = cli.GetStringFlagValue(cmd, legacyDNSZoneFlag)
 	} else if cli.IsFlagChanged(cmd, legacyDNSFlag) {
+		val := cli.GetBoolFlagValue(cmd, legacyDNSFlag)
+		if !val {
+			cfg.Network.LegacySyncing = true
+		}
 	}
 
 	if cli.IsFlagChanged(cmd, dnsPortFlag) {
-		cfg.DNSSync.Port = cli.GetIntFlagValue(cmd, dnsPortFlag)
+		cfg.Network.DNSPort = cli.GetIntFlagValue(cmd, dnsPortFlag)
 	} else if cli.IsFlagChanged(cmd, legacyDNSPortFlag) {
-		cfg.DNSSync.Port = cli.GetIntFlagValue(cmd, legacyDNSPortFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncLegacyServerFlag) {
-		cfg.DNSSync.Server = cli.GetBoolFlagValue(cmd, syncLegacyServerFlag)
-	} else if cli.IsFlagChanged(cmd, dnsServerFlag) {
-		cfg.DNSSync.Server = cli.GetBoolFlagValue(cmd, syncLegacyServerFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncLegacyClientFlag) {
-		cfg.DNSSync.Client = cli.GetBoolFlagValue(cmd, syncLegacyClientFlag)
-	} else if cli.IsFlagChanged(cmd, dnsClientFlag) {
-		cfg.DNSSync.Client = cli.GetBoolFlagValue(cmd, dnsClientFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, dnsServerPortFlag) {
-		cfg.DNSSync.ServerPort = cli.GetIntFlagValue(cmd, dnsServerPortFlag)
-	}
-
-}
-
-func applyNetworkFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, bootNodeFlag) {
-		cfg.Network.BootNodes = cli.GetStringSliceFlagValue(cmd, bootNodeFlag)
+		cfg.Network.DNSPort = cli.GetIntFlagValue(cmd, legacyDNSPortFlag)
 	}
 }
 
@@ -590,56 +411,15 @@ var (
 		Usage:    "the p2p key file of the intelchain node",
 		DefValue: defaultConfig.P2P.KeyFile,
 	}
-	p2pDHTDataStoreFlag = cli.StringFlag{
-		Name:     "p2p.dht.datastore",
-		Usage:    "the datastore file to persist the dht routing table",
-		DefValue: "",
-		Hidden:   true,
-	}
 	legacyKeyFileFlag = cli.StringFlag{
 		Name:       "key",
 		Usage:      "the p2p key file of the intelchain node",
 		DefValue:   defaultConfig.P2P.KeyFile,
 		Deprecated: "use --p2p.keyfile",
 	}
-	p2pDiscoveryConcurrencyFlag = cli.IntFlag{
-		Name:     "p2p.disc.concurrency",
-		Usage:    "the pubsub's DHT discovery concurrency num (default with raw libp2p dht option)",
-		DefValue: defaultConfig.P2P.DiscConcurrency,
-	}
-	p2pDisablePrivateIPScanFlag = cli.BoolFlag{
-		Name:     "p2p.no-private-ip-scan",
-		Usage:    "disable scanning of private ip4/6 addresses by DHT",
-		DefValue: defaultConfig.P2P.DisablePrivateIPScan,
-	}
-	maxConnPerIPFlag = cli.IntFlag{
-		Name:     "p2p.security.max-conn-per-ip",
-		Usage:    "maximum number of connections allowed per remote node, 0 means no limit",
-		DefValue: defaultConfig.P2P.MaxConnsPerIP,
-	}
-	maxPeersFlag = cli.IntFlag{
-		Name:     "p2p.security.max-peers",
-		Usage:    "maximum number of peers allowed, 0 means no limit",
-		DefValue: defaultConfig.P2P.MaxConnsPerIP,
-	}
-	connManagerLowWatermarkFlag = cli.IntFlag{
-		Name:     "p2p.connmgr-low",
-		Usage:    "lowest number of connections that'll be maintained in connection manager. Set both high and low watermarks to zero to disable connection manager",
-		DefValue: defaultConfig.P2P.ConnManagerLowWatermark,
-	}
-	connManagerHighWatermarkFlag = cli.IntFlag{
-		Name:     "p2p.connmgr-high",
-		Usage:    "highest number of connections that'll be maintained in connection manager. Set both high and low watermarks to zero to disable connection manager",
-		DefValue: defaultConfig.P2P.ConnManagerHighWatermark,
-	}
-	waitForEachPeerToConnectFlag = cli.BoolFlag{
-		Name:     "p2p.wait-for-connections",
-		Usage:    "node waits for each single peer to connect and it doesn't add them to peers list after timeout",
-		DefValue: defaultConfig.P2P.WaitForEachPeerToConnect,
-	}
 )
 
-func applyP2PFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyP2PFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, p2pPortFlag) {
 		config.P2P.Port = cli.GetIntFlagValue(cmd, p2pPortFlag)
 	}
@@ -654,39 +434,6 @@ func applyP2PFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig
 		config.P2P.KeyFile = cli.GetStringFlagValue(cmd, p2pKeyFileFlag)
 	} else if cli.IsFlagChanged(cmd, legacyKeyFileFlag) {
 		config.P2P.KeyFile = cli.GetStringFlagValue(cmd, legacyKeyFileFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, p2pDHTDataStoreFlag) {
-		ds := cli.GetStringFlagValue(cmd, p2pDHTDataStoreFlag)
-		config.P2P.DHTDataStore = &ds
-	}
-
-	if cli.IsFlagChanged(cmd, p2pDiscoveryConcurrencyFlag) {
-		config.P2P.DiscConcurrency = cli.GetIntFlagValue(cmd, p2pDiscoveryConcurrencyFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, maxConnPerIPFlag) {
-		config.P2P.MaxConnsPerIP = cli.GetIntFlagValue(cmd, maxConnPerIPFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, maxPeersFlag) {
-		config.P2P.MaxPeers = int64(cli.GetIntFlagValue(cmd, maxPeersFlag))
-	}
-
-	if cli.IsFlagChanged(cmd, waitForEachPeerToConnectFlag) {
-		config.P2P.WaitForEachPeerToConnect = cli.GetBoolFlagValue(cmd, waitForEachPeerToConnectFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, connManagerLowWatermarkFlag) {
-		config.P2P.ConnManagerLowWatermark = cli.GetIntFlagValue(cmd, connManagerLowWatermarkFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, connManagerHighWatermarkFlag) {
-		config.P2P.ConnManagerHighWatermark = cli.GetIntFlagValue(cmd, connManagerHighWatermarkFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, p2pDisablePrivateIPScanFlag) {
-		config.P2P.DisablePrivateIPScan = cli.GetBoolFlagValue(cmd, p2pDisablePrivateIPScanFlag)
 	}
 }
 
@@ -707,11 +454,6 @@ var (
 		Usage:    "rpc port to listen for HTTP requests",
 		DefValue: defaultConfig.HTTP.Port,
 	}
-	httpAuthPortFlag = cli.IntFlag{
-		Name:     "http.auth-port",
-		Usage:    "rpc port to listen for auth HTTP requests",
-		DefValue: defaultConfig.HTTP.AuthPort,
-	}
 	httpRosettaEnabledFlag = cli.BoolFlag{
 		Name:     "http.rosetta",
 		Usage:    "enable HTTP / Rosetta requests",
@@ -722,24 +464,9 @@ var (
 		Usage:    "rosetta port to listen for HTTP requests",
 		DefValue: defaultConfig.HTTP.RosettaPort,
 	}
-	httpReadTimeoutFlag = cli.StringFlag{
-		Name:     "http.timeout.read",
-		Usage:    "maximum duration to read the entire request, including the body",
-		DefValue: defaultConfig.HTTP.ReadTimeout,
-	}
-	httpWriteTimeoutFlag = cli.StringFlag{
-		Name:     "http.timeout.write",
-		Usage:    "maximum duration before timing out writes of the response",
-		DefValue: defaultConfig.HTTP.WriteTimeout,
-	}
-	httpIdleTimeoutFlag = cli.StringFlag{
-		Name:     "http.timeout.idle",
-		Usage:    "maximum amount of time to wait for the next request when keep-alives are enabled",
-		DefValue: defaultConfig.HTTP.IdleTimeout,
-	}
 )
 
-func applyHTTPFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyHTTPFlags(cmd *cobra.Command, config *intelchainConfig) {
 	var isRPCSpecified, isRosettaSpecified bool
 
 	if cli.IsFlagChanged(cmd, httpIPFlag) {
@@ -749,11 +476,6 @@ func applyHTTPFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfi
 
 	if cli.IsFlagChanged(cmd, httpPortFlag) {
 		config.HTTP.Port = cli.GetIntFlagValue(cmd, httpPortFlag)
-		isRPCSpecified = true
-	}
-
-	if cli.IsFlagChanged(cmd, httpAuthPortFlag) {
-		config.HTTP.AuthPort = cli.GetIntFlagValue(cmd, httpAuthPortFlag)
 		isRPCSpecified = true
 	}
 
@@ -772,16 +494,6 @@ func applyHTTPFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfi
 		config.HTTP.Enabled = cli.GetBoolFlagValue(cmd, httpEnabledFlag)
 	} else if isRPCSpecified {
 		config.HTTP.Enabled = true
-	}
-
-	if cli.IsFlagChanged(cmd, httpReadTimeoutFlag) {
-		config.HTTP.ReadTimeout = cli.GetStringFlagValue(cmd, httpReadTimeoutFlag)
-	}
-	if cli.IsFlagChanged(cmd, httpWriteTimeoutFlag) {
-		config.HTTP.WriteTimeout = cli.GetStringFlagValue(cmd, httpWriteTimeoutFlag)
-	}
-	if cli.IsFlagChanged(cmd, httpIdleTimeoutFlag) {
-		config.HTTP.IdleTimeout = cli.GetStringFlagValue(cmd, httpIdleTimeoutFlag)
 	}
 
 }
@@ -803,14 +515,9 @@ var (
 		Usage:    "port for websocket endpoint",
 		DefValue: defaultConfig.WS.Port,
 	}
-	wsAuthPortFlag = cli.IntFlag{
-		Name:     "ws.auth-port",
-		Usage:    "port for websocket auth endpoint",
-		DefValue: defaultConfig.WS.AuthPort,
-	}
 )
 
-func applyWSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyWSFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, wsEnabledFlag) {
 		config.WS.Enabled = cli.GetBoolFlagValue(cmd, wsEnabledFlag)
 	}
@@ -819,9 +526,6 @@ func applyWSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig)
 	}
 	if cli.IsFlagChanged(cmd, wsPortFlag) {
 		config.WS.Port = cli.GetIntFlagValue(cmd, wsPortFlag)
-	}
-	if cli.IsFlagChanged(cmd, wsAuthPortFlag) {
-		config.WS.AuthPort = cli.GetIntFlagValue(cmd, wsAuthPortFlag)
 	}
 }
 
@@ -833,87 +537,11 @@ var (
 		DefValue: defaultConfig.RPCOpt.DebugEnabled,
 		Hidden:   true,
 	}
-	rpcPreimagesEnabledFlag = cli.BoolFlag{
-		Name:     "rpc.preimages",
-		Usage:    "enable preimages export api",
-		DefValue: defaultConfig.RPCOpt.PreimagesEnabled,
-		Hidden:   true, // not for end users
-	}
-
-	rpcEthRPCsEnabledFlag = cli.BoolFlag{
-		Name:     "rpc.eth",
-		Usage:    "enable eth apis",
-		DefValue: defaultConfig.RPCOpt.EthRPCsEnabled,
-		Hidden:   true,
-	}
-
-	rpcStakingRPCsEnabledFlag = cli.BoolFlag{
-		Name:     "rpc.staking",
-		Usage:    "enable staking apis",
-		DefValue: defaultConfig.RPCOpt.StakingRPCsEnabled,
-		Hidden:   true,
-	}
-
-	rpcLegacyRPCsEnabledFlag = cli.BoolFlag{
-		Name:     "rpc.legacy",
-		Usage:    "enable legacy apis",
-		DefValue: defaultConfig.RPCOpt.LegacyRPCsEnabled,
-		Hidden:   true,
-	}
-
-	rpcFilterFileFlag = cli.StringFlag{
-		Name:     "rpc.filterspath",
-		Usage:    "toml file path for method exposure filters",
-		DefValue: defaultConfig.RPCOpt.RpcFilterFile,
-		Hidden:   true,
-	}
-
-	rpcRateLimiterEnabledFlag = cli.BoolFlag{
-		Name:     "rpc.ratelimiter",
-		Usage:    "enable rate limiter for RPCs",
-		DefValue: defaultConfig.RPCOpt.RateLimterEnabled,
-	}
-
-	rpcRateLimitFlag = cli.IntFlag{
-		Name:     "rpc.ratelimit",
-		Usage:    "the number of requests per second for RPCs",
-		DefValue: defaultConfig.RPCOpt.RequestsPerSecond,
-	}
-
-	rpcEvmCallTimeoutFlag = cli.StringFlag{
-		Name:     "rpc.evm-call-timeout",
-		Usage:    "timeout for evm execution (eth_call); 0 means infinite timeout",
-		DefValue: defaultConfig.RPCOpt.EvmCallTimeout,
-	}
 )
 
-func applyRPCOptFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyRPCOptFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, rpcDebugEnabledFlag) {
 		config.RPCOpt.DebugEnabled = cli.GetBoolFlagValue(cmd, rpcDebugEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcPreimagesEnabledFlag) {
-		config.RPCOpt.PreimagesEnabled = cli.GetBoolFlagValue(cmd, rpcPreimagesEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcEthRPCsEnabledFlag) {
-		config.RPCOpt.EthRPCsEnabled = cli.GetBoolFlagValue(cmd, rpcEthRPCsEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcStakingRPCsEnabledFlag) {
-		config.RPCOpt.StakingRPCsEnabled = cli.GetBoolFlagValue(cmd, rpcStakingRPCsEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcLegacyRPCsEnabledFlag) {
-		config.RPCOpt.LegacyRPCsEnabled = cli.GetBoolFlagValue(cmd, rpcLegacyRPCsEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcFilterFileFlag) {
-		config.RPCOpt.RpcFilterFile = cli.GetStringFlagValue(cmd, rpcFilterFileFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcRateLimiterEnabledFlag) {
-		config.RPCOpt.RateLimterEnabled = cli.GetBoolFlagValue(cmd, rpcRateLimiterEnabledFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcRateLimitFlag) {
-		config.RPCOpt.RequestsPerSecond = cli.GetIntFlagValue(cmd, rpcRateLimitFlag)
-	}
-	if cli.IsFlagChanged(cmd, rpcEvmCallTimeoutFlag) {
-		config.RPCOpt.EvmCallTimeout = cli.GetStringFlagValue(cmd, rpcEvmCallTimeoutFlag)
 	}
 }
 
@@ -1009,7 +637,7 @@ var (
 	}
 )
 
-func applyBLSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyBLSFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, blsDirFlag) {
 		config.BLSKeys.KeyDir = cli.GetStringFlagValue(cmd, blsDirFlag)
 	} else if cli.IsFlagChanged(cmd, legacyBLSFolderFlag) {
@@ -1037,7 +665,7 @@ func applyBLSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig
 	}
 }
 
-func applyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyBLSPassFlags(cmd *cobra.Command, config *intelchainConfig) {
 	var passFileSpecified bool
 
 	if cli.IsFlagChanged(cmd, passEnabledFlag) {
@@ -1057,7 +685,7 @@ func applyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainCo
 	}
 }
 
-func applyKMSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyKMSFlags(cmd *cobra.Command, config *intelchainConfig) {
 	var fileSpecified bool
 
 	if cli.IsFlagChanged(cmd, kmsEnabledFlag) {
@@ -1074,7 +702,7 @@ func applyKMSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig
 	}
 }
 
-func applyLegacyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyLegacyBLSPassFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyBLSPassFlag) {
 		val := cli.GetStringFlagValue(cmd, legacyBLSPassFlag)
 		legacyApplyBLSPassVal(val, config)
@@ -1084,14 +712,14 @@ func applyLegacyBLSPassFlags(cmd *cobra.Command, config *intelchainconfig.Intelc
 	}
 }
 
-func applyLegacyKMSFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyLegacyKMSFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyKMSConfigSourceFlag) {
 		val := cli.GetStringFlagValue(cmd, legacyKMSConfigSourceFlag)
 		legacyApplyKMSSourceVal(val, config)
 	}
 }
 
-func legacyApplyBLSPassVal(src string, config *intelchainconfig.IntelchainConfig) {
+func legacyApplyBLSPassVal(src string, config *intelchainConfig) {
 	methodArgs := strings.SplitN(src, ":", 2)
 	method := methodArgs[0]
 
@@ -1112,7 +740,7 @@ func legacyApplyBLSPassVal(src string, config *intelchainconfig.IntelchainConfig
 	}
 }
 
-func legacyApplyKMSSourceVal(src string, config *intelchainconfig.IntelchainConfig) {
+func legacyApplyKMSSourceVal(src string, config *intelchainConfig) {
 	methodArgs := strings.SplitN(src, ":", 2)
 	method := methodArgs[0]
 
@@ -1163,7 +791,7 @@ var (
 	}
 )
 
-func applyConsensusFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyConsensusFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if config.Consensus == nil && cli.HasFlagsChanged(cmd, consensusValidFlags) {
 		cfg := getDefaultConsensusConfigCopy()
 		config.Consensus = &cfg
@@ -1182,20 +810,10 @@ func applyConsensusFlags(cmd *cobra.Command, config *intelchainconfig.Intelchain
 
 // transaction pool flags
 var (
-	tpAccountSlotsFlag = cli.IntFlag{
-		Name:     "txpool.accountslots",
-		Usage:    "number of executable transaction slots guaranteed per account",
-		DefValue: int(defaultConfig.TxPool.AccountSlots),
-	}
 	tpBlacklistFileFlag = cli.StringFlag{
 		Name:     "txpool.blacklist",
 		Usage:    "file of blacklisted wallet addresses",
 		DefValue: defaultConfig.TxPool.BlacklistFile,
-	}
-	rosettaFixFileFlag = cli.StringFlag{
-		Name:     "txpool.rosettafixfile",
-		Usage:    "file of rosetta fix file",
-		DefValue: defaultConfig.TxPool.RosettaFixFile,
 	}
 	legacyTPBlacklistFileFlag = cli.StringFlag{
 		Name:       "blacklist",
@@ -1203,111 +821,13 @@ var (
 		DefValue:   defaultConfig.TxPool.BlacklistFile,
 		Deprecated: "use --txpool.blacklist",
 	}
-	localAccountsFileFlag = cli.StringFlag{
-		Name:     "txpool.locals",
-		Usage:    "file of local wallet addresses",
-		DefValue: defaultConfig.TxPool.LocalAccountsFile,
-	}
-	allowedTxsFileFlag = cli.StringFlag{
-		Name:     "txpool.allowedtxs",
-		Usage:    "file of allowed transactions",
-		DefValue: defaultConfig.TxPool.AllowedTxsFile,
-	}
-	tpGlobalSlotsFlag = cli.IntFlag{
-		Name:     "txpool.globalslots",
-		Usage:    "maximum global number of non-executable transactions in the pool",
-		DefValue: int(defaultConfig.TxPool.GlobalSlots),
-	}
-	tpAccountQueueFlag = cli.IntFlag{
-		Name:     "txpool.accountqueue",
-		Usage:    "capacity of queued transactions for account in the pool",
-		DefValue: int(defaultConfig.TxPool.AccountQueue),
-	}
-	tpGlobalQueueFlag = cli.IntFlag{
-		Name:     "txpool.globalqueue",
-		Usage:    "global capacity for queued transactions in the pool",
-		DefValue: int(defaultConfig.TxPool.GlobalQueue),
-	}
-	tpLifetimeFlag = cli.StringFlag{
-		Name:     "txpool.lifetime",
-		Usage:    "maximum lifetime of transactions in the pool as a golang duration string",
-		DefValue: defaultConfig.TxPool.Lifetime.String(),
-	}
-	tpPriceLimitFlag = cli.IntFlag{
-		Name:     "txpool.pricelimit",
-		Usage:    "minimum gas price to enforce for acceptance into the pool",
-		DefValue: int(defaultConfig.TxPool.PriceLimit),
-	}
-	tpPriceBumpFlag = cli.IntFlag{
-		Name:     "txpool.pricebump",
-		Usage:    "minimum price bump to replace an already existing transaction (nonce)",
-		DefValue: int(defaultConfig.TxPool.PriceLimit),
-	}
 )
 
-func applyTxPoolFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, rosettaFixFileFlag) {
-		config.TxPool.RosettaFixFile = cli.GetStringFlagValue(cmd, rosettaFixFileFlag)
-	}
-	if cli.IsFlagChanged(cmd, tpAccountSlotsFlag) {
-		value := cli.GetIntFlagValue(cmd, tpAccountSlotsFlag) // int, so fits in uint64 when positive
-		if value <= 0 {
-			panic("Must provide positive for txpool.accountslots")
-		}
-		config.TxPool.AccountSlots = uint64(value)
-	}
-	if cli.IsFlagChanged(cmd, tpGlobalSlotsFlag) {
-		value := cli.GetIntFlagValue(cmd, tpGlobalSlotsFlag)
-		if value <= 0 {
-			panic("Must provide positive value for txpool.globalslots")
-		}
-		config.TxPool.GlobalSlots = uint64(value)
-	}
-	if cli.IsFlagChanged(cmd, tpAccountQueueFlag) {
-		value := cli.GetIntFlagValue(cmd, tpAccountQueueFlag)
-		if value <= 0 {
-			panic("Must provide positive value for txpool.accountqueue")
-		}
-		config.TxPool.AccountQueue = uint64(value)
-	}
-	if cli.IsFlagChanged(cmd, tpGlobalQueueFlag) {
-		value := cli.GetIntFlagValue(cmd, tpGlobalQueueFlag)
-		if value <= 0 {
-			panic("Must provide positive value for txpool.globalqueue")
-		}
-		config.TxPool.GlobalQueue = uint64(value)
-	}
+func applyTxPoolFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, tpBlacklistFileFlag) {
 		config.TxPool.BlacklistFile = cli.GetStringFlagValue(cmd, tpBlacklistFileFlag)
 	} else if cli.IsFlagChanged(cmd, legacyTPBlacklistFileFlag) {
 		config.TxPool.BlacklistFile = cli.GetStringFlagValue(cmd, legacyTPBlacklistFileFlag)
-	}
-	if cli.IsFlagChanged(cmd, localAccountsFileFlag) {
-		config.TxPool.LocalAccountsFile = cli.GetStringFlagValue(cmd, localAccountsFileFlag)
-	}
-	if cli.IsFlagChanged(cmd, allowedTxsFileFlag) {
-		config.TxPool.AllowedTxsFile = cli.GetStringFlagValue(cmd, allowedTxsFileFlag)
-	}
-	if cli.IsFlagChanged(cmd, tpLifetimeFlag) {
-		value, err := time.ParseDuration(cli.GetStringFlagValue(cmd, tpLifetimeFlag))
-		if err != nil {
-			panic(fmt.Sprintf("Invalid value for txpool.lifetime: %v", err))
-		}
-		config.TxPool.Lifetime = value
-	}
-	if cli.IsFlagChanged(cmd, tpPriceLimitFlag) {
-		value := cli.GetIntFlagValue(cmd, tpPriceLimitFlag)
-		if value <= 0 {
-			panic("Must provide positive value for txpool.pricelimit")
-		}
-		config.TxPool.PriceLimit = intelchainconfig.PriceLimit(value)
-	}
-	if cli.IsFlagChanged(cmd, tpPriceBumpFlag) {
-		value := cli.GetIntFlagValue(cmd, tpPriceBumpFlag)
-		if value <= 0 {
-			panic("Must provide positive value for txpool.pricebump")
-		}
-		config.TxPool.PriceBump = uint64(value)
 	}
 }
 
@@ -1323,51 +843,12 @@ var (
 		Usage:    "listen address for pprof",
 		DefValue: defaultConfig.Pprof.ListenAddr,
 	}
-	pprofFolderFlag = cli.StringFlag{
-		Name:     "pprof.folder",
-		Usage:    "folder to put pprof profiles",
-		DefValue: defaultConfig.Pprof.Folder,
-		Hidden:   true,
-	}
-	pprofProfileNamesFlag = cli.StringSliceFlag{
-		Name:     "pprof.profile.names",
-		Usage:    "a list of pprof profile names (separated by ,) e.g. cpu,heap,goroutine",
-		DefValue: defaultConfig.Pprof.ProfileNames,
-	}
-	pprofProfileIntervalFlag = cli.IntSliceFlag{
-		Name:     "pprof.profile.intervals",
-		Usage:    "a list of pprof profile interval integer values (separated by ,) e.g. 30 saves all profiles every 30 seconds or 0,10 saves the first profile on shutdown and the second profile every 10 seconds",
-		DefValue: defaultConfig.Pprof.ProfileIntervals,
-		Hidden:   true,
-	}
-	pprofProfileDebugFlag = cli.IntSliceFlag{
-		Name:     "pprof.profile.debug",
-		Usage:    "a list of pprof profile debug integer values (separated by ,) e.g. 0 writes the gzip-compressed protocol buffer and 1 writes the legacy text format. Predefined profiles may assign meaning to other debug values: https://golang.org/pkg/runtime/pprof/",
-		DefValue: defaultConfig.Pprof.ProfileDebugValues,
-		Hidden:   true,
-	}
 )
 
-func applyPprofFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyPprofFlags(cmd *cobra.Command, config *intelchainConfig) {
 	var pprofSet bool
 	if cli.IsFlagChanged(cmd, pprofListenAddrFlag) {
 		config.Pprof.ListenAddr = cli.GetStringFlagValue(cmd, pprofListenAddrFlag)
-		pprofSet = true
-	}
-	if cli.IsFlagChanged(cmd, pprofFolderFlag) {
-		config.Pprof.Folder = cli.GetStringFlagValue(cmd, pprofFolderFlag)
-		pprofSet = true
-	}
-	if cli.IsFlagChanged(cmd, pprofProfileNamesFlag) {
-		config.Pprof.ProfileNames = cli.GetStringSliceFlagValue(cmd, pprofProfileNamesFlag)
-		pprofSet = true
-	}
-	if cli.IsFlagChanged(cmd, pprofProfileIntervalFlag) {
-		config.Pprof.ProfileIntervals = cli.GetIntSliceFlagValue(cmd, pprofProfileIntervalFlag)
-		pprofSet = true
-	}
-	if cli.IsFlagChanged(cmd, pprofProfileDebugFlag) {
-		config.Pprof.ProfileDebugValues = cli.GetIntSliceFlagValue(cmd, pprofProfileDebugFlag)
 		pprofSet = true
 	}
 	if cli.IsFlagChanged(cmd, pprofEnabledFlag) {
@@ -1389,16 +870,6 @@ var (
 		Usage:    "rotation log size in megabytes",
 		DefValue: defaultConfig.Log.RotateSize,
 	}
-	logRotateCountFlag = cli.IntFlag{
-		Name:     "log.rotate-count",
-		Usage:    "maximum number of old log files to retain",
-		DefValue: defaultConfig.Log.RotateCount,
-	}
-	logRotateMaxAgeFlag = cli.IntFlag{
-		Name:     "log.rotate-max-age",
-		Usage:    "maximum number of days to retain old log files",
-		DefValue: defaultConfig.Log.RotateMaxAge,
-	}
 	logFileNameFlag = cli.StringFlag{
 		Name:     "log.name",
 		Usage:    "log file name (e.g. intelchain.log)",
@@ -1409,16 +880,6 @@ var (
 		Shorthand: "v",
 		Usage:     "logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail",
 		DefValue:  defaultConfig.Log.Verbosity,
-	}
-	logVerbosePrintsFlag = cli.StringSliceFlag{
-		Name:     "log.verbose-prints",
-		Usage:    "debugging feature. to print verbose internal objects as JSON in log file. available internal objects: config",
-		DefValue: []string{"config"},
-	}
-	logConsoleFlag = cli.BoolFlag{
-		Name:     "log.console",
-		Usage:    "output log to console only",
-		DefValue: defaultConfig.Log.Console,
 	}
 	// TODO: remove context (this shall not be in the log)
 	logContextIPFlag = cli.StringFlag{
@@ -1453,7 +914,7 @@ var (
 	}
 )
 
-func applyLogFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyLogFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, logFolderFlag) {
 		config.Log.Folder = cli.GetStringFlagValue(cmd, logFolderFlag)
 	} else if cli.IsFlagChanged(cmd, legacyLogFolderFlag) {
@@ -1466,14 +927,6 @@ func applyLogFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig
 		config.Log.RotateSize = cli.GetIntFlagValue(cmd, legacyLogRotateSizeFlag)
 	}
 
-	if cli.IsFlagChanged(cmd, logRotateCountFlag) {
-		config.Log.RotateCount = cli.GetIntFlagValue(cmd, logRotateCountFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, logRotateMaxAgeFlag) {
-		config.Log.RotateMaxAge = cli.GetIntFlagValue(cmd, logRotateMaxAgeFlag)
-	}
-
 	if cli.IsFlagChanged(cmd, logFileNameFlag) {
 		config.Log.FileName = cli.GetStringFlagValue(cmd, logFileNameFlag)
 	}
@@ -1482,15 +935,6 @@ func applyLogFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig
 		config.Log.Verbosity = cli.GetIntFlagValue(cmd, logVerbosityFlag)
 	} else if cli.IsFlagChanged(cmd, legacyVerbosityFlag) {
 		config.Log.Verbosity = cli.GetIntFlagValue(cmd, legacyVerbosityFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, logVerbosePrintsFlag) {
-		verbosePrintsFlagSlice := cli.GetStringSliceFlagValue(cmd, logVerbosePrintsFlag)
-		config.Log.VerbosePrints = intelchainconfig.FlagSliceToLogVerbosePrints(verbosePrintsFlagSlice)
-	}
-
-	if cli.IsFlagChanged(cmd, logConsoleFlag) {
-		config.Log.Console = cli.GetBoolFlagValue(cmd, logConsoleFlag)
 	}
 
 	if cli.HasFlagsChanged(cmd, []cli.Flag{logContextIPFlag, logContextPortFlag}) {
@@ -1515,7 +959,7 @@ var (
 	}
 )
 
-func applySysFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applySysFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.HasFlagsChanged(cmd, sysFlags) || config.Sys == nil {
 		cfg := getDefaultSysConfigCopy()
 		config.Sys = &cfg
@@ -1565,7 +1009,7 @@ var (
 	}
 )
 
-func applyDevnetFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyDevnetFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.HasFlagsChanged(cmd, devnetFlags) && config.Devnet == nil {
 		cfg := getDefaultDevnetConfigCopy()
 		config.Devnet = &cfg
@@ -1640,7 +1084,7 @@ var (
 	}
 )
 
-func applyRevertFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyRevertFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.HasFlagsChanged(cmd, revertFlags) {
 		cfg := getDefaultRevertConfigCopy()
 		config.Revert = &cfg
@@ -1668,52 +1112,6 @@ func applyRevertFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainCon
 		if cli.IsFlagChanged(cmd, legacyRevertToFlag) {
 			config.Revert.RevertTo = cli.GetIntFlagValue(cmd, legacyRevertToFlag)
 		}
-	}
-}
-
-var (
-	preimageImportFlag = cli.StringFlag{
-		Name:     "preimage.import",
-		Usage:    "Import pre-images from CSV file",
-		Hidden:   true,
-		DefValue: defaultPreimageConfig.ImportFrom,
-	}
-	preimageExportFlag = cli.StringFlag{
-		Name:     "preimage.export",
-		Usage:    "Export pre-images to CSV file",
-		Hidden:   true,
-		DefValue: defaultPreimageConfig.ExportTo,
-	}
-	preimageGenerateStartFlag = cli.Uint64Flag{
-		Name:     "preimage.start",
-		Usage:    "The block number from which pre-images are to be generated",
-		Hidden:   true,
-		DefValue: defaultPreimageConfig.GenerateStart,
-	}
-	preimageGenerateEndFlag = cli.Uint64Flag{
-		Name:     "preimage.end",
-		Usage:    "The block number upto and including which pre-images are to be generated",
-		Hidden:   true,
-		DefValue: defaultPreimageConfig.GenerateEnd,
-	}
-)
-
-func applyPreimageFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
-	if cli.HasFlagsChanged(cmd, preimageFlags) {
-		cfg := getDefaultPreimageConfigCopy()
-		config.Preimage = &cfg
-	}
-	if cli.IsFlagChanged(cmd, preimageImportFlag) {
-		config.Preimage.ImportFrom = cli.GetStringFlagValue(cmd, preimageImportFlag)
-	}
-	if cli.IsFlagChanged(cmd, preimageExportFlag) {
-		config.Preimage.ExportTo = cli.GetStringFlagValue(cmd, preimageExportFlag)
-	}
-	if cli.IsFlagChanged(cmd, preimageGenerateStartFlag) {
-		config.Preimage.GenerateStart = cli.GetUint64FlagValue(cmd, preimageGenerateStartFlag)
-	}
-	if cli.IsFlagChanged(cmd, preimageGenerateEndFlag) {
-		config.Preimage.GenerateEnd = cli.GetUint64FlagValue(cmd, preimageGenerateEndFlag)
 	}
 }
 
@@ -1751,20 +1149,13 @@ var (
 )
 
 // Note: this function need to be called before parse other flags
-func applyLegacyMiscFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyLegacyMiscFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if cli.IsFlagChanged(cmd, legacyPortFlag) {
 		legacyPort := cli.GetIntFlagValue(cmd, legacyPortFlag)
 		config.P2P.Port = legacyPort
 		config.HTTP.Port = nodeconfig.GetRPCHTTPPortFromBase(legacyPort)
-		config.HTTP.AuthPort = nodeconfig.GetRPCAuthHTTPPortFromBase(legacyPort)
 		config.HTTP.RosettaPort = nodeconfig.GetRosettaHTTPPortFromBase(legacyPort)
 		config.WS.Port = nodeconfig.GetWSPortFromBase(legacyPort)
-		config.WS.AuthPort = nodeconfig.GetWSAuthPortFromBase(legacyPort)
-
-		legPortStr := strconv.Itoa(legacyPort)
-		syncPort, _ := strconv.Atoi(legacysync.GetSyncingPort(legPortStr))
-		config.DNSSync.Port = syncPort
-		config.DNSSync.ServerPort = syncPort
 	}
 
 	if cli.IsFlagChanged(cmd, legacyIPFlag) {
@@ -1788,7 +1179,7 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *intelchainconfig.Intelchai
 		logPort := cli.GetIntFlagValue(cmd, legacyPortFlag)
 		config.Log.FileName = fmt.Sprintf("validator-%v-%v.log", logIP, logPort)
 
-		logCtx := &intelchainconfig.LogContext{
+		logCtx := &logContext{
 			IP:   logIP,
 			Port: logPort,
 		}
@@ -1796,7 +1187,7 @@ func applyLegacyMiscFlags(cmd *cobra.Command, config *intelchainconfig.Intelchai
 	}
 
 	if cli.HasFlagsChanged(cmd, []cli.Flag{legacyWebHookConfigFlag, legacyTPBroadcastInvalidTxFlag}) {
-		config.Legacy = &intelchainconfig.LegacyConfig{}
+		config.Legacy = &legacyConfig{}
 		if cli.IsFlagChanged(cmd, legacyWebHookConfigFlag) {
 			val := cli.GetStringFlagValue(cmd, legacyWebHookConfigFlag)
 			config.Legacy.WebHookConfig = &val
@@ -1837,7 +1228,7 @@ var (
 	}
 )
 
-func applyPrometheusFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyPrometheusFlags(cmd *cobra.Command, config *intelchainConfig) {
 	if config.Prometheus == nil {
 		cfg := getDefaultPrometheusConfigCopy()
 		config.Prometheus = &cfg
@@ -1864,317 +1255,5 @@ func applyPrometheusFlags(cmd *cobra.Command, config *intelchainconfig.Intelchai
 	}
 	if cli.IsFlagChanged(cmd, prometheusEnablePushFlag) {
 		config.Prometheus.EnablePush = cli.GetBoolFlagValue(cmd, prometheusEnablePushFlag)
-	}
-}
-
-var (
-	syncStreamEnabledFlag = cli.BoolFlag{
-		Name:     "sync",
-		Usage:    "Enable the stream sync protocol (experimental feature)",
-		DefValue: false,
-	}
-
-	syncModeFlag = cli.IntFlag{
-		Name:     "sync.mode",
-		Usage:    "synchronization mode of the downloader (0=FullSync, 1=FastSync, 2=SnapSync)",
-		DefValue: 0,
-	}
-
-	// TODO: Deprecate this flag, and always set to true after stream sync is fully up.
-	syncDownloaderFlag = cli.BoolFlag{
-		Name:     "sync.downloader",
-		Usage:    "Enable the downloader module to sync through stream sync protocol",
-		Hidden:   true,
-		DefValue: false,
-	}
-	syncStagedSyncFlag = cli.BoolFlag{
-		Name:     "sync.stagedsync",
-		Usage:    "Enable the staged sync",
-		Hidden:   false,
-		DefValue: false,
-	}
-	syncConcurrencyFlag = cli.IntFlag{
-		Name:   "sync.concurrency",
-		Usage:  "Concurrency when doing p2p sync requests",
-		Hidden: true,
-	}
-	syncMinPeersFlag = cli.IntFlag{
-		Name:   "sync.min-peers",
-		Usage:  "Minimum peers check for each shard-wise sync loop",
-		Hidden: true,
-	}
-	syncInitStreamsFlag = cli.IntFlag{
-		Name:   "sync.init-peers",
-		Usage:  "Initial shard-wise number of peers to start syncing",
-		Hidden: true,
-	}
-	syncMaxAdvertiseWaitTimeFlag = cli.IntFlag{
-		Name:   "sync.max-advertise-wait-time",
-		Usage:  "The max time duration between two advertises for each p2p peer to tell other nodes what protocols it supports",
-		Hidden: true,
-	}
-	syncDiscSoftLowFlag = cli.IntFlag{
-		Name:   "sync.disc.soft-low-cap",
-		Usage:  "Soft low cap for sync stream management",
-		Hidden: true,
-	}
-	syncDiscHardLowFlag = cli.IntFlag{
-		Name:   "sync.disc.hard-low-cap",
-		Usage:  "Hard low cap for sync stream management",
-		Hidden: true,
-	}
-	syncDiscHighFlag = cli.IntFlag{
-		Name:   "sync.disc.hi-cap",
-		Usage:  "High cap for sync stream management",
-		Hidden: true,
-	}
-	syncDiscBatchFlag = cli.IntFlag{
-		Name:   "sync.disc.batch",
-		Usage:  "batch size of the sync discovery",
-		Hidden: true,
-	}
-)
-
-// applySyncFlags apply the sync flags.
-func applySyncFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, syncStreamEnabledFlag) {
-		config.Sync.Enabled = cli.GetBoolFlagValue(cmd, syncStreamEnabledFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncModeFlag) {
-		config.Sync.SyncMode = uint32(cli.GetIntFlagValue(cmd, syncModeFlag))
-	}
-
-	if cli.IsFlagChanged(cmd, syncDownloaderFlag) {
-		config.Sync.Downloader = cli.GetBoolFlagValue(cmd, syncDownloaderFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncStagedSyncFlag) {
-		config.Sync.StagedSync = cli.GetBoolFlagValue(cmd, syncStagedSyncFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncConcurrencyFlag) {
-		config.Sync.Concurrency = cli.GetIntFlagValue(cmd, syncConcurrencyFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncMinPeersFlag) {
-		config.Sync.MinPeers = cli.GetIntFlagValue(cmd, syncMinPeersFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncInitStreamsFlag) {
-		config.Sync.InitStreams = cli.GetIntFlagValue(cmd, syncInitStreamsFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncMaxAdvertiseWaitTimeFlag) {
-		config.Sync.MaxAdvertiseWaitTime = cli.GetIntFlagValue(cmd, syncMaxAdvertiseWaitTimeFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncDiscSoftLowFlag) {
-		config.Sync.DiscSoftLowCap = cli.GetIntFlagValue(cmd, syncDiscSoftLowFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncDiscHardLowFlag) {
-		config.Sync.DiscHardLowCap = cli.GetIntFlagValue(cmd, syncDiscHardLowFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncDiscHighFlag) {
-		config.Sync.DiscHighCap = cli.GetIntFlagValue(cmd, syncDiscHighFlag)
-	}
-
-	if cli.IsFlagChanged(cmd, syncDiscBatchFlag) {
-		config.Sync.DiscBatch = cli.GetIntFlagValue(cmd, syncDiscBatchFlag)
-	}
-}
-
-// shard data flags
-var (
-	enableShardDataFlag = cli.BoolFlag{
-		Name:     "sharddata.enable",
-		Usage:    "whether use multi-database mode of levelDB",
-		DefValue: defaultConfig.ShardData.EnableShardData,
-	}
-	diskCountFlag = cli.IntFlag{
-		Name:     "sharddata.disk_count",
-		Usage:    "the count of disks you want to storage block data",
-		DefValue: defaultConfig.ShardData.DiskCount,
-	}
-	shardCountFlag = cli.IntFlag{
-		Name:     "sharddata.shard_count",
-		Usage:    "the count of shards you want to split in each disk",
-		DefValue: defaultConfig.ShardData.ShardCount,
-	}
-	cacheTimeFlag = cli.IntFlag{
-		Name:     "sharddata.cache_time",
-		Usage:    "local cache save time (minute)",
-		DefValue: defaultConfig.ShardData.CacheTime,
-	}
-	cacheSizeFlag = cli.IntFlag{
-		Name:     "sharddata.cache_size",
-		Usage:    "local cache storage size (MB)",
-		DefValue: defaultConfig.ShardData.CacheSize,
-	}
-)
-
-// gas price oracle flags
-var (
-	gpoBlocksFlag = cli.IntFlag{
-		Name:     "gpo.blocks",
-		Usage:    "Number of recent blocks to check for gas prices",
-		DefValue: defaultConfig.GPO.Blocks,
-	}
-	gpoTransactionsFlag = cli.IntFlag{
-		Name:     "gpo.transactions",
-		Usage:    "Number of transactions to sample in a block",
-		DefValue: defaultConfig.GPO.Transactions,
-	}
-	gpoPercentileFlag = cli.IntFlag{
-		Name:     "gpo.percentile",
-		Usage:    "Suggested gas price is the given percentile of a set of recent transaction gas prices",
-		DefValue: defaultConfig.GPO.Percentile,
-	}
-	gpoDefaultPriceFlag = cli.Int64Flag{
-		Name:     "gpo.defaultprice",
-		Usage:    "The gas price to suggest before data is available, and the price to suggest when block utilization is low",
-		DefValue: defaultConfig.GPO.DefaultPrice,
-	}
-	gpoMaxPriceFlag = cli.Int64Flag{
-		Name:     "gpo.maxprice",
-		Usage:    "Maximum gasprice to be recommended by gpo",
-		DefValue: defaultConfig.GPO.MaxPrice,
-	}
-	gpoLowUsageThresholdFlag = cli.IntFlag{
-		Name:     "gpo.low-usage-threshold",
-		Usage:    "The block usage threshold below which the default gas price is suggested (0 to disable)",
-		DefValue: defaultConfig.GPO.LowUsageThreshold,
-	}
-	gpoBlockGasLimitFlag = cli.IntFlag{
-		Name:     "gpo.block-gas-limit",
-		Usage:    "The gas limit, per block. If set to 0, it is pulled from the block header",
-		DefValue: defaultConfig.GPO.BlockGasLimit,
-	}
-)
-
-// metrics flags required for the go-eth library
-// https://github.com/ethereum/go-ethereum/blob/master/metrics/metrics.go#L35-L55
-var (
-	metricsETHFlag = cli.BoolFlag{
-		Name:     "metrics", // https://github.com/ethereum/go-ethereum/blob/master/metrics/metrics.go#L30
-		Usage:    "flag required to enable the eth metrics",
-		DefValue: false,
-	}
-
-	metricsExpensiveETHFlag = cli.BoolFlag{
-		Name:     "metrics.expensive", // https://github.com/ethereum/go-ethereum/blob/master/metrics/metrics.go#L33
-		Usage:    "flag required to enable the expensive eth metrics",
-		DefValue: false,
-	}
-)
-
-func applyShardDataFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, enableShardDataFlag) {
-		cfg.ShardData.EnableShardData = cli.GetBoolFlagValue(cmd, enableShardDataFlag)
-	}
-	if cli.IsFlagChanged(cmd, diskCountFlag) {
-		cfg.ShardData.DiskCount = cli.GetIntFlagValue(cmd, diskCountFlag)
-	}
-	if cli.IsFlagChanged(cmd, shardCountFlag) {
-		cfg.ShardData.ShardCount = cli.GetIntFlagValue(cmd, shardCountFlag)
-	}
-	if cli.IsFlagChanged(cmd, cacheTimeFlag) {
-		cfg.ShardData.CacheTime = cli.GetIntFlagValue(cmd, cacheTimeFlag)
-	}
-	if cli.IsFlagChanged(cmd, cacheSizeFlag) {
-		cfg.ShardData.CacheSize = cli.GetIntFlagValue(cmd, cacheSizeFlag)
-	}
-}
-
-func applyGPOFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, gpoBlocksFlag) {
-		cfg.GPO.Blocks = cli.GetIntFlagValue(cmd, gpoBlocksFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoTransactionsFlag) {
-		cfg.GPO.Transactions = cli.GetIntFlagValue(cmd, gpoTransactionsFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoPercentileFlag) {
-		cfg.GPO.Percentile = cli.GetIntFlagValue(cmd, gpoPercentileFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoDefaultPriceFlag) {
-		cfg.GPO.DefaultPrice = cli.GetInt64FlagValue(cmd, gpoDefaultPriceFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoMaxPriceFlag) {
-		cfg.GPO.MaxPrice = cli.GetInt64FlagValue(cmd, gpoMaxPriceFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoLowUsageThresholdFlag) {
-		cfg.GPO.LowUsageThreshold = cli.GetIntFlagValue(cmd, gpoLowUsageThresholdFlag)
-	}
-	if cli.IsFlagChanged(cmd, gpoBlockGasLimitFlag) {
-		cfg.GPO.BlockGasLimit = cli.GetIntFlagValue(cmd, gpoBlockGasLimitFlag)
-	}
-}
-
-// cache config flags
-var (
-	cacheDisabled = cli.BoolFlag{
-		Name:     "cache.disabled",
-		Usage:    "Whether to disable trie write caching (archive node)",
-		DefValue: defaultCacheConfig.Disabled,
-	}
-	cacheTrieNodeLimit = cli.IntFlag{
-		Name:     "cache.trie_node_limit",
-		Usage:    " Memory limit (MB) at which to flush the current in-memory trie to disk",
-		DefValue: defaultCacheConfig.TrieNodeLimit,
-	}
-	cacheTriesInMemory = cli.Uint64Flag{
-		Name:     "cache.tries_in_memory",
-		Usage:    "Block number from the head stored in disk before exiting",
-		DefValue: defaultCacheConfig.TriesInMemory,
-	}
-	cachePreimages = cli.BoolFlag{
-		Name:     "cache.preimages",
-		Usage:    "Whether to store preimage of trie key to the disk",
-		DefValue: defaultCacheConfig.Preimages,
-	}
-	cacheSnapshotLimit = cli.IntFlag{
-		Name:     "cache.snapshot_limit",
-		Usage:    "Memory allowance (MB) to use for caching snapshot entries in memory",
-		DefValue: defaultCacheConfig.SnapshotLimit,
-	}
-	cacheSnapshotNoBuild = cli.BoolFlag{
-		Name:     "cache.snapshot_no_build",
-		Usage:    "Whether the background generation is allowed",
-		DefValue: defaultCacheConfig.SnapshotNoBuild,
-	}
-	cacheSnapshotWait = cli.BoolFlag{
-		Name:     "cache.snapshot_wait",
-		Usage:    "Wait for snapshot construction on startup",
-		DefValue: defaultCacheConfig.SnapshotWait,
-	}
-)
-
-func applyCacheFlags(cmd *cobra.Command, cfg *intelchainconfig.IntelchainConfig) {
-	if cli.IsFlagChanged(cmd, cacheDisabled) {
-		cfg.Cache.Disabled = cli.GetBoolFlagValue(cmd, cacheDisabled)
-	}
-	if cli.IsFlagChanged(cmd, cacheTrieNodeLimit) {
-		cfg.Cache.TrieNodeLimit = cli.GetIntFlagValue(cmd, cacheTrieNodeLimit)
-	}
-	if cli.IsFlagChanged(cmd, cacheTriesInMemory) {
-		value := cli.GetUint64FlagValue(cmd, cacheTriesInMemory)
-		if value <= 2 {
-			panic("Must provide number greater than 2 for Cache.TriesInMemory")
-		}
-		cfg.Cache.TriesInMemory = value
-	}
-	if cli.IsFlagChanged(cmd, cachePreimages) {
-		cfg.Cache.Preimages = cli.GetBoolFlagValue(cmd, cachePreimages)
-	}
-	if cli.IsFlagChanged(cmd, cacheSnapshotLimit) {
-		cfg.Cache.SnapshotLimit = cli.GetIntFlagValue(cmd, cacheSnapshotLimit)
-	}
-	if cli.IsFlagChanged(cmd, cacheSnapshotNoBuild) {
-		cfg.Cache.SnapshotNoBuild = cli.GetBoolFlagValue(cmd, cacheSnapshotNoBuild)
-	}
-	if cli.IsFlagChanged(cmd, cacheSnapshotWait) {
-		cfg.Cache.SnapshotWait = cli.GetBoolFlagValue(cmd, cacheSnapshotWait)
 	}
 }

@@ -52,7 +52,7 @@ func generateRandomSlot() shard.Slot {
 	key := bls.SerializedPublicKey{}
 	key.FromLibBLSPublicKey(secretKey.GetPublicKey())
 	stake := numeric.NewDecFromBigInt(big.NewInt(int64(stakeGen.Int63n(maxStakeGen))))
-	return shard.Slot{EcdsaAddress: addr, BLSPublicKey: key, EffectiveStake: &stake}
+	return shard.Slot{addr, key, &stake}
 }
 
 func TestCompute(t *testing.T) {
@@ -100,7 +100,7 @@ func TestCompute(t *testing.T) {
 	expectedRoster.TheirVotingPowerTotalPercentage = theirPercentage
 
 	computedRoster, err := Compute(&shard.Committee{
-		ShardID: shard.BeaconChainShardID, Slots: slotList,
+		shard.BeaconChainShardID, slotList,
 	}, big.NewInt(3))
 	if err != nil {
 		t.Error("Computed Roster failed on vote summation to one")

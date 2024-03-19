@@ -2,9 +2,8 @@ package consensus
 
 import (
 	"math/big"
+	"sync"
 	"time"
-
-	"github.com/zennittians/intelchain/internal/chain"
 
 	"github.com/zennittians/intelchain/crypto/bls"
 
@@ -24,78 +23,87 @@ const MaxViewIDDiff = 249
 
 // State contains current mode and current viewID
 type State struct {
-	mode Mode
+	mode    Mode
+	modeMux sync.RWMutex
 
 	// current view id in normal mode
 	// it changes per successful consensus
 	blockViewID uint64
+	cViewMux    sync.RWMutex
 
 	// view changing id is used during view change mode
 	// it is the next view id
 	viewChangingID uint64
 
-	isBackup bool
+	viewMux sync.RWMutex
 }
 
 // Mode return the current node mode
 func (pm *State) Mode() Mode {
+	pm.modeMux.RLock()
+	defer pm.modeMux.RUnlock()
 	return pm.mode
 }
 
 // SetMode set the node mode as required
 func (pm *State) SetMode(s Mode) {
-	if s == Normal && pm.isBackup {
-		s = NormalBackup
-	}
-
+	pm.modeMux.Lock()
+	defer pm.modeMux.Unlock()
 	pm.mode = s
 }
 
 // GetCurBlockViewID return the current view id
 func (pm *State) GetCurBlockViewID() uint64 {
+	pm.cViewMux.RLock()
+	defer pm.cViewMux.RUnlock()
 	return pm.blockViewID
 }
 
 // SetCurBlockViewID sets the current view id
-func (pm *State) SetCurBlockViewID(viewID uint64) uint64 {
+func (pm *State) SetCurBlockViewID(viewID uint64) {
+	pm.cViewMux.Lock()
+	defer pm.cViewMux.Unlock()
 	pm.blockViewID = viewID
-	return pm.blockViewID
 }
 
 // GetViewChangingID return the current view changing id
 // It is meaningful during view change mode
 func (pm *State) GetViewChangingID() uint64 {
+	pm.viewMux.RLock()
+	defer pm.viewMux.RUnlock()
 	return pm.viewChangingID
 }
 
 // SetViewChangingID set the current view changing id
 // It is meaningful during view change mode
 func (pm *State) SetViewChangingID(id uint64) {
+	pm.viewMux.Lock()
+	defer pm.viewMux.Unlock()
 	pm.viewChangingID = id
 }
 
 // GetViewChangeDuraion return the duration of the current view change
 // It increase in the power of difference betweeen view changing ID and current view ID
 func (pm *State) GetViewChangeDuraion() time.Duration {
+	pm.viewMux.RLock()
+	pm.cViewMux.RLock()
+	defer pm.viewMux.RUnlock()
+	defer pm.cViewMux.RUnlock()
 	diff := int64(pm.viewChangingID - pm.blockViewID)
 	return time.Duration(diff * diff * int64(viewChangeDuration))
-}
-
-func (pm *State) SetIsBackup(isBackup bool) {
-	pm.isBackup = isBackup
 }
 
 // fallbackNextViewID return the next view ID and duration when there is an exception
 // to calculate the time-based viewId
 func (consensus *Consensus) fallbackNextViewID() (uint64, time.Duration) {
-	diff := int64(consensus.getViewChangingID() + 1 - consensus.getCurBlockViewID())
+	diff := int64(consensus.GetViewChangingID() + 1 - consensus.GetCurBlockViewID())
 	if diff <= 0 {
 		diff = int64(1)
 	}
 	consensus.getLogger().Error().
 		Int64("diff", diff).
 		Msg("[fallbackNextViewID] use legacy viewID algorithm")
-	return consensus.getViewChangingID() + 1, time.Duration(diff * diff * int64(viewChangeDuration))
+	return consensus.GetViewChangingID() + 1, time.Duration(diff * diff * int64(viewChangeDuration))
 }
 
 // getNextViewID return the next view ID based on the timestamp
@@ -110,10 +118,10 @@ func (consensus *Consensus) fallbackNextViewID() (uint64, time.Duration) {
 // viewID is only used as the fallback mechansim to determine the nextViewID
 func (consensus *Consensus) getNextViewID() (uint64, time.Duration) {
 	// handle corner case at first
-	if consensus.Blockchain() == nil {
+	if consensus.Blockchain == nil {
 		return consensus.fallbackNextViewID()
 	}
-	curHeader := consensus.Blockchain().CurrentHeader()
+	curHeader := consensus.Blockchain.CurrentHeader()
 	if curHeader == nil {
 		return consensus.fallbackNextViewID()
 	}
@@ -123,10 +131,6 @@ func (consensus *Consensus) getNextViewID() (uint64, time.Duration) {
 
 	// timestamp messed up in current validator node
 	if curTimestamp <= blockTimestamp {
-		consensus.getLogger().Error().
-			Int64("curTimestamp", curTimestamp).
-			Int64("blockTimestamp", blockTimestamp).
-			Msg("[getNextViewID] timestamp of block too high")
 		return consensus.fallbackNextViewID()
 	}
 	// diff only increases, since view change timeout is shorter than
@@ -149,22 +153,20 @@ func (consensus *Consensus) getNextViewID() (uint64, time.Duration) {
 // It reads the current leader's pubkey based on the blockchain data and returns
 // the next leader based on the gap of the viewID of the view change and the last
 // know view id of the block.
-func (consensus *Consensus) getNextLeaderKey(viewID uint64, committee *shard.Committee) *bls.PublicKeyWrapper {
+func (consensus *Consensus) getNextLeaderKey(viewID uint64) *bls.PublicKeyWrapper {
 	gap := 1
 
-	cur := consensus.getCurBlockViewID()
-	if viewID > cur {
-		gap = int(viewID - cur)
+	if viewID > consensus.GetCurBlockViewID() {
+		gap = int(viewID - consensus.GetCurBlockViewID())
 	}
 	var lastLeaderPubKey *bls.PublicKeyWrapper
 	var err error
-	blockchain := consensus.Blockchain()
 	epoch := big.NewInt(0)
-	if blockchain == nil {
+	if consensus.Blockchain == nil {
 		consensus.getLogger().Error().Msg("[getNextLeaderKey] Blockchain is nil. Use consensus.LeaderPubKey")
 		lastLeaderPubKey = consensus.LeaderPubKey
 	} else {
-		curHeader := blockchain.CurrentHeader()
+		curHeader := consensus.Blockchain.CurrentHeader()
 		if curHeader == nil {
 			consensus.getLogger().Error().Msg("[getNextLeaderKey] Failed to get current header from blockchain")
 			lastLeaderPubKey = consensus.LeaderPubKey
@@ -172,7 +174,7 @@ func (consensus *Consensus) getNextLeaderKey(viewID uint64, committee *shard.Com
 			stuckBlockViewID := curHeader.ViewID().Uint64() + 1
 			gap = int(viewID - stuckBlockViewID)
 			// this is the truth of the leader based on blockchain blocks
-			lastLeaderPubKey, err = chain.GetLeaderPubKeyFromCoinbase(blockchain, curHeader)
+			lastLeaderPubKey, err = consensus.getLeaderPubKeyFromCoinbase(curHeader)
 			if err != nil || lastLeaderPubKey == nil {
 				consensus.getLogger().Error().Err(err).
 					Msg("[getNextLeaderKey] Unable to get leaderPubKey from coinbase. Set it to consensus.LeaderPubKey")
@@ -182,12 +184,10 @@ func (consensus *Consensus) getNextLeaderKey(viewID uint64, committee *shard.Com
 			// viewchange happened at the first block of new epoch
 			// use the LeaderPubKey as the base of the next leader
 			// as we shouldn't use lastLeader from coinbase as the base.
-			// The LeaderPubKey should be updated to the node of index 0 of the committee
-			// so, when validator joined the view change process later in the epoch block
-			// it can still sync with other validators.
+			// The LeaderPubKey should be updated to the index 0 of the committee
 			if curHeader.IsLastBlockInEpoch() {
 				consensus.getLogger().Info().Msg("[getNextLeaderKey] view change in the first block of new epoch")
-				lastLeaderPubKey = consensus.decider.FirstParticipant(shard.Schedule.InstanceForEpoch(epoch))
+				lastLeaderPubKey = consensus.LeaderPubKey
 			}
 		}
 	}
@@ -196,30 +196,14 @@ func (consensus *Consensus) getNextLeaderKey(viewID uint64, committee *shard.Com
 		Str("leaderPubKey", consensus.LeaderPubKey.Bytes.Hex()).
 		Int("gap", gap).
 		Uint64("newViewID", viewID).
-		Uint64("myCurBlockViewID", consensus.getCurBlockViewID()).
+		Uint64("myCurBlockViewID", consensus.GetCurBlockViewID()).
 		Msg("[getNextLeaderKey] got leaderPubKey from coinbase")
 	// wasFound, next := consensus.Decider.NthNext(lastLeaderPubKey, gap)
 	// FIXME: rotate leader on intelchain nodes only before fully externalization
-	var wasFound bool
-	var next *bls.PublicKeyWrapper
-	if blockchain != nil && blockchain.Config().IsLeaderRotationInternalValidators(epoch) {
-		if blockchain.Config().IsLeaderRotationExternalValidatorsAllowed(epoch) {
-			wasFound, next = consensus.decider.NthNextValidator(
-				committee.Slots,
-				lastLeaderPubKey,
-				gap)
-		} else {
-			wasFound, next = consensus.decider.NthNextItc(
-				shard.Schedule.InstanceForEpoch(epoch),
-				lastLeaderPubKey,
-				gap)
-		}
-	} else {
-		wasFound, next = consensus.decider.NthNextItc(
-			shard.Schedule.InstanceForEpoch(epoch),
-			lastLeaderPubKey,
-			gap)
-	}
+	wasFound, next := consensus.Decider.NthNextItc(
+		shard.Schedule.InstanceForEpoch(epoch),
+		lastLeaderPubKey,
+		gap)
 	if !wasFound {
 		consensus.getLogger().Warn().
 			Str("key", consensus.LeaderPubKey.Bytes.Hex()).
@@ -241,37 +225,22 @@ func createTimeout() map[TimeoutType]*utils.Timeout {
 
 // startViewChange start the view change process
 func (consensus *Consensus) startViewChange() {
-	if consensus.disableViewChange || consensus.isBackup {
+	if consensus.disableViewChange {
 		return
 	}
+	consensus.mutex.Lock()
+	defer consensus.mutex.Unlock()
 
 	consensus.consensusTimeout[timeoutConsensus].Stop()
 	consensus.consensusTimeout[timeoutBootstrap].Stop()
 	consensus.current.SetMode(ViewChanging)
 	nextViewID, duration := consensus.getNextViewID()
-	consensus.setViewChangingID(nextViewID)
-	epoch := consensus.Blockchain().CurrentHeader().Epoch()
-	ss, err := consensus.Blockchain().ReadShardState(epoch)
-	if err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to read shard state")
-		return
-	}
-	committee, err := ss.FindCommitteeByID(consensus.ShardID)
-	if err != nil {
-		utils.Logger().Error().Err(err).Msg("Failed to find committee")
-		return
-	}
-	// TODO: set the Leader PubKey to the next leader for view change
-	// this is dangerous as the leader change is not succeeded yet
-	// we use it this way as in many code we validate the messages
-	// aganist the consensus.LeaderPubKey variable.
-	// Ideally, we shall use another variable to keep track of the
-	// leader pubkey in viewchange mode
-	consensus.LeaderPubKey = consensus.getNextLeaderKey(nextViewID, committee)
+	consensus.SetViewChangingID(nextViewID)
+	consensus.LeaderPubKey = consensus.getNextLeaderKey(nextViewID)
 
 	consensus.getLogger().Warn().
 		Uint64("nextViewID", nextViewID).
-		Uint64("viewChangingID", consensus.getViewChangingID()).
+		Uint64("viewChangingID", consensus.GetViewChangingID()).
 		Dur("timeoutDuration", duration).
 		Str("NextLeader", consensus.LeaderPubKey.Bytes.Hex()).
 		Msg("[startViewChange]")
@@ -281,30 +250,26 @@ func (consensus *Consensus) startViewChange() {
 	defer consensus.consensusTimeout[timeoutViewChange].Start()
 
 	// update the dictionary key if the viewID is first time received
-	members := consensus.decider.Participants()
-	consensus.vc.AddViewIDKeyIfNotExist(nextViewID, members)
+	consensus.vc.AddViewIDKeyIfNotExist(nextViewID, consensus.Decider.Participants())
 
 	// init my own payload
 	if err := consensus.vc.InitPayload(
-		consensus.fBFTLog,
+		consensus.FBFTLog,
 		nextViewID,
-		consensus.getBlockNum(),
-		consensus.priKey,
-		members,
-		consensus.verifyBlock,
-	); err != nil {
+		consensus.blockNum,
+		consensus.priKey); err != nil {
 		consensus.getLogger().Error().Err(err).Msg("[startViewChange] Init Payload Error")
 	}
 
 	// for view change, send separate view change per public key
 	// do not do multi-sign of view change message
 	for _, key := range consensus.priKey {
-		if !consensus.isValidatorInCommittee(key.Pub.Bytes) {
+		if !consensus.IsValidatorInCommittee(key.Pub.Bytes) {
 			continue
 		}
 		msgToSend := consensus.constructViewChangeMessage(&key)
 		if err := consensus.msgSender.SendWithRetry(
-			consensus.getBlockNum(),
+			consensus.blockNum,
 			msg_pb.MessageType_VIEWCHANGE,
 			[]nodeconfig.GroupID{
 				nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(consensus.ShardID))},
@@ -318,7 +283,7 @@ func (consensus *Consensus) startViewChange() {
 
 // startNewView stops the current view change
 func (consensus *Consensus) startNewView(viewID uint64, newLeaderPriKey *bls.PrivateKeyWrapper, reset bool) error {
-	if !consensus.isViewChangingMode() {
+	if !consensus.IsViewChangingMode() {
 		return errors.New("not in view changing mode anymore")
 	}
 
@@ -330,7 +295,7 @@ func (consensus *Consensus) startNewView(viewID uint64, newLeaderPriKey *bls.Pri
 	}
 
 	if err := consensus.msgSender.SendWithRetry(
-		consensus.getBlockNum(),
+		consensus.blockNum,
 		msg_pb.MessageType_NEWVIEW,
 		[]nodeconfig.GroupID{
 			nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(consensus.ShardID))},
@@ -347,8 +312,8 @@ func (consensus *Consensus) startNewView(viewID uint64, newLeaderPriKey *bls.Pri
 
 	consensus.current.SetMode(Normal)
 	consensus.consensusTimeout[timeoutViewChange].Stop()
-	consensus.setViewIDs(viewID)
-	consensus.resetViewChangeState()
+	consensus.SetViewIDs(viewID)
+	consensus.ResetViewChangeState()
 	consensus.consensusTimeout[timeoutConsensus].Start()
 
 	consensus.getLogger().Info().
@@ -358,16 +323,19 @@ func (consensus *Consensus) startNewView(viewID uint64, newLeaderPriKey *bls.Pri
 
 	// TODO: consider make ResetState unified and only called in one place like finalizeCommit()
 	if reset {
-		consensus.resetState()
+		consensus.ResetState()
 	}
-	consensus.setLeaderPubKey(newLeaderPriKey.Pub)
+	consensus.LeaderPubKey = newLeaderPriKey.Pub
 
 	return nil
 }
 
 // onViewChange is called when the view change message is received.
 func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
-	consensus.getLogger().Debug().
+	consensus.mutex.Lock()
+	defer consensus.mutex.Unlock()
+
+	consensus.getLogger().Info().
 		Uint64("viewID", recvMsg.ViewID).
 		Uint64("blockNum", recvMsg.BlockNum).
 		Interface("SenderPubkeys", recvMsg.SenderPubkeys).
@@ -375,9 +343,9 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 
 	// if not leader, noop
 	newLeaderKey := recvMsg.LeaderPubkey
-	newLeaderPriKey, err := consensus.getLeaderPrivateKey(newLeaderKey.Object)
+	newLeaderPriKey, err := consensus.GetLeaderPrivateKey(newLeaderKey.Object)
 	if err != nil {
-		consensus.getLogger().Debug().
+		consensus.getLogger().Info().
 			Err(err).
 			Interface("SenderPubkeys", recvMsg.SenderPubkeys).
 			Str("NextLeader", recvMsg.LeaderPubkey.Bytes.Hex()).
@@ -386,10 +354,10 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 		return
 	}
 
-	if consensus.decider.IsQuorumAchievedByMask(consensus.vc.GetViewIDBitmap(recvMsg.ViewID)) {
+	if consensus.Decider.IsQuorumAchievedByMask(consensus.vc.GetViewIDBitmap(recvMsg.ViewID)) {
 		consensus.getLogger().Info().
-			Int64("have", consensus.decider.SignersCount(quorum.ViewChange)).
-			Int64("need", consensus.decider.TwoThirdsSignersCount()).
+			Int64("have", consensus.Decider.SignersCount(quorum.ViewChange)).
+			Int64("need", consensus.Decider.TwoThirdsSignersCount()).
 			Interface("SenderPubkeys", recvMsg.SenderPubkeys).
 			Str("newLeaderKey", newLeaderKey.Bytes.Hex()).
 			Msg("[onViewChange] Received Enough View Change Messages")
@@ -404,23 +372,19 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 	senderKey := recvMsg.SenderPubkeys[0]
 
 	// update the dictionary key if the viewID is first time received
-	members := consensus.decider.Participants()
+	members := consensus.Decider.Participants()
 	consensus.vc.AddViewIDKeyIfNotExist(recvMsg.ViewID, members)
 
 	// do it once only per viewID/Leader
-	if err := consensus.vc.InitPayload(
-		consensus.fBFTLog,
+	if err := consensus.vc.InitPayload(consensus.FBFTLog,
 		recvMsg.ViewID,
 		recvMsg.BlockNum,
-		consensus.priKey,
-		members,
-		consensus.verifyBlock,
-	); err != nil {
+		consensus.priKey); err != nil {
 		consensus.getLogger().Error().Err(err).Msg("[onViewChange] Init Payload Error")
 		return
 	}
 
-	err = consensus.vc.ProcessViewChangeMsg(consensus.fBFTLog, consensus.decider, recvMsg, consensus.verifyBlock)
+	err = consensus.vc.ProcessViewChangeMsg(consensus.FBFTLog, consensus.Decider, recvMsg)
 	if err != nil {
 		consensus.getLogger().Error().Err(err).
 			Uint64("viewID", recvMsg.ViewID).
@@ -431,7 +395,7 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 	}
 
 	// received enough view change messages, change state to normal consensus
-	if consensus.decider.IsQuorumAchievedByMask(consensus.vc.GetViewIDBitmap(recvMsg.ViewID)) && consensus.isViewChangingMode() {
+	if consensus.Decider.IsQuorumAchievedByMask(consensus.vc.GetViewIDBitmap(recvMsg.ViewID)) && consensus.IsViewChangingMode() {
 		// no previous prepared message, go straight to normal mode
 		// and start proposing new block
 		if consensus.vc.IsM1PayloadEmpty() {
@@ -439,7 +403,10 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 				consensus.getLogger().Error().Err(err).Msg("[onViewChange] startNewView failed")
 				return
 			}
-			go consensus.ReadySignal(SyncProposal)
+
+			go func() {
+				consensus.ReadySignal <- SyncProposal
+			}()
 			return
 		}
 
@@ -463,6 +430,9 @@ func (consensus *Consensus) onViewChange(recvMsg *FBFTMessage) {
 // Or the validator will enter announce phase to wait for the new block proposed
 // from the new leader
 func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
+	consensus.mutex.Lock()
+	consensus.mutex.Unlock()
+
 	consensus.getLogger().Info().
 		Uint64("viewID", recvMsg.ViewID).
 		Uint64("blockNum", recvMsg.BlockNum).
@@ -470,10 +440,10 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 		Msg("[onNewView] Received NewView Message")
 
 	// change view and leaderKey to keep in sync with network
-	if consensus.getBlockNum() != recvMsg.BlockNum {
+	if consensus.blockNum != recvMsg.BlockNum {
 		consensus.getLogger().Warn().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
-			Uint64("myBlockNum", consensus.getBlockNum()).
+			Uint64("myBlockNum", consensus.blockNum).
 			Msg("[onNewView] Invalid block number")
 		return
 	}
@@ -488,14 +458,14 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 		return
 	}
 
-	preparedBlock, err := consensus.vc.VerifyNewViewMsg(recvMsg, consensus.verifyBlock)
+	preparedBlock, err := consensus.vc.VerifyNewViewMsg(recvMsg)
 	if err != nil {
 		consensus.getLogger().Warn().Err(err).Msg("[onNewView] Verify New View Msg Failed")
 		return
 	}
 
 	m3Mask := recvMsg.M3Bitmap
-	if !consensus.decider.IsQuorumAchievedByMask(m3Mask) {
+	if !consensus.Decider.IsQuorumAchievedByMask(m3Mask) {
 		consensus.getLogger().Warn().
 			Msgf("[onNewView] Quorum Not achieved")
 		return
@@ -507,7 +477,7 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 			utils.CountOneBits(m3Mask.Bitmap) > utils.CountOneBits(m2Mask.Bitmap)) {
 		// m1 is not empty, check it's valid
 		blockHash := recvMsg.Payload[:32]
-		aggSig, mask, err := consensus.readSignatureBitmapPayload(recvMsg.Payload, 32, consensus.decider.Participants())
+		aggSig, mask, err := consensus.ReadSignatureBitmapPayload(recvMsg.Payload, 32)
 		if err != nil {
 			consensus.getLogger().Error().Err(err).
 				Msg("[onNewView] ReadSignatureBitmapPayload Failed")
@@ -534,14 +504,14 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 		copy(preparedMsg.Payload[:], recvMsg.Payload[32:])
 
 		preparedMsg.SenderPubkeys = []*bls.PublicKeyWrapper{senderKey}
-		consensus.fBFTLog.AddVerifiedMessage(&preparedMsg)
+		consensus.FBFTLog.AddVerifiedMessage(&preparedMsg)
 
 		if preparedBlock != nil {
-			consensus.fBFTLog.AddBlock(preparedBlock)
+			consensus.FBFTLog.AddBlock(preparedBlock)
 		}
 	}
 
-	if !consensus.isViewChangingMode() {
+	if !consensus.IsViewChangingMode() {
 		consensus.getLogger().Info().Msg("Not in ViewChanging Mode.")
 		return
 	}
@@ -549,9 +519,9 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 	consensus.consensusTimeout[timeoutViewChange].Stop()
 
 	// newView message verified success, override my state
-	consensus.setViewIDs(recvMsg.ViewID)
+	consensus.SetViewIDs(recvMsg.ViewID)
 	consensus.LeaderPubKey = senderKey
-	consensus.resetViewChangeState()
+	consensus.ResetViewChangeState()
 
 	consensus.msgSender.StopRetry(msg_pb.MessageType_VIEWCHANGE)
 
@@ -560,7 +530,7 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 		consensus.sendCommitMessages(preparedBlock)
 		consensus.switchPhase("onNewView", FBFTCommit)
 	} else {
-		consensus.resetState()
+		consensus.ResetState()
 		consensus.getLogger().Info().Msg("onNewView === announce")
 	}
 	consensus.getLogger().Info().
@@ -572,17 +542,10 @@ func (consensus *Consensus) onNewView(recvMsg *FBFTMessage) {
 
 // ResetViewChangeState resets the view change structure
 func (consensus *Consensus) ResetViewChangeState() {
-	consensus.mutex.Lock()
-	defer consensus.mutex.Unlock()
-	consensus.resetViewChangeState()
-}
-
-// ResetViewChangeState resets the view change structure
-func (consensus *Consensus) resetViewChangeState() {
 	consensus.getLogger().Info().
 		Str("Phase", consensus.phase.String()).
 		Msg("[ResetViewChangeState] Resetting view change state")
 	consensus.current.SetMode(Normal)
 	consensus.vc.Reset()
-	consensus.decider.ResetViewChangeVotes()
+	consensus.Decider.ResetViewChangeVotes()
 }

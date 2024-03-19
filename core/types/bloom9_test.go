@@ -34,19 +34,19 @@ func TestBloom(t *testing.T) {
 		"tes",
 		"lo",
 	}
+
 	var bloom ethtypes.Bloom
 	for _, data := range positive {
-		b := new(big.Int).SetBytes([]byte(data)).Bytes()
-		bloom.Add(b)
+		bloom.Add(new(big.Int).SetBytes([]byte(data)))
 	}
 
 	for _, data := range positive {
-		if !bloom.Test([]byte(data)) {
+		if !bloom.TestBytes([]byte(data)) {
 			t.Error("expected", data, "to test true")
 		}
 	}
 	for _, data := range negative {
-		if bloom.Test([]byte(data)) {
+		if bloom.TestBytes([]byte(data)) {
 			t.Error("did not expect", data, "to test true")
 		}
 	}

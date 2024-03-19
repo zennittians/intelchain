@@ -78,13 +78,13 @@ func testFormatStakingTransaction(
 		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
-	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
+	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{})
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
 
-	if len(rosettaTx.Operations) != 3 {
-		t.Error("Expected 3 operations")
+	if len(rosettaTx.Operations) != 2 {
+		t.Error("Expected 2 operations")
 	}
 	if err := assertNativeOperationTypeUniquenessInvariant(rosettaTx.Operations); err != nil {
 		t.Error(err)
@@ -133,7 +133,7 @@ func testFormatPlainTransaction(
 		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
-	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
+	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{})
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
@@ -190,7 +190,7 @@ func testFormatCrossShardSenderTransaction(
 		Status:  itctypes.ReceiptStatusSuccessful,
 		GasUsed: gasUsed,
 	}
-	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{}, true)
+	rosettaTx, rosettaError := FormatTransaction(tx, receipt, &ContractInfo{})
 	if rosettaError != nil {
 		t.Fatal(rosettaError)
 	}
@@ -263,7 +263,7 @@ func TestFormatCrossShardReceiverTransaction(t *testing.T) {
 				Index: 0, // There is no gas expenditure for cross-shard payout
 			},
 			Type:    common.NativeCrossShardTransferOperation,
-			Status:  &common.SuccessOperationStatus.Status,
+			Status:  common.SuccessOperationStatus.Status,
 			Account: receiverAccID,
 			Amount: &types.Amount{
 				Value:    fmt.Sprintf("%v", tx.Value().Uint64()),

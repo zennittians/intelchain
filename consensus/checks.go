@@ -55,11 +55,11 @@ func (consensus *Consensus) senderKeySanityChecks(msg *msg_pb.Message, senderKey
 	return true
 }
 
-func (consensus *Consensus) isRightBlockNumAndViewID(recvMsg *FBFTMessage) bool {
-	blockNum := consensus.getBlockNum()
-	if recvMsg.ViewID != consensus.getCurBlockViewID() || recvMsg.BlockNum != blockNum {
+func (consensus *Consensus) isRightBlockNumAndViewID(recvMsg *FBFTMessage,
+) bool {
+	if recvMsg.ViewID != consensus.GetCurBlockViewID() || recvMsg.BlockNum != consensus.blockNum {
 		consensus.getLogger().Debug().
-			Uint64("blockNum", blockNum).
+			Uint64("blockNum", consensus.blockNum).
 			Str("recvMsg", recvMsg.String()).
 			Msg("BlockNum/viewID not match")
 		return false
@@ -68,7 +68,7 @@ func (consensus *Consensus) isRightBlockNumAndViewID(recvMsg *FBFTMessage) bool 
 }
 
 func (consensus *Consensus) onAnnounceSanityChecks(recvMsg *FBFTMessage) bool {
-	logMsgs := consensus.fBFTLog.GetMessagesByTypeSeqView(
+	logMsgs := consensus.FBFTLog.GetMessagesByTypeSeqView(
 		msg_pb.MessageType_ANNOUNCE, recvMsg.BlockNum, recvMsg.ViewID,
 	)
 	if len(logMsgs) > 0 {
@@ -87,7 +87,7 @@ func (consensus *Consensus) onAnnounceSanityChecks(recvMsg *FBFTMessage) bool {
 				Str("recvMsg", recvMsg.String()).
 				Str("LeaderKey", consensus.LeaderPubKey.Bytes.Hex()).
 				Msg("[OnAnnounce] Leader is malicious")
-			if consensus.isViewChangingMode() {
+			if consensus.IsViewChangingMode() {
 				consensus.getLogger().Debug().Msg(
 					"[OnAnnounce] Already in ViewChanging mode, conflicing announce, doing noop",
 				)
@@ -103,12 +103,12 @@ func (consensus *Consensus) onAnnounceSanityChecks(recvMsg *FBFTMessage) bool {
 }
 
 func (consensus *Consensus) isRightBlockNumCheck(recvMsg *FBFTMessage) bool {
-	if recvMsg.BlockNum < consensus.BlockNum() {
+	if recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Debug().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Msg("Wrong BlockNum Received, ignoring!")
 		return false
-	} else if recvMsg.BlockNum-consensus.BlockNum() > MaxBlockNumDiff {
+	} else if recvMsg.BlockNum-consensus.blockNum > MaxBlockNumDiff {
 		consensus.getLogger().Debug().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Uint64("MaxBlockNumDiff", MaxBlockNumDiff).
@@ -118,15 +118,15 @@ func (consensus *Consensus) isRightBlockNumCheck(recvMsg *FBFTMessage) bool {
 	return true
 }
 
-func (consensus *Consensus) newBlockSanityChecks(
+func (consensus *Consensus) onPreparedSanityChecks(
 	blockObj *types.Block, recvMsg *FBFTMessage,
 ) bool {
 	if blockObj.NumberU64() != recvMsg.BlockNum ||
-		recvMsg.BlockNum < consensus.BlockNum() {
+		recvMsg.BlockNum < consensus.blockNum {
 		consensus.getLogger().Warn().
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Uint64("blockNum", blockObj.NumberU64()).
-			Msg("[newBlockSanityChecks] BlockNum not match")
+			Msg("[OnPrepared] BlockNum not match")
 		return false
 	}
 	if blockObj.Header().Hash() != recvMsg.BlockHash {
@@ -134,7 +134,7 @@ func (consensus *Consensus) newBlockSanityChecks(
 			Uint64("MsgBlockNum", recvMsg.BlockNum).
 			Hex("MsgBlockHash", recvMsg.BlockHash[:]).
 			Str("blockObjHash", blockObj.Header().Hash().Hex()).
-			Msg("[newBlockSanityChecks] BlockHash not match")
+			Msg("[OnPrepared] BlockHash not match")
 		return false
 	}
 	return true
@@ -145,31 +145,31 @@ func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
 	// TODO: if difference is only one, new leader can still propose the same committed block to avoid another view change
 	// TODO: new leader catchup without ignore view change message
 
-	consensus.getLogger().Debug().
+	consensus.getLogger().Info().
 		Uint64("MsgBlockNum", recvMsg.BlockNum).
-		Uint64("MyViewChangingID", consensus.getViewChangingID()).
+		Uint64("MyViewChangingID", consensus.GetViewChangingID()).
 		Uint64("MsgViewChangingID", recvMsg.ViewID).
 		Interface("SendPubKeys", recvMsg.SenderPubkeys).
 		Msg("[onViewChangeSanityCheck]")
 
-	if consensus.getBlockNum() > recvMsg.BlockNum {
+	if consensus.blockNum > recvMsg.BlockNum {
 		consensus.getLogger().Debug().
 			Msg("[onViewChange] Message BlockNum Is Low")
 		return false
 	}
-	if consensus.BlockNum() < recvMsg.BlockNum {
+	if consensus.blockNum < recvMsg.BlockNum {
 		consensus.getLogger().Warn().
 			Msg("[onViewChangeSanityCheck] MsgBlockNum is different from my BlockNumber")
 		return false
 	}
-	if consensus.isViewChangingMode() &&
-		consensus.getCurBlockViewID() > recvMsg.ViewID {
-		consensus.getLogger().Debug().Uint64("curBlockViewID", consensus.getCurBlockViewID()).
+	if consensus.IsViewChangingMode() &&
+		consensus.GetCurBlockViewID() > recvMsg.ViewID {
+		consensus.getLogger().Warn().Uint64("curBlockViewID", consensus.GetCurBlockViewID()).
 			Uint64("msgViewID", recvMsg.ViewID).
 			Msg("[onViewChangeSanityCheck] ViewChanging ID Is Low")
 		return false
 	}
-	if recvMsg.ViewID > consensus.getViewChangingID() && recvMsg.ViewID-consensus.getViewChangingID() > MaxViewIDDiff {
+	if recvMsg.ViewID > consensus.GetViewChangingID() && recvMsg.ViewID-consensus.GetViewChangingID() > MaxViewIDDiff {
 		consensus.getLogger().Debug().
 			Msg("[onViewChangeSanityCheck] Received viewID that is MaxViewIDDiff (249) further from the current viewID!")
 		return false
@@ -194,9 +194,9 @@ func (consensus *Consensus) onViewChangeSanityCheck(recvMsg *FBFTMessage) bool {
 
 // TODO: leo: move the sanity check to p2p message validation
 func (consensus *Consensus) onNewViewSanityCheck(recvMsg *FBFTMessage) bool {
-	if recvMsg.ViewID < consensus.getCurBlockViewID() {
+	if recvMsg.ViewID < consensus.GetCurBlockViewID() {
 		consensus.getLogger().Warn().
-			Uint64("LastSuccessfulConsensusViewID", consensus.getCurBlockViewID()).
+			Uint64("LastSuccessfulConsensusViewID", consensus.GetCurBlockViewID()).
 			Uint64("MsgViewChangingID", recvMsg.ViewID).
 			Msg("[onNewView] ViewID should be larger than the viewID of the last successful consensus")
 		return false

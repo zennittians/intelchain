@@ -113,7 +113,7 @@ func (s *BlockAPI) getSideEffectTransaction(
 				"message": err.Error(),
 			})
 		}
-		ops, rosettaError := getSideEffectOperationsFromUndelegationPayouts(payouts, startingOpIndex)
+		ops, rosettaError := GetSideEffectOperationsFromUndelegationPayouts(payouts, startingOpIndex)
 		if rosettaError != nil {
 			return nil, rosettaError
 		}

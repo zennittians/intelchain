@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/math"
-
 	"github.com/coinbase/rosetta-sdk-go/server"
 	"github.com/coinbase/rosetta-sdk-go/types"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/zennittians/intelchain/block"
-	"github.com/zennittians/intelchain/eth/rpc"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/itc"
 	"github.com/zennittians/intelchain/rosetta/common"
@@ -84,12 +82,12 @@ func (s *NetworkAPI) NetworkStatus(
 	if rosettaError != nil {
 		return nil, rosettaError
 	}
-	isSyncing, targetHeight, _ := s.itc.NodeAPI.SyncStatus(s.itc.BlockChain.ShardID())
+	targetHeight := int64(s.itc.NodeAPI.GetMaxPeerHeight())
 	syncStatus := common.SyncingFinish
-	if targetHeight == 0 {
-		syncStatus = common.SyncingUnknown
-	} else if isSyncing {
+	if s.itc.NodeAPI.IsOutOfSync(s.itc.BlockChain) {
 		syncStatus = common.SyncingNewBlock
+	} else if targetHeight == 0 {
+		syncStatus = common.SyncingUnknown
 	}
 	stage := syncStatus.String()
 
@@ -117,16 +115,6 @@ func (s *NetworkAPI) NetworkStatus(
 			}
 		}
 	}
-	targetInt := int64(targetHeight)
-	if targetHeight == math.MaxUint64 {
-		targetInt = 0
-	}
-	currentIndex := currentHeader.Number().Int64()
-	ss := &types.SyncStatus{
-		CurrentIndex: &currentIndex,
-		TargetIndex:  &targetInt,
-		Stage:        &stage,
-	}
 
 	return &types.NetworkStatusResponse{
 		CurrentBlockIdentifier: currentBlockIdentifier,
@@ -136,8 +124,12 @@ func (s *NetworkAPI) NetworkStatus(
 			Index: genesisHeader.Number().Int64(),
 			Hash:  genesisHeader.Hash().String(),
 		},
-		Peers:      peers,
-		SyncStatus: ss,
+		Peers: peers,
+		SyncStatus: &types.SyncStatus{
+			CurrentIndex: currentHeader.Number().Int64(),
+			TargetIndex:  &targetHeight,
+			Stage:        &stage,
+		},
 	}, nil
 }
 

@@ -4,4 +4,5 @@ case "${0}" in
 */*) progdir="${0%/*}";;
 *) progdir=.;;
 esac
-go vet ./...
+"${progdir}/list_intelchain_go_files.sh" | "${progdir}/dirnames.sh" | \
+	sort -u -t/ | xargs golint "$@"

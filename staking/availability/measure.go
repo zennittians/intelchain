@@ -3,8 +3,6 @@ package availability
 import (
 	"math/big"
 
-	"github.com/zennittians/intelchain/core/state"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/crypto/bls"
@@ -17,25 +15,9 @@ import (
 
 var (
 	measure = numeric.NewDec(2).Quo(numeric.NewDec(3))
-
-	minCommissionRateEra1 = numeric.MustNewDecFromStr("0.05")
-	minCommissionRateEra2 = numeric.MustNewDecFromStr("0.07")
 	// ErrDivByZero ..
 	ErrDivByZero = errors.New("toSign of availability cannot be 0, mistake in protocol")
 )
-
-// Returns the minimum commission rate between the two options.
-// The later rate supersedes the earlier rate.
-// If neither is applicable, returns 0.
-func MinCommissionRate(era1, era2 bool) numeric.Dec {
-	if era2 {
-		return minCommissionRateEra2
-	}
-	if era1 {
-		return minCommissionRateEra1
-	}
-	return numeric.ZeroDec()
-}
 
 // BlockSigners ..
 func BlockSigners(
@@ -45,7 +27,10 @@ func BlockSigners(
 	if err != nil {
 		return nil, nil, err
 	}
-	mask := bls.NewMask(committerKeys)
+	mask, err := bls.NewMask(committerKeys, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	if err := mask.SetMask(bitmap); err != nil {
 		return nil, nil, err
 	}
@@ -107,7 +92,7 @@ func bumpCount(
 				continue
 			}
 
-			wrapper, err := state.ValidatorWrapper(addr, true, false)
+			wrapper, err := state.ValidatorWrapper(addr)
 			if err != nil {
 				return err
 			}
@@ -194,7 +179,7 @@ func ComputeAndMutateEPOSStatus(
 ) error {
 	utils.Logger().Info().Msg("begin compute for availability")
 
-	wrapper, err := state.ValidatorWrapper(addr, true, false)
+	wrapper, err := state.ValidatorWrapper(addr)
 	if err != nil {
 		return err
 	}
@@ -221,7 +206,6 @@ func ComputeAndMutateEPOSStatus(
 		utils.Logger().Info().
 			Str("threshold", measure.String()).
 			Interface("computed", computed).
-			Str("validator", snapshot.Validator.Address.String()).
 			Msg("validator failed availability threshold, set to inactive")
 	default:
 		// Default is no-op so validator who wants
@@ -229,65 +213,4 @@ func ComputeAndMutateEPOSStatus(
 	}
 
 	return nil
-}
-
-// UpdateMinimumCommissionFee update the validator commission fee to the minRate
-// if the validator has a lower commission rate and promoPeriod epochs have passed after
-// the validator was first elected. It returns true if the commission was updated
-func UpdateMinimumCommissionFee(
-	electionEpoch *big.Int,
-	state *state.DB,
-	addr common.Address,
-	minRate numeric.Dec,
-	promoPeriod uint64,
-) (bool, error) {
-	utils.Logger().Info().Msg("begin update min commission fee")
-
-	wrapper, err := state.ValidatorWrapper(addr, true, false)
-	if err != nil {
-		return false, err
-	}
-
-	firstElectionEpoch := state.GetValidatorFirstElectionEpoch(addr)
-
-	// convert all to uint64 for easy maths
-	// this can take decades of time without overflowing
-	first := firstElectionEpoch.Uint64()
-	election := electionEpoch.Uint64()
-	if first != 0 && election-first >= promoPeriod && election >= first {
-		if wrapper.Rate.LT(minRate) {
-			utils.Logger().Info().
-				Str("addr", addr.Hex()).
-				Str("old rate", wrapper.Rate.String()).
-				Str("firstElectionEpoch", firstElectionEpoch.String()).
-				Msg("updating min commission rate")
-			wrapper.Rate.SetBytes(minRate.Bytes())
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// UpdateMaxCommissionFee makes sure the max-rate is at least higher than the rate + max-rate-change.
-func UpdateMaxCommissionFee(state *state.DB, addr common.Address, minRate numeric.Dec) (bool, error) {
-	utils.Logger().Info().Msg("begin update max commission fee")
-
-	wrapper, err := state.ValidatorWrapper(addr, true, false)
-	if err != nil {
-		return false, err
-	}
-
-	minMaxRate := minRate.Add(wrapper.MaxChangeRate)
-
-	if wrapper.MaxRate.LT(minMaxRate) {
-		utils.Logger().Info().
-			Str("addr", addr.Hex()).
-			Str("old max-rate", wrapper.MaxRate.String()).
-			Str("new max-rate", minMaxRate.String()).
-			Msg("updating max commission rate")
-		wrapper.MaxRate.SetBytes(minMaxRate.Bytes())
-		return true, nil
-	}
-
-	return false, nil
 }

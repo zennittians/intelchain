@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -14,44 +16,32 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/zennittians/intelchain/internal/params"
+
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/zennittians/bls/ffi/go/bls"
 	"github.com/zennittians/intelchain/api/service"
-	"github.com/zennittians/intelchain/api/service/crosslink_sending"
-	"github.com/zennittians/intelchain/api/service/pprof"
 	"github.com/zennittians/intelchain/api/service/prometheus"
-	"github.com/zennittians/intelchain/api/service/stagedstreamsync"
-	"github.com/zennittians/intelchain/api/service/synchronize"
+	"github.com/zennittians/intelchain/api/service/syncing"
 	"github.com/zennittians/intelchain/common/fdlimit"
 	"github.com/zennittians/intelchain/common/ntp"
 	"github.com/zennittians/intelchain/consensus"
 	"github.com/zennittians/intelchain/consensus/quorum"
 	"github.com/zennittians/intelchain/core"
-	"github.com/zennittians/intelchain/internal/chain"
 	"github.com/zennittians/intelchain/internal/cli"
 	"github.com/zennittians/intelchain/internal/common"
-	intelchainconfig "github.com/zennittians/intelchain/internal/configs/intelchain"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	shardingconfig "github.com/zennittians/intelchain/internal/configs/sharding"
 	"github.com/zennittians/intelchain/internal/genesis"
-	"github.com/zennittians/intelchain/internal/params"
-	"github.com/zennittians/intelchain/internal/registry"
 	"github.com/zennittians/intelchain/internal/shardchain"
-	"github.com/zennittians/intelchain/internal/shardchain/tikv_manage"
-	"github.com/zennittians/intelchain/internal/tikv/redis_helper"
-	"github.com/zennittians/intelchain/internal/tikv/statedb_cache"
 	"github.com/zennittians/intelchain/internal/utils"
-	"github.com/zennittians/intelchain/itc/downloader"
 	"github.com/zennittians/intelchain/multibls"
 	"github.com/zennittians/intelchain/node"
 	"github.com/zennittians/intelchain/numeric"
 	"github.com/zennittians/intelchain/p2p"
-	rosetta_common "github.com/zennittians/intelchain/rosetta/common"
-	rpc_common "github.com/zennittians/intelchain/rpc/common"
 	"github.com/zennittians/intelchain/shard"
 	"github.com/zennittians/intelchain/webhooks"
 )
@@ -95,28 +85,16 @@ var configFlag = cli.StringFlag{
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	cli.SetParseErrorHandle(func(err error) {
 		os.Exit(128) // 128 - invalid command line arguments
 	})
-	configCmd.AddCommand(dumpConfigCmd)
-	configCmd.AddCommand(updateConfigCmd)
-	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(dumpConfigCmd)
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(dumpConfigLegacyCmd)
-	rootCmd.AddCommand(dumpDBCmd)
-	rootCmd.AddCommand(inspectDBCmd)
 
 	if err := registerRootCmdFlags(); err != nil {
 		os.Exit(2)
 	}
 	if err := registerDumpConfigFlags(); err != nil {
-		os.Exit(2)
-	}
-	if err := registerDumpDBFlags(); err != nil {
-		os.Exit(2)
-	}
-	if err := registerInspectionFlags(); err != nil {
 		os.Exit(2)
 	}
 }
@@ -144,10 +122,12 @@ func runIntelchainNode(cmd *cobra.Command, args []string) {
 	cfg, err := getIntelchainConfig(cmd)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
+		cmd.Help()
 		os.Exit(128)
 	}
 
 	setupNodeLog(cfg)
+	setupPprof(cfg)
 	setupNodeAndRun(cfg)
 }
 
@@ -158,6 +138,8 @@ func prepareRootCmd(cmd *cobra.Command) error {
 	os.Setenv("GODEBUG", "netdns=go")
 	// Don't set higher than num of CPU. It will make go scheduler slower.
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	// Set up randomization seed.
+	rand.Seed(int64(time.Now().Nanosecond()))
 	// Raise fd limits
 	return raiseFdLimits()
 }
@@ -174,60 +156,42 @@ func raiseFdLimits() error {
 	return nil
 }
 
-func getIntelchainConfig(cmd *cobra.Command) (intelchainconfig.IntelchainConfig, error) {
+func getIntelchainConfig(cmd *cobra.Command) (intelchainConfig, error) {
 	var (
-		config         intelchainconfig.IntelchainConfig
-		err            error
-		migratedFrom   string
-		configFile     string
-		isUsingDefault bool
+		config intelchainConfig
+		err    error
 	)
 	if cli.IsFlagChanged(cmd, configFlag) {
-		configFile = cli.GetStringFlagValue(cmd, configFlag)
-		config, migratedFrom, err = loadIntelchainConfig(configFile)
+		configFile := cli.GetStringFlagValue(cmd, configFlag)
+		config, err = loadIntelchainConfig(configFile)
 	} else {
 		nt := getNetworkType(cmd)
 		config = getDefaultItcConfigCopy(nt)
-		isUsingDefault = true
 	}
 	if err != nil {
-		return intelchainconfig.IntelchainConfig{}, err
+		return intelchainConfig{}, err
 	}
-	if migratedFrom != defaultConfig.Version && !isUsingDefault {
-		fmt.Printf("Old config version detected %s\n",
-			migratedFrom)
-		stat, _ := os.Stdin.Stat()
-		// Ask to update if only using terminal
-		if stat.Mode()&os.ModeCharDevice != 0 {
-			if promptConfigUpdate() {
-				err := updateConfigFile(configFile)
-				if err != nil {
-					fmt.Printf("Could not update config - %s", err.Error())
-					fmt.Println("Update config manually with `./intelchain config update [config_file]`")
-				}
-			}
-
-		} else {
-			fmt.Println("Update saved config with `./intelchain config update [config_file]`")
-		}
+	if config.Version != defaultConfig.Version {
+		fmt.Printf("Loaded config version %s which is not latest (%s).\n",
+			config.Version, defaultConfig.Version)
+		fmt.Println("Update saved config with `./intelchain dumpconfig [config_file]`")
 	}
 
 	applyRootFlags(cmd, &config)
 
 	if err := validateIntelchainConfig(config); err != nil {
-		return intelchainconfig.IntelchainConfig{}, err
+		return intelchainConfig{}, err
 	}
-	sanityFixIntelchainConfig(&config)
+
 	return config, nil
 }
 
-func applyRootFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfig) {
+func applyRootFlags(cmd *cobra.Command, config *intelchainConfig) {
 	// Misc flags shall be applied first since legacy ip / port is overwritten
 	// by new ip / port flags
 	applyLegacyMiscFlags(cmd, config)
 	applyGeneralFlags(cmd, config)
 	applyNetworkFlags(cmd, config)
-	applyDNSSyncFlags(cmd, config)
 	applyP2PFlags(cmd, config)
 	applyHTTPFlags(cmd, config)
 	applyWSFlags(cmd, config)
@@ -240,56 +204,42 @@ func applyRootFlags(cmd *cobra.Command, config *intelchainconfig.IntelchainConfi
 	applySysFlags(cmd, config)
 	applyDevnetFlags(cmd, config)
 	applyRevertFlags(cmd, config)
-	applyPreimageFlags(cmd, config)
 	applyPrometheusFlags(cmd, config)
-	applySyncFlags(cmd, config)
-	applyShardDataFlags(cmd, config)
-	applyGPOFlags(cmd, config)
-	applyCacheFlags(cmd, config)
 }
 
-func setupNodeLog(config intelchainconfig.IntelchainConfig) {
+func setupNodeLog(config intelchainConfig) {
 	logPath := filepath.Join(config.Log.Folder, config.Log.FileName)
+	rotateSize := config.Log.RotateSize
 	verbosity := config.Log.Verbosity
 
+	utils.AddLogFile(logPath, rotateSize)
 	utils.SetLogVerbosity(log.Lvl(verbosity))
 	if config.Log.Context != nil {
 		ip := config.Log.Context.IP
 		port := config.Log.Context.Port
 		utils.SetLogContext(ip, strconv.Itoa(port))
 	}
+}
 
-	if !config.Log.Console {
-		utils.AddLogFile(logPath, config.Log.RotateSize, config.Log.RotateCount, config.Log.RotateMaxAge)
+func setupPprof(config intelchainConfig) {
+	enabled := config.Pprof.Enabled
+	addr := config.Pprof.ListenAddr
+
+	if enabled {
+		go func() {
+			http.ListenAndServe(addr, nil)
+		}()
 	}
 }
 
-func revert(chain core.BlockChain, hc intelchainconfig.IntelchainConfig) {
-	curNum := chain.CurrentBlock().NumberU64()
-	if curNum < uint64(hc.Revert.RevertBefore) && curNum >= uint64(hc.Revert.RevertTo) {
-		// Remove invalid blocks
-		for chain.CurrentBlock().NumberU64() >= uint64(hc.Revert.RevertTo) {
-			curBlock := chain.CurrentBlock()
-			rollbacks := []ethCommon.Hash{curBlock.Hash()}
-			if err := chain.Rollback(rollbacks); err != nil {
-				fmt.Printf("Revert failed: %v\n", err)
-				os.Exit(1)
-			}
-			lastSig := curBlock.Header().LastCommitSignature()
-			sigAndBitMap := append(lastSig[:], curBlock.Header().LastCommitBitmap()...)
-			chain.WriteCommitSig(curBlock.NumberU64()-1, sigAndBitMap)
-		}
-		fmt.Printf("Revert finished. Current block: %v\n", chain.CurrentBlock().NumberU64())
-		utils.Logger().Warn().
-			Uint64("Current Block", chain.CurrentBlock().NumberU64()).
-			Msg("Revert finished.")
-		os.Exit(1)
-	}
-}
-
-func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
+func setupNodeAndRun(hc intelchainConfig) {
 	var err error
-
+	bootNodes := hc.Network.BootNodes
+	p2p.BootNodes, err = p2p.StringsToAddrs(bootNodes)
+	if err != nil {
+		utils.FatalErrMsg(err, "cannot parse bootnode list %#v",
+			bootNodes)
+	}
 	nodeconfigSetShardSchedule(hc)
 	nodeconfig.SetShardingSchedule(shard.Schedule)
 	nodeconfig.SetVersion(getIntelchainVersion())
@@ -328,19 +278,12 @@ func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 		os.Exit(1)
 	}
 
-	if hc.General.RunElasticMode && hc.TiKV == nil {
-		fmt.Fprintf(os.Stderr, "Use TIKV MUST HAS TIKV CONFIG")
-		os.Exit(1)
-	}
-
 	// Update ethereum compatible chain ids
 	params.UpdateEthChainIDByShard(nodeConfig.ShardID)
 
-	currentNode := setupConsensusAndNode(hc, nodeConfig, registry.New())
+	currentNode := setupConsensusAndNode(hc, nodeConfig)
 	nodeconfig.GetDefaultConfig().ShardID = nodeConfig.ShardID
 	nodeconfig.GetDefaultConfig().IsOffline = nodeConfig.IsOffline
-	nodeconfig.GetDefaultConfig().Downloader = nodeConfig.Downloader
-	nodeconfig.GetDefaultConfig().StagedSync = nodeConfig.StagedSync
 
 	// Check NTP configuration
 	accurate, err := ntp.CheckLocalTimeAccurate(nodeConfig.NtpServer)
@@ -357,8 +300,50 @@ func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 		utils.Logger().Warn().Err(err).Msg("Check Local Time Accuracy Error")
 	}
 
+	// Prepare for graceful shutdown from os signals
+	osSignal := make(chan os.Signal)
+	signal.Notify(osSignal, os.Interrupt, syscall.SIGTERM)
+	go func(node *node.Node) {
+		for sig := range osSignal {
+			if sig == syscall.SIGTERM || sig == os.Interrupt {
+				utils.Logger().Warn().Str("signal", sig.String()).Msg("Gracefully shutting down...")
+				const msg = "Got %s signal. Gracefully shutting down...\n"
+				fmt.Fprintf(os.Stderr, msg, sig)
+				// stop block proposal service for leader
+				if node.Consensus.IsLeader() {
+					node.ServiceManager().StopService(service.BlockProposal)
+				}
+				if node.Consensus.Mode() == consensus.Normal {
+					phase := node.Consensus.GetConsensusPhase()
+					utils.Logger().Warn().Str("phase", phase).Msg("[shutdown] commit phase has to wait")
+					maxWait := time.Now().Add(2 * node.Consensus.BlockPeriod) // wait up to 2 * blockperiod in commit phase
+					for time.Now().Before(maxWait) &&
+						node.Consensus.GetConsensusPhase() == "Commit" {
+						utils.Logger().Warn().Msg("[shutdown] wait for consensus finished")
+						time.Sleep(time.Millisecond * 100)
+					}
+				}
+				currentNode.ShutDown()
+			}
+		}
+	}(currentNode)
+
 	// Parse RPC config
-	nodeConfig.RPCServer = hc.ToRPCServerConfig()
+	nodeConfig.RPCServer = nodeconfig.RPCServerConfig{
+		HTTPEnabled:  hc.HTTP.Enabled,
+		HTTPIp:       hc.HTTP.IP,
+		HTTPPort:     hc.HTTP.Port,
+		WSEnabled:    hc.WS.Enabled,
+		WSIp:         hc.WS.IP,
+		WSPort:       hc.WS.Port,
+		DebugEnabled: hc.RPCOpt.DebugEnabled,
+	}
+	if nodeConfig.ShardID != shard.BeaconChainShardID {
+		utils.Logger().Info().
+			Uint32("shardID", currentNode.Blockchain().ShardID()).
+			Uint32("shardID", nodeConfig.ShardID).Msg("SupportBeaconSyncing")
+		currentNode.SupportBeaconSyncing()
+	}
 
 	// Parse rosetta config
 	nodeConfig.RosettaServer = nodeconfig.RosettaServerConfig{
@@ -372,58 +357,21 @@ func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 		if hc.Revert.RevertBeacon {
 			chain = currentNode.Beaconchain()
 		}
-		revert(chain, hc)
-	}
-
-	//// code to handle pre-image export, import and generation
-	if hc.Preimage != nil {
-		if hc.Preimage.ImportFrom != "" {
-			if err := core.ImportPreimages(
-				currentNode.Blockchain(),
-				hc.Preimage.ImportFrom,
-			); err != nil {
-				fmt.Println("Error importing", err)
-				os.Exit(1)
+		curNum := chain.CurrentBlock().NumberU64()
+		if curNum < uint64(hc.Revert.RevertBefore) && curNum >= uint64(hc.Revert.RevertTo) {
+			// Remove invalid blocks
+			for chain.CurrentBlock().NumberU64() >= uint64(hc.Revert.RevertTo) {
+				curBlock := chain.CurrentBlock()
+				rollbacks := []ethCommon.Hash{curBlock.Hash()}
+				if err := chain.Rollback(rollbacks); err != nil {
+					fmt.Printf("Revert failed: %v\n", err)
+					os.Exit(1)
+				}
+				lastSig := curBlock.Header().LastCommitSignature()
+				sigAndBitMap := append(lastSig[:], curBlock.Header().LastCommitBitmap()...)
+				chain.WriteCommitSig(curBlock.NumberU64()-1, sigAndBitMap)
 			}
-			os.Exit(0)
-		} else if exportPath := hc.Preimage.ExportTo; exportPath != "" {
-			if err := core.ExportPreimages(
-				currentNode.Blockchain(),
-				exportPath,
-			); err != nil {
-				fmt.Println("Error exporting", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-			// both must be set
-		} else if hc.Preimage.GenerateStart > 0 {
-			chain := currentNode.Blockchain()
-			end := hc.Preimage.GenerateEnd
-			current := chain.CurrentBlock().NumberU64()
-			if end > current {
-				fmt.Printf(
-					"Cropping generate endpoint from %d to %d\n",
-					end, current,
-				)
-				end = current
-			}
-
-			if end == 0 {
-				end = current
-			}
-
-			fmt.Println("Starting generation")
-			if err := core.GeneratePreimages(
-				chain,
-				hc.Preimage.GenerateStart, end,
-			); err != nil {
-				fmt.Println("Error generating", err)
-				os.Exit(1)
-			}
-			fmt.Println("Generation successful")
-			os.Exit(0)
 		}
-		os.Exit(0)
 	}
 
 	startMsg := "==== New Intelchain Node ===="
@@ -446,50 +394,22 @@ func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 
 	nodeconfig.SetPeerID(myHost.GetID())
 
-	if hc.Log.VerbosePrints.Config {
-		utils.Logger().Info().Interface("config", rpc_common.Config{
-			IntelchainConfig: hc,
-			NodeConfig:       *nodeConfig,
-			ChainConfig:      *currentNode.Blockchain().Config(),
-		}).Msg("verbose prints config")
+	prometheusConfig := prometheus.Config{
+		Enabled:    hc.Prometheus.Enabled,
+		IP:         hc.Prometheus.IP,
+		Port:       hc.Prometheus.Port,
+		EnablePush: hc.Prometheus.EnablePush,
+		Gateway:    hc.Prometheus.Gateway,
+		Network:    hc.Network.NetworkType,
+		Legacy:     hc.General.NoStaking,
+		NodeType:   hc.General.NodeType,
+		Shard:      nodeConfig.ShardID,
+		Instance:   myHost.GetID().Pretty(),
 	}
 
-	// Setup services
-	if hc.Sync.Enabled {
-		if hc.Sync.StagedSync {
-			setupStagedSyncService(currentNode, myHost, hc)
-		} else {
-			setupSyncService(currentNode, myHost, hc)
-		}
-	}
-	if currentNode.NodeConfig.Role() == nodeconfig.Validator {
-		currentNode.RegisterValidatorServices()
-	} else if currentNode.NodeConfig.Role() == nodeconfig.ExplorerNode {
-		currentNode.RegisterExplorerServices()
-	}
-	currentNode.RegisterService(service.CrosslinkSending, crosslink_sending.New(currentNode, currentNode.Blockchain()))
-	if hc.Pprof.Enabled {
-		setupPprofService(currentNode, hc)
-	}
-	if hc.Prometheus.Enabled {
-		setupPrometheusService(currentNode, hc, nodeConfig.ShardID)
-	}
-
-	if hc.DNSSync.Server && !hc.General.IsOffline {
-		utils.Logger().Info().Msg("support gRPC sync server")
-		currentNode.SupportGRPCSyncServer(hc.DNSSync.ServerPort)
-	}
-	if hc.DNSSync.Client && !hc.General.IsOffline {
-		utils.Logger().Info().Msg("go with gRPC sync client")
-		currentNode.StartGRPCSyncClient()
-	}
-
-	currentNode.NodeSyncing()
-
-	if err := currentNode.StartServices(); err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(-1)
-	}
+	currentNode.SupportSyncing()
+	currentNode.ServiceManagerSetup()
+	currentNode.RunServices()
 
 	if err := currentNode.StartRPC(); err != nil {
 		utils.Logger().Warn().
@@ -503,37 +423,26 @@ func setupNodeAndRun(hc intelchainconfig.IntelchainConfig) {
 			Msg("Start Rosetta failed")
 	}
 
-	go core.WritePreimagesMetricsIntoPrometheus(
-		currentNode.Blockchain(),
-		currentNode.Consensus.UpdatePreimageGenerationMetrics,
-	)
+	if err := currentNode.StartPrometheus(prometheusConfig); err != nil {
+		utils.Logger().Warn().
+			Err(err).
+			Msg("Start Prometheus failed")
+	}
 
-	go listenOSSigAndShutDown(currentNode)
-
-	if !hc.General.IsOffline {
-		if err := myHost.Start(); err != nil {
-			utils.Logger().Fatal().
-				Err(err).
-				Msg("Start p2p host failed")
-		}
-
-		if err := currentNode.BootstrapConsensus(); err != nil {
-			fmt.Fprint(os.Stderr, "could not bootstrap consensus", err.Error())
-			if !currentNode.NodeConfig.IsOffline {
-				os.Exit(-1)
-			}
-		}
-
-		if err := currentNode.StartPubSub(); err != nil {
-			fmt.Fprint(os.Stderr, "could not begin network message handling for node", err.Error())
+	if err := currentNode.BootstrapConsensus(); err != nil {
+		fmt.Println("could not bootstrap consensus", err.Error())
+		if !currentNode.NodeConfig.IsOffline {
 			os.Exit(-1)
 		}
 	}
 
-	select {}
+	if err := currentNode.Start(); err != nil {
+		fmt.Println("could not begin network message handling for node", err.Error())
+		os.Exit(-1)
+	}
 }
 
-func nodeconfigSetShardSchedule(config intelchainconfig.IntelchainConfig) {
+func nodeconfigSetShardSchedule(config intelchainConfig) {
 	switch config.Network.NetworkType {
 	case nodeconfig.Mainnet:
 		shard.Schedule = shardingconfig.MainnetSchedule
@@ -548,7 +457,7 @@ func nodeconfigSetShardSchedule(config intelchainconfig.IntelchainConfig) {
 	case nodeconfig.Stressnet:
 		shard.Schedule = shardingconfig.StressNetSchedule
 	case nodeconfig.Devnet:
-		var dnConfig intelchainconfig.DevnetConfig
+		var dnConfig devnetConfig
 		if config.Devnet != nil {
 			dnConfig = *config.Devnet
 		} else {
@@ -556,13 +465,7 @@ func nodeconfigSetShardSchedule(config intelchainconfig.IntelchainConfig) {
 		}
 
 		devnetConfig, err := shardingconfig.NewInstance(
-			uint32(dnConfig.NumShards), dnConfig.ShardSize,
-			dnConfig.ItcNodeSize, dnConfig.SlotsLimit,
-			numeric.OneDec(), genesis.IntelchainAccounts,
-			genesis.FoundationalNodeAccounts, shardingconfig.Allowlist{},
-			nil, numeric.ZeroDec(), ethCommon.Address{},
-			nil, shardingconfig.VLBPE,
-		)
+			uint32(dnConfig.NumShards), dnConfig.ShardSize, dnConfig.ItcNodeSize, numeric.OneDec(), genesis.IntelchainAccounts, genesis.FoundationalNodeAccounts, nil, shardingconfig.VLBPE)
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "ERROR invalid devnet sharding config: %s",
 				err)
@@ -582,7 +485,7 @@ func findAccountsByPubKeys(config shardingconfig.Instance, pubKeys multibls.Publ
 	}
 }
 
-func setupLegacyNodeAccount(hc intelchainconfig.IntelchainConfig) error {
+func setupLegacyNodeAccount(hc intelchainConfig) error {
 	genesisShardingConfig := shard.Schedule.InstanceForEpoch(big.NewInt(core.GenesisEpoch))
 	multiBLSPubKey := setupConsensusKeys(hc, nodeconfig.GetDefaultConfig())
 
@@ -614,7 +517,7 @@ func setupLegacyNodeAccount(hc intelchainconfig.IntelchainConfig) error {
 	return nil
 }
 
-func setupStakingNodeAccount(hc intelchainconfig.IntelchainConfig) error {
+func setupStakingNodeAccount(hc intelchainConfig) error {
 	pubKeys := setupConsensusKeys(hc, nodeconfig.GetDefaultConfig())
 	shardID, err := nodeconfig.GetDefaultConfig().ShardIDFromConsensusKey()
 	if err != nil {
@@ -635,7 +538,7 @@ func setupStakingNodeAccount(hc intelchainconfig.IntelchainConfig) error {
 	return nil
 }
 
-func createGlobalConfig(hc intelchainconfig.IntelchainConfig) (*nodeconfig.ConfigType, error) {
+func createGlobalConfig(hc intelchainConfig) (*nodeconfig.ConfigType, error) {
 	var err error
 
 	if len(initialAccounts) == 0 {
@@ -656,19 +559,7 @@ func createGlobalConfig(hc intelchainconfig.IntelchainConfig) (*nodeconfig.Confi
 	nodeConfig.SetShardID(initialAccounts[0].ShardID) // sets shard ID
 	nodeConfig.SetArchival(hc.General.IsBeaconArchival, hc.General.IsArchival)
 	nodeConfig.IsOffline = hc.General.IsOffline
-	nodeConfig.Downloader = hc.Sync.Downloader
-	nodeConfig.StagedSync = hc.Sync.StagedSync
-	nodeConfig.StagedSyncTurboMode = hc.Sync.StagedSyncCfg.TurboMode
-	nodeConfig.UseMemDB = hc.Sync.StagedSyncCfg.UseMemDB
-	nodeConfig.DoubleCheckBlockHashes = hc.Sync.StagedSyncCfg.DoubleCheckBlockHashes
-	nodeConfig.MaxBlocksPerSyncCycle = hc.Sync.StagedSyncCfg.MaxBlocksPerSyncCycle
-	nodeConfig.MaxBackgroundBlocks = hc.Sync.StagedSyncCfg.MaxBackgroundBlocks
-	nodeConfig.MaxMemSyncCycleSize = hc.Sync.StagedSyncCfg.MaxMemSyncCycleSize
-	nodeConfig.VerifyAllSig = hc.Sync.StagedSyncCfg.VerifyAllSig
-	nodeConfig.VerifyHeaderBatchSize = hc.Sync.StagedSyncCfg.VerifyHeaderBatchSize
-	nodeConfig.InsertChainBatchSize = hc.Sync.StagedSyncCfg.InsertChainBatchSize
-	nodeConfig.LogProgress = hc.Sync.StagedSyncCfg.LogProgress
-	nodeConfig.DebugMode = hc.Sync.StagedSyncCfg.DebugMode
+
 	// P2P private key is used for secure message transfer between p2p nodes.
 	nodeConfig.P2PPriKey, _, err = utils.LoadKeyFromFile(hc.P2P.KeyFile)
 	if err != nil {
@@ -682,26 +573,7 @@ func createGlobalConfig(hc intelchainconfig.IntelchainConfig) (*nodeconfig.Confi
 		ConsensusPubKey: nodeConfig.ConsensusPriKey[0].Pub.Object,
 	}
 
-	// for local-net the node has to be forced to assume it is public reachable
-	forceReachabilityPublic := false
-	if hc.Network.NetworkType == nodeconfig.Localnet {
-		forceReachabilityPublic = true
-	}
-
-	myHost, err = p2p.NewHost(p2p.HostConfig{
-		Self:                     &selfPeer,
-		BLSKey:                   nodeConfig.P2PPriKey,
-		BootNodes:                hc.Network.BootNodes,
-		DataStoreFile:            hc.P2P.DHTDataStore,
-		DiscConcurrency:          hc.P2P.DiscConcurrency,
-		MaxConnPerIP:             hc.P2P.MaxConnsPerIP,
-		DisablePrivateIPScan:     hc.P2P.DisablePrivateIPScan,
-		MaxPeers:                 hc.P2P.MaxPeers,
-		ConnManagerLowWatermark:  hc.P2P.ConnManagerLowWatermark,
-		ConnManagerHighWatermark: hc.P2P.ConnManagerHighWatermark,
-		WaitForEachPeerToConnect: hc.P2P.WaitForEachPeerToConnect,
-		ForceReachabilityPublic:  forceReachabilityPublic,
-	})
+	myHost, err = p2p.NewHost(&selfPeer, nodeConfig.P2PPriKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create P2P network host")
 	}
@@ -722,71 +594,29 @@ func createGlobalConfig(hc intelchainconfig.IntelchainConfig) (*nodeconfig.Confi
 
 	nodeConfig.NtpServer = hc.Sys.NtpServer
 
-	nodeConfig.TraceEnable = hc.General.TraceEnable
-
 	return nodeConfig, nil
 }
 
-func setupChain(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *registry.Registry {
+func setupConsensusAndNode(hc intelchainConfig, nodeConfig *nodeconfig.ConfigType) *node.Node {
+	// Consensus object.
+	// TODO: consensus object shouldn't start here
+	decider := quorum.NewDecider(quorum.SuperMajorityVote, uint32(hc.General.ShardID))
 
-	// Current node.
-	var chainDBFactory shardchain.DBFactory
-	if hc.General.RunElasticMode {
-		chainDBFactory = setupTiKV(hc)
-	} else if hc.ShardData.EnableShardData {
-		chainDBFactory = &shardchain.LDBShardFactory{
-			RootDir:    nodeConfig.DBDir,
-			DiskCount:  hc.ShardData.DiskCount,
-			ShardCount: hc.ShardData.ShardCount,
-			CacheTime:  hc.ShardData.CacheTime,
-			CacheSize:  hc.ShardData.CacheSize,
-		}
-	} else {
-		chainDBFactory = &shardchain.LDBFactory{RootDir: nodeConfig.DBDir}
-	}
-
-	engine := chain.NewEngine()
-	registry.SetEngine(engine)
-
-	chainConfig := nodeConfig.GetNetworkType().ChainConfig()
-	collection := shardchain.NewCollection(
-		&hc, chainDBFactory, &core.GenesisInitializer{NetworkType: nodeConfig.GetNetworkType()}, engine, &chainConfig,
+	currentConsensus, err := consensus.New(
+		myHost, nodeConfig.ShardID, p2p.Peer{}, nodeConfig.ConsensusPriKey, decider,
 	)
-	for shardID, archival := range nodeConfig.ArchiveModes() {
-		if archival {
-			collection.DisableCache(shardID)
-		}
-	}
-	registry.SetShardChainCollection(collection)
+	currentConsensus.Decider.SetMyPublicKeyProvider(func() (multibls.PublicKeys, error) {
+		return currentConsensus.GetPublicKeys(), nil
+	})
 
-	var blockchain core.BlockChain
-
-	// We are not beacon chain, make sure beacon already initialized.
-	if nodeConfig.ShardID != shard.BeaconChainShardID {
-		beacon, err := collection.ShardChain(shard.BeaconChainShardID, core.Options{EpochChain: true})
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Error :%v \n", err)
-			os.Exit(1)
-		}
-		registry.SetBeaconchain(beacon)
-	}
-
-	blockchain, err := collection.ShardChain(nodeConfig.ShardID)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error :%v \n", err)
 		os.Exit(1)
 	}
-	registry.SetBlockchain(blockchain)
-	if registry.GetBeaconchain() == nil {
-		registry.SetBeaconchain(registry.GetBlockchain())
-	}
-	return registry
-}
 
-func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType, registry *registry.Registry) *node.Node {
-	decider := quorum.NewDecider(quorum.SuperMajorityVote, uint32(hc.General.ShardID))
+	currentConsensus.SetCommitDelay(time.Duration(0))
 
-	// Parse minPeers from intelchainconfig.IntelchainConfig
+	// Parse minPeers from intelchainConfig
 	var minPeers int
 	var aggregateSig bool
 	if hc.Consensus != nil {
@@ -796,39 +626,18 @@ func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nod
 		minPeers = defaultConsensusConfig.MinPeers
 		aggregateSig = defaultConsensusConfig.AggregateSig
 	}
+	currentConsensus.MinPeers = minPeers
+	currentConsensus.AggregateSig = aggregateSig
 
 	blacklist, err := setupBlacklist(hc)
 	if err != nil {
 		utils.Logger().Warn().Msgf("Blacklist setup error: %s", err.Error())
 	}
-	allowedTxs, err := setupAllowedTxs(hc)
-	if err != nil {
-		utils.Logger().Warn().Msgf("AllowedTxs setup error: %s", err.Error())
-	}
-	localAccounts, err := setupLocalAccounts(hc, blacklist)
-	if err != nil {
-		utils.Logger().Warn().Msgf("local accounts setup error: %s", err.Error())
-	}
 
-	registry = setupChain(hc, nodeConfig, registry)
-	if registry.GetShardChainCollection() == nil {
-		panic("shard chain collection is nil1111111")
-	}
-	registry.SetWebHooks(nodeConfig.WebHooks.Hooks)
-	cxPool := core.NewCxPool(core.CxPoolSize)
-	registry.SetCxPool(cxPool)
+	// Current node.
+	chainDBFactory := &shardchain.LDBFactory{RootDir: nodeConfig.DBDir}
 
-	// Consensus object.
-	registry.SetIsBackup(isBackup(hc))
-	currentConsensus, err := consensus.New(
-		myHost, nodeConfig.ShardID, nodeConfig.ConsensusPriKey, registry, decider, minPeers, aggregateSig)
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error :%v \n", err)
-		os.Exit(1)
-	}
-
-	currentNode := node.New(myHost, currentConsensus, blacklist, allowedTxs, localAccounts, &hc, registry)
+	currentNode := node.New(myHost, currentConsensus, chainDBFactory, blacklist, nodeConfig.ArchiveModes())
 
 	if hc.Legacy != nil && hc.Legacy.TPBroadcastInvalidTxn != nil {
 		currentNode.BroadcastInvalidTx = *hc.Legacy.TPBroadcastInvalidTxn
@@ -846,24 +655,36 @@ func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nod
 		selfPort := hc.P2P.Port
 		currentNode.SyncingPeerProvider = node.NewLocalSyncingPeerProvider(
 			6000, uint16(selfPort), epochConfig.NumShards(), uint32(epochConfig.NumNodesPerShard()))
+	} else if hc.Network.LegacySyncing {
+		currentNode.SyncingPeerProvider = node.NewLegacySyncingPeerProvider(currentNode)
 	} else {
-		addrs := myHost.GetP2PHost().Addrs()
-		currentNode.SyncingPeerProvider = node.NewDNSSyncingPeerProvider(hc.DNSSync.Zone, strconv.Itoa(hc.DNSSync.Port), addrs)
+		currentNode.SyncingPeerProvider = node.NewDNSSyncingPeerProvider(hc.Network.DNSZone, syncing.GetSyncingPort(strconv.Itoa(hc.Network.DNSPort)))
 	}
-	currentNode.NodeConfig.DNSZone = hc.DNSSync.Zone
+
+	// TODO: refactor the creation of blockchain out of node.New()
+	currentConsensus.Blockchain = currentNode.Blockchain()
+	currentNode.NodeConfig.DNSZone = hc.Network.DNSZone
 
 	currentNode.NodeConfig.SetBeaconGroupID(
 		nodeconfig.NewGroupIDByShardID(shard.BeaconChainShardID),
 	)
 
 	nodeconfig.GetDefaultConfig().DBDir = nodeConfig.DBDir
-	processNodeType(hc, currentNode.NodeConfig)
+	switch hc.General.NodeType {
+	case nodeTypeExplorer:
+		nodeconfig.SetDefaultRole(nodeconfig.ExplorerNode)
+		currentNode.NodeConfig.SetRole(nodeconfig.ExplorerNode)
+
+	case nodeTypeValidator:
+		nodeconfig.SetDefaultRole(nodeconfig.Validator)
+		currentNode.NodeConfig.SetRole(nodeconfig.Validator)
+	}
 	currentNode.NodeConfig.SetShardGroupID(nodeconfig.NewGroupIDByShardID(nodeconfig.ShardID(nodeConfig.ShardID)))
 	currentNode.NodeConfig.SetClientGroupID(nodeconfig.NewClientGroupIDByShardID(shard.BeaconChainShardID))
 	currentNode.NodeConfig.ConsensusPriKey = nodeConfig.ConsensusPriKey
 
 	// This needs to be executed after consensus setup
-	if err := currentConsensus.InitConsensusWithValidators(); err != nil {
+	if err := currentNode.InitConsensusWithValidators(); err != nil {
 		utils.Logger().Warn().
 			Int("shardID", hc.General.ShardID).
 			Err(err).
@@ -877,6 +698,8 @@ func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nod
 		Uint64("viewID", viewID).
 		Msg("Init Blockchain")
 
+	// Assign closure functions to the consensus object
+	currentConsensus.SetBlockVerifier(currentNode.VerifyNewBlock)
 	currentConsensus.PostConsensusJob = currentNode.PostConsensusProcessing
 	// update consensus information based on the blockchain
 	currentConsensus.SetMode(currentConsensus.UpdateConsensusInformation())
@@ -884,167 +707,9 @@ func setupConsensusAndNode(hc intelchainconfig.IntelchainConfig, nodeConfig *nod
 	return currentNode
 }
 
-func setupTiKV(hc intelchainconfig.IntelchainConfig) shardchain.DBFactory {
-	err := redis_helper.Init(hc.TiKV.StateDBRedisServerAddr)
-	if err != nil {
-		panic("can not connect to redis: " + err.Error())
-	}
-
-	factory := &shardchain.TiKvFactory{
-		PDAddr: hc.TiKV.PDAddr,
-		Role:   hc.TiKV.Role,
-		CacheConfig: statedb_cache.StateDBCacheConfig{
-			CacheSizeInMB:        hc.TiKV.StateDBCacheSizeInMB,
-			CachePersistencePath: hc.TiKV.StateDBCachePersistencePath,
-			RedisServerAddr:      hc.TiKV.StateDBRedisServerAddr,
-			RedisLRUTimeInDay:    hc.TiKV.StateDBRedisLRUTimeInDay,
-			DebugHitRate:         hc.TiKV.Debug,
-		},
-	}
-
-	tikv_manage.SetDefaultTiKVFactory(factory)
-	return factory
-}
-
-func processNodeType(hc intelchainconfig.IntelchainConfig, nodeConfig *nodeconfig.ConfigType) {
-	switch hc.General.NodeType {
-	case nodeTypeExplorer:
-		nodeconfig.SetDefaultRole(nodeconfig.ExplorerNode)
-		nodeConfig.SetRole(nodeconfig.ExplorerNode)
-
-	case nodeTypeValidator:
-		nodeconfig.SetDefaultRole(nodeconfig.Validator)
-		nodeConfig.SetRole(nodeconfig.Validator)
-	}
-}
-
-func isBackup(hc intelchainconfig.IntelchainConfig) (isBackup bool) {
-	switch hc.General.NodeType {
-	case nodeTypeExplorer:
-
-	case nodeTypeValidator:
-		return hc.General.IsBackup
-	}
-	return false
-}
-
-func setupPprofService(node *node.Node, hc intelchainconfig.IntelchainConfig) {
-	pprofConfig := pprof.Config{
-		Enabled:            hc.Pprof.Enabled,
-		ListenAddr:         hc.Pprof.ListenAddr,
-		Folder:             hc.Pprof.Folder,
-		ProfileNames:       hc.Pprof.ProfileNames,
-		ProfileIntervals:   hc.Pprof.ProfileIntervals,
-		ProfileDebugValues: hc.Pprof.ProfileDebugValues,
-	}
-	s := pprof.NewService(pprofConfig)
-	node.RegisterService(service.Pprof, s)
-}
-
-func setupPrometheusService(node *node.Node, hc intelchainconfig.IntelchainConfig, sid uint32) {
-	prometheusConfig := prometheus.Config{
-		Enabled:    hc.Prometheus.Enabled,
-		IP:         hc.Prometheus.IP,
-		Port:       hc.Prometheus.Port,
-		EnablePush: hc.Prometheus.EnablePush,
-		Gateway:    hc.Prometheus.Gateway,
-		Network:    hc.Network.NetworkType,
-		Legacy:     hc.General.NoStaking,
-		NodeType:   hc.General.NodeType,
-		Shard:      sid,
-		Instance:   myHost.GetID().Pretty(),
-	}
-
-	if hc.General.RunElasticMode {
-		prometheusConfig.TikvRole = hc.TiKV.Role
-	}
-
-	p := prometheus.NewService(prometheusConfig)
-	node.RegisterService(service.Prometheus, p)
-}
-
-func setupSyncService(node *node.Node, host p2p.Host, hc intelchainconfig.IntelchainConfig) {
-	blockchains := []core.BlockChain{node.Blockchain()}
-	if node.Blockchain().ShardID() != shard.BeaconChainShardID {
-		blockchains = append(blockchains, node.EpochChain())
-	}
-
-	dConfig := downloader.Config{
-		ServerOnly:   !hc.Sync.Downloader,
-		Network:      nodeconfig.NetworkType(hc.Network.NetworkType),
-		Concurrency:  hc.Sync.Concurrency,
-		MinStreams:   hc.Sync.MinPeers,
-		InitStreams:  hc.Sync.InitStreams,
-		SmSoftLowCap: hc.Sync.DiscSoftLowCap,
-		SmHardLowCap: hc.Sync.DiscHardLowCap,
-		SmHiCap:      hc.Sync.DiscHighCap,
-		SmDiscBatch:  hc.Sync.DiscBatch,
-	}
-	// If we are running side chain, we will need to do some extra works for beacon
-	// sync.
-	if !node.IsRunningBeaconChain() {
-		dConfig.BHConfig = &downloader.BeaconHelperConfig{
-			BlockC:     node.BeaconBlockChannel,
-			InsertHook: node.BeaconSyncHook,
-		}
-	}
-	s := synchronize.NewService(host, blockchains, dConfig)
-
-	node.RegisterService(service.Synchronize, s)
-
-	d := s.Downloaders.GetShardDownloader(node.Blockchain().ShardID())
-	if hc.Sync.Downloader && hc.General.NodeType != nodeTypeExplorer {
-		node.Consensus.SetDownloader(d) // Set downloader when stream client is active
-	}
-}
-
-func setupStagedSyncService(node *node.Node, host p2p.Host, hc intelchainconfig.IntelchainConfig) {
-	blockchains := []core.BlockChain{node.Blockchain()}
-	if node.Blockchain().ShardID() != shard.BeaconChainShardID {
-		blockchains = append(blockchains, node.EpochChain())
-	}
-
-	sConfig := stagedstreamsync.Config{
-		ServerOnly:           !hc.Sync.Downloader,
-		SyncMode:             stagedstreamsync.SyncMode(hc.Sync.SyncMode),
-		Network:              nodeconfig.NetworkType(hc.Network.NetworkType),
-		Concurrency:          hc.Sync.Concurrency,
-		MinStreams:           hc.Sync.MinPeers,
-		InitStreams:          hc.Sync.InitStreams,
-		MaxAdvertiseWaitTime: hc.Sync.MaxAdvertiseWaitTime,
-		SmSoftLowCap:         hc.Sync.DiscSoftLowCap,
-		SmHardLowCap:         hc.Sync.DiscHardLowCap,
-		SmHiCap:              hc.Sync.DiscHighCap,
-		SmDiscBatch:          hc.Sync.DiscBatch,
-		UseMemDB:             hc.Sync.StagedSyncCfg.UseMemDB,
-		LogProgress:          hc.Sync.StagedSyncCfg.LogProgress,
-		DebugMode:            true, // hc.Sync.StagedSyncCfg.DebugMode,
-	}
-
-	// If we are running side chain, we will need to do some extra works for beacon
-	// sync.
-	if !node.IsRunningBeaconChain() {
-		sConfig.BHConfig = &stagedstreamsync.BeaconHelperConfig{
-			BlockC:     node.BeaconBlockChannel,
-			InsertHook: node.BeaconSyncHook,
-		}
-	}
-	//Setup stream sync service
-	s := stagedstreamsync.NewService(host, blockchains, node.Consensus, sConfig, hc.General.DataDir)
-
-	node.RegisterService(service.StagedStreamSync, s)
-
-	d := s.Downloaders.GetShardDownloader(node.Blockchain().ShardID())
-	if hc.Sync.Downloader && hc.General.NodeType != nodeTypeExplorer {
-		node.Consensus.SetDownloader(d) // Set downloader when stream client is active
-	}
-}
-
-func setupBlacklist(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address]struct{}, error) {
-	rosetta_common.InitRosettaFile(hc.TxPool.RosettaFixFile)
-
+func setupBlacklist(hc intelchainConfig) (map[ethCommon.Address]struct{}, error) {
 	utils.Logger().Debug().Msgf("Using blacklist file at `%s`", hc.TxPool.BlacklistFile)
-	dat, err := os.ReadFile(hc.TxPool.BlacklistFile)
+	dat, err := ioutil.ReadFile(hc.TxPool.BlacklistFile)
 	if err != nil {
 		return nil, err
 	}
@@ -1052,7 +717,7 @@ func setupBlacklist(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address
 	for _, line := range strings.Split(string(dat), "\n") {
 		if len(line) != 0 { // blacklist file may have trailing empty string line
 			b32 := strings.TrimSpace(strings.Split(string(line), "#")[0])
-			addr, err := common.ParseAddr(b32)
+			addr, err := common.Bech32ToAddress(b32)
 			if err != nil {
 				return nil, err
 			}
@@ -1060,112 +725,4 @@ func setupBlacklist(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address
 		}
 	}
 	return addrMap, nil
-}
-
-func parseAllowedTxs(data []byte) (map[ethCommon.Address][]core.AllowedTxData, error) {
-	allowedTxs := make(map[ethCommon.Address][]core.AllowedTxData)
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if len(line) != 0 { // AllowedTxs file may have trailing empty string line
-			substrings := strings.Split(string(line), "->")
-			fromStr := strings.TrimSpace(substrings[0])
-			txSubstrings := strings.Split(substrings[1], ":")
-			toStr := strings.TrimSpace(txSubstrings[0])
-			dataStr := strings.TrimSpace(txSubstrings[1])
-			from, err := common.ParseAddr(fromStr)
-			if err != nil {
-				return nil, err
-			}
-			to, err := common.ParseAddr(toStr)
-			if err != nil {
-				return nil, err
-			}
-			data, err := hexutil.Decode(dataStr)
-			if err != nil {
-				return nil, err
-			}
-			allowedTxs[from] = append(allowedTxs[from], core.AllowedTxData{
-				To:   to,
-				Data: data,
-			})
-		}
-	}
-	return allowedTxs, nil
-}
-
-func setupAllowedTxs(hc intelchainconfig.IntelchainConfig) (map[ethCommon.Address][]core.AllowedTxData, error) {
-	utils.Logger().Debug().Msgf("Using AllowedTxs file at `%s`", hc.TxPool.AllowedTxsFile)
-	data, err := os.ReadFile(hc.TxPool.AllowedTxsFile)
-	if err != nil {
-		return nil, err
-	}
-	return parseAllowedTxs(data)
-}
-
-func setupLocalAccounts(hc intelchainconfig.IntelchainConfig, blacklist map[ethCommon.Address]struct{}) ([]ethCommon.Address, error) {
-	file := hc.TxPool.LocalAccountsFile
-	// check if file exist
-	var fileData string
-	if _, err := os.Stat(file); err == nil {
-		b, err := os.ReadFile(file)
-		if err != nil {
-			return nil, err
-		}
-		fileData = string(b)
-	} else if errors.Is(err, os.ErrNotExist) {
-		// file path does not exist
-		return []ethCommon.Address{}, nil
-	} else {
-		// some other errors happened
-		return nil, err
-	}
-
-	localAccounts := make(map[ethCommon.Address]struct{})
-	lines := strings.Split(fileData, "\n")
-	for _, line := range lines {
-		if len(line) == 0 { // the file may have trailing empty string line
-			continue
-		}
-		addrPart := strings.TrimSpace(strings.Split(string(line), "#")[0])
-		if len(addrPart) == 0 { // if the line is commented by #
-			continue
-		}
-		addr, err := common.ParseAddr(addrPart)
-		if err != nil {
-			return nil, err
-		}
-		// skip the blacklisted addresses
-		if _, exists := blacklist[addr]; exists {
-			utils.Logger().Warn().Msgf("local account with address %s is blacklisted", addr.String())
-			continue
-		}
-		localAccounts[addr] = struct{}{}
-	}
-	uniqueAddresses := make([]ethCommon.Address, 0, len(localAccounts))
-	for addr := range localAccounts {
-		uniqueAddresses = append(uniqueAddresses, addr)
-	}
-
-	return uniqueAddresses, nil
-}
-
-func listenOSSigAndShutDown(node *node.Node) {
-	// Prepare for graceful shutdown from os signals
-	osSignal := make(chan os.Signal, 1)
-	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-osSignal
-	utils.Logger().Warn().Str("signal", sig.String()).Msg("Gracefully shutting down...")
-	const msg = "Got %s signal. Gracefully shutting down...\n"
-	fmt.Fprintf(os.Stderr, msg, sig)
-
-	go node.ShutDown()
-
-	for i := 10; i > 0; i-- {
-		<-osSignal
-		if i > 1 {
-			fmt.Printf("Already shutting down, interrupt more to force quit: (times=%v)\n", i-1)
-		}
-	}
-	fmt.Println("Forced QUIT.")
-	os.Exit(-1)
 }

@@ -434,8 +434,8 @@ func (ctx *incStateTestCtx) checkAddrIncStateByType(addr common.Address, typeInc
 // checkItcNodeStateChangeByAddr checks the state change for Itc nodes. Since Itc nodes does not
 // have wrapper, it is supposed to be unchanged in code field
 func (ctx *incStateTestCtx) checkItcNodeStateChangeByAddr(addr common.Address) error {
-	snapCode := ctx.snapState.GetCode(addr, false)
-	curCode := ctx.state.GetCode(addr, false)
+	snapCode := ctx.snapState.GetCode(addr)
+	curCode := ctx.state.GetCode(addr)
 	if !reflect.DeepEqual(snapCode, curCode) {
 		return errors.New("code not expected")
 	}
@@ -447,11 +447,11 @@ func (ctx *incStateTestCtx) checkItcNodeStateChangeByAddr(addr common.Address) e
 func (ctx *incStateTestCtx) checkWrapperChangeByAddr(addr common.Address,
 	f func(w1, w2 *staking.ValidatorWrapper) bool) error {
 
-	snapWrapper, err := ctx.snapState.ValidatorWrapper(addr, true, false)
+	snapWrapper, err := ctx.snapState.ValidatorWrapper(addr)
 	if err != nil {
 		return err
 	}
-	curWrapper, err := ctx.state.ValidatorWrapper(addr, true, false)
+	curWrapper, err := ctx.state.ValidatorWrapper(addr)
 	if err != nil {
 		return err
 	}
@@ -517,7 +517,7 @@ func (ctx *computeEPOSTestCtx) makeStateAndReader() {
 }
 
 func (ctx *computeEPOSTestCtx) checkWrapperStatus(expStatus effective.Eligibility) error {
-	wrapper, err := ctx.state.ValidatorWrapper(ctx.addr, true, false)
+	wrapper, err := ctx.state.ValidatorWrapper(ctx.addr)
 	if err != nil {
 		return err
 	}
@@ -605,7 +605,7 @@ func (state testStateDB) snapshot() testStateDB {
 	return res
 }
 
-func (state testStateDB) ValidatorWrapper(addr common.Address, readOnly bool, copyDelegations bool) (*staking.ValidatorWrapper, error) {
+func (state testStateDB) ValidatorWrapper(addr common.Address) (*staking.ValidatorWrapper, error) {
 	wrapper, ok := state[addr]
 	if !ok {
 		return nil, fmt.Errorf("addr not exist in validator wrapper: %v", addr.String())
@@ -618,7 +618,7 @@ func (state testStateDB) UpdateValidatorWrapper(addr common.Address, wrapper *st
 	return nil
 }
 
-func (state testStateDB) GetCode(addr common.Address, isValidatorCode bool) []byte {
+func (state testStateDB) GetCode(addr common.Address) []byte {
 	wrapper, ok := state[addr]
 	if !ok {
 		return nil

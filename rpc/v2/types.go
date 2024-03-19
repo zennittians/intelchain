@@ -5,15 +5,13 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/crypto/bls"
 	internal_common "github.com/zennittians/intelchain/internal/common"
+	rpc_common "github.com/zennittians/intelchain/rpc/common"
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
@@ -35,44 +33,13 @@ type BlockWithTxHash struct {
 	Size             uint64         `json:"size"`
 	GasLimit         uint64         `json:"gasLimit"`
 	GasUsed          uint64         `json:"gasUsed"`
-	VRF              common.Hash    `json:"vrf"`
-	VRFProof         hexutil.Bytes  `json:"vrfProof"`
 	Timestamp        *big.Int       `json:"timestamp"`
 	TransactionsRoot common.Hash    `json:"transactionsRoot"`
 	ReceiptsRoot     common.Hash    `json:"receiptsRoot"`
 	Uncles           []common.Hash  `json:"uncles"`
 	Transactions     []common.Hash  `json:"transactions"`
-	EthTransactions  []common.Hash  `json:"transactionsInEthHash"`
 	StakingTxs       []common.Hash  `json:"stakingTransactions"`
 	Signers          []string       `json:"signers,omitempty"`
-}
-
-// BlockHeader represents a block header that will serialize to the RPC representation of a block header
-type BlockHeader struct {
-	ParentHash           common.Hash    `json:"parentHash"`
-	Miner                common.Address `json:"miner"`
-	StateRoot            common.Hash    `json:"stateRoot"`
-	TransactionsRoot     common.Hash    `json:"transactionsRoot"`
-	ReceiptsRoot         common.Hash    `json:"receiptsRoot"`
-	OutgoingReceiptsRoot common.Hash    `json:"outgoingReceiptsRoot"`
-	IncomingReceiptsRoot common.Hash    `json:"incomingReceiptsRoot"`
-	LogsBloom            ethtypes.Bloom `json:"logsBloom"`
-	Number               *big.Int       `json:"number"`
-	GasLimit             uint64         `json:"gasLimit"`
-	GasUsed              uint64         `json:"gasUsed"`
-	Timestamp            *big.Int       `json:"timestamp"`
-	ExtraData            hexutil.Bytes  `json:"extraData"`
-	MixHash              common.Hash    `json:"mixHash"`
-	ViewID               *big.Int       `json:"viewID"`
-	Epoch                *big.Int       `json:"epoch"`
-	ShardID              uint32         `json:"shardID"`
-	LastCommitSignature  hexutil.Bytes  `json:"lastCommitSignature"`
-	LastCommitBitmap     hexutil.Bytes  `json:"lastCommitBitmap"`
-	Vrf                  hexutil.Bytes  `json:"vrf"`
-	Vdf                  hexutil.Bytes  `json:"vdf"`
-	ShardState           hexutil.Bytes  `json:"shardState"`
-	CrossLink            hexutil.Bytes  `json:"crossLink"`
-	Slashes              hexutil.Bytes  `json:"slashes"`
 }
 
 // BlockWithFullTx represents a block that will serialize to the RPC representation of a block
@@ -93,8 +60,6 @@ type BlockWithFullTx struct {
 	Size             uint64                `json:"size"`
 	GasLimit         uint64                `json:"gasLimit"`
 	GasUsed          uint64                `json:"gasUsed"`
-	VRF              common.Hash           `json:"vrf"`
-	VRFProof         hexutil.Bytes         `json:"vrfProof"`
 	Timestamp        *big.Int              `json:"timestamp"`
 	TransactionsRoot common.Hash           `json:"transactionsRoot"`
 	ReceiptsRoot     common.Hash           `json:"receiptsRoot"`
@@ -113,7 +78,6 @@ type Transaction struct {
 	Gas              uint64        `json:"gas"`
 	GasPrice         *big.Int      `json:"gasPrice"`
 	Hash             common.Hash   `json:"hash"`
-	EthHash          common.Hash   `json:"ethHash"`
 	Input            hexutil.Bytes `json:"input"`
 	Nonce            uint64        `json:"nonce"`
 	To               string        `json:"to"`
@@ -160,7 +124,6 @@ type CreateValidatorMsg struct {
 	SecurityContact    string                    `json:"securityContact"`
 	Details            string                    `json:"details"`
 	SlotPubKeys        []bls.SerializedPublicKey `json:"slotPubKeys"`
-	SlotKeySigs        []bls.SerializedSignature `json:"slotKeySigs"`
 }
 
 // EditValidatorMsg represents a staking transaction's edit validator directive that
@@ -177,7 +140,6 @@ type EditValidatorMsg struct {
 	Details            string                   `json:"details"`
 	SlotPubKeyToAdd    *bls.SerializedPublicKey `json:"slotPubKeyToAdd"`
 	SlotPubKeyToRemove *bls.SerializedPublicKey `json:"slotPubKeyToRemove"`
-	SlotKeyToAddSig    *bls.SerializedSignature `json:"slotKeyToAddSig"`
 }
 
 // CollectRewardsMsg represents a staking transaction's collect rewards directive that
@@ -296,7 +258,6 @@ func NewTransaction(
 		Gas:       tx.GasLimit(),
 		GasPrice:  tx.GasPrice(),
 		Hash:      tx.Hash(),
-		EthHash:   tx.ConvertToEth().Hash(),
 		Input:     hexutil.Bytes(tx.Data()),
 		Nonce:     tx.Nonce(),
 		Value:     tx.Value(),
@@ -455,9 +416,12 @@ func NewStakingTxReceipt(
 // representation, with the given location metadata set (if available).
 func NewStakingTransaction(
 	tx *staking.StakingTransaction, blockHash common.Hash,
-	blockNumber uint64, timestamp uint64, index uint64, signed bool,
+	blockNumber uint64, timestamp uint64, index uint64,
 ) (*StakingTransaction, error) {
-
+	from, err := tx.SenderAddress()
+	if err != nil {
+		return nil, nil
+	}
 	v, r, s := tx.RawSignatureValues()
 
 	var rpcMsg interface{}
@@ -465,7 +429,7 @@ func NewStakingTransaction(
 	case staking.DirectiveCreateValidator:
 		rawMsg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveCreateValidator)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("RLP decode error: %s", err.Error()))
+			return nil, err
 		}
 		msg, ok := rawMsg.(*staking.CreateValidator)
 		if !ok {
@@ -473,7 +437,7 @@ func NewStakingTransaction(
 		}
 		validatorAddress, err := internal_common.AddressToBech32(msg.ValidatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert validator address error: %s", err.Error()))
+			return nil, err
 		}
 		rpcMsg = &CreateValidatorMsg{
 			ValidatorAddress:   validatorAddress,
@@ -489,12 +453,11 @@ func NewStakingTransaction(
 			SecurityContact:    msg.Description.SecurityContact,
 			Details:            msg.Description.Details,
 			SlotPubKeys:        msg.SlotPubKeys,
-			SlotKeySigs:        msg.SlotKeySigs,
 		}
 	case staking.DirectiveEditValidator:
 		rawMsg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveEditValidator)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("RLP decode error: %s", err.Error()))
+			return nil, err
 		}
 		msg, ok := rawMsg.(*staking.EditValidator)
 		if !ok {
@@ -502,7 +465,7 @@ func NewStakingTransaction(
 		}
 		validatorAddress, err := internal_common.AddressToBech32(msg.ValidatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert validator address error: %s", err.Error()))
+			return nil, err
 		}
 		// Edit validators txs need not have commission rates to edit
 		commissionRate := &big.Int{}
@@ -521,12 +484,11 @@ func NewStakingTransaction(
 			Details:            msg.Description.Details,
 			SlotPubKeyToAdd:    msg.SlotKeyToAdd,
 			SlotPubKeyToRemove: msg.SlotKeyToRemove,
-			SlotKeyToAddSig:    msg.SlotKeyToAddSig,
 		}
 	case staking.DirectiveCollectRewards:
 		rawMsg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveCollectRewards)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("RLP decode error: %s", err.Error()))
+			return nil, err
 		}
 		msg, ok := rawMsg.(*staking.CollectRewards)
 		if !ok {
@@ -534,13 +496,13 @@ func NewStakingTransaction(
 		}
 		delegatorAddress, err := internal_common.AddressToBech32(msg.DelegatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert delegator address error: %s", err.Error()))
+			return nil, err
 		}
 		rpcMsg = &CollectRewardsMsg{DelegatorAddress: delegatorAddress}
 	case staking.DirectiveDelegate:
 		rawMsg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveDelegate)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("RLP decode error: %s", err.Error()))
+			return nil, err
 		}
 		msg, ok := rawMsg.(*staking.Delegate)
 		if !ok {
@@ -548,11 +510,11 @@ func NewStakingTransaction(
 		}
 		delegatorAddress, err := internal_common.AddressToBech32(msg.DelegatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert delegator address error: %s", err.Error()))
+			return nil, err
 		}
 		validatorAddress, err := internal_common.AddressToBech32(msg.ValidatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert validator address error: %s", err.Error()))
+			return nil, err
 		}
 		rpcMsg = &DelegateMsg{
 			DelegatorAddress: delegatorAddress,
@@ -562,7 +524,7 @@ func NewStakingTransaction(
 	case staking.DirectiveUndelegate:
 		rawMsg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveUndelegate)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("RLP decode error: %s", err.Error()))
+			return nil, err
 		}
 		msg, ok := rawMsg.(*staking.Undelegate)
 		if !ok {
@@ -570,7 +532,7 @@ func NewStakingTransaction(
 		}
 		delegatorAddress, err := internal_common.AddressToBech32(msg.DelegatorAddress)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("convert delegator address error: %s", err.Error()))
+			return nil, err
 		}
 		validatorAddress, err := internal_common.AddressToBech32(msg.ValidatorAddress)
 		if err != nil {
@@ -601,33 +563,34 @@ func NewStakingTransaction(
 		result.TransactionIndex = index
 	}
 
-	if signed {
-		from, err := tx.SenderAddress()
-		if err != nil {
-			return nil, errors.New(fmt.Sprintf("get sender address error: %s", err.Error()))
-		}
-
-		fromAddr, err := internal_common.AddressToBech32(from)
-		if err != nil {
-			return nil, err
-		}
-		result.From = fromAddr
+	fromAddr, err := internal_common.AddressToBech32(from)
+	if err != nil {
+		return nil, err
 	}
+	result.From = fromAddr
 
 	return result, nil
 }
 
-// blockWithTxHashFromBlock return a block with only the transaction hash that will serialize to the RPC representation
-func blockWithTxHashFromBlock(b *types.Block) *BlockWithTxHash {
-	head := b.Header()
-
-	vrfAndProof := head.Vrf()
-	vrf := common.Hash{}
-	vrfProof := []byte{}
-	if len(vrfAndProof) == 32+96 {
-		copy(vrf[:], vrfAndProof[:32])
-		vrfProof = vrfAndProof[32:]
+// NewBlock converts the given block to the RPC output which depends on fullTx. If inclTx is true transactions are
+// returned. When fullTx is true the returned block contains full transaction details, otherwise it will only contain
+// transaction hashes.
+func NewBlock(b *types.Block, blockArgs *rpc_common.BlockArgs, leader string) (interface{}, error) {
+	if blockArgs.FullTx {
+		return NewBlockWithFullTx(b, blockArgs, leader)
 	}
+	return NewBlockWithTxHash(b, blockArgs, leader)
+}
+
+// NewBlockWithTxHash return a block with only the transaction hash that will serialize to the RPC representation
+func NewBlockWithTxHash(
+	b *types.Block, blockArgs *rpc_common.BlockArgs, leader string,
+) (*BlockWithTxHash, error) {
+	if blockArgs.FullTx {
+		return nil, fmt.Errorf("block args specifies full tx, but requested RPC block with only tx hash")
+	}
+
+	head := b.Header()
 	blk := &BlockWithTxHash{
 		Number:           head.Number(),
 		ViewID:           head.ViewID(),
@@ -638,41 +601,45 @@ func blockWithTxHashFromBlock(b *types.Block) *BlockWithTxHash {
 		MixHash:          head.MixDigest(),
 		LogsBloom:        head.Bloom(),
 		StateRoot:        head.Root(),
+		Miner:            leader,
 		Difficulty:       0, // Remove this because we don't have it in our header
 		ExtraData:        hexutil.Bytes(head.Extra()),
 		Size:             uint64(b.Size()),
 		GasLimit:         head.GasLimit(),
 		GasUsed:          head.GasUsed(),
-		VRF:              vrf,
-		VRFProof:         vrfProof,
 		Timestamp:        head.Time(),
 		TransactionsRoot: head.TxHash(),
 		ReceiptsRoot:     head.ReceiptHash(),
 		Uncles:           []common.Hash{},
 		Transactions:     []common.Hash{},
-		EthTransactions:  []common.Hash{},
 		StakingTxs:       []common.Hash{},
 	}
 
 	for _, tx := range b.Transactions() {
 		blk.Transactions = append(blk.Transactions, tx.Hash())
-		blk.EthTransactions = append(blk.EthTransactions, tx.ConvertToEth().Hash())
 	}
 
-	return blk
+	if blockArgs.InclStaking {
+		for _, stx := range b.StakingTransactions() {
+			blk.StakingTxs = append(blk.StakingTxs, stx.Hash())
+		}
+	}
+
+	if blockArgs.WithSigners {
+		blk.Signers = blockArgs.Signers
+	}
+	return blk, nil
 }
 
 // NewBlockWithFullTx return a block with the transaction that will serialize to the RPC representation
-func blockWithFullTxFromBlock(b *types.Block) (*BlockWithFullTx, error) {
-	head := b.Header()
-
-	vrfAndProof := head.Vrf()
-	vrf := common.Hash{}
-	vrfProof := []byte{}
-	if len(vrfAndProof) == 32+96 {
-		copy(vrf[:], vrfAndProof[:32])
-		vrfProof = vrfAndProof[32:]
+func NewBlockWithFullTx(
+	b *types.Block, blockArgs *rpc_common.BlockArgs, leader string,
+) (*BlockWithFullTx, error) {
+	if !blockArgs.FullTx {
+		return nil, fmt.Errorf("block args specifies NO full tx, but requested RPC block with full tx")
 	}
+
+	head := b.Header()
 	blk := &BlockWithFullTx{
 		Number:           head.Number(),
 		ViewID:           head.ViewID(),
@@ -683,13 +650,12 @@ func blockWithFullTxFromBlock(b *types.Block) (*BlockWithFullTx, error) {
 		MixHash:          head.MixDigest(),
 		LogsBloom:        head.Bloom(),
 		StateRoot:        head.Root(),
+		Miner:            leader,
 		Difficulty:       0, // Remove this because we don't have it in our header
 		ExtraData:        hexutil.Bytes(head.Extra()),
 		Size:             uint64(b.Size()),
 		GasLimit:         head.GasLimit(),
 		GasUsed:          head.GasUsed(),
-		VRF:              vrf,
-		VRFProof:         vrfProof,
 		Timestamp:        head.Time(),
 		TransactionsRoot: head.TxHash(),
 		ReceiptsRoot:     head.ReceiptHash(),
@@ -699,53 +665,31 @@ func blockWithFullTxFromBlock(b *types.Block) (*BlockWithFullTx, error) {
 	}
 
 	for _, tx := range b.Transactions() {
-		fmtTx, err := NewTransactionFromHash(b, tx.Hash())
+		fmtTx, err := NewTransactionFromBlockHash(b, tx.Hash())
 		if err != nil {
 			return nil, err
 		}
 		blk.Transactions = append(blk.Transactions, fmtTx)
 	}
-	return blk, nil
-}
 
-func NewBlockHeader(
-	head *block.Header,
-) (*BlockHeader, error) {
-	lastSig := head.LastCommitSignature()
-	blk := &BlockHeader{
-		ParentHash:           head.ParentHash(),
-		Miner:                head.Coinbase(),
-		StateRoot:            head.Root(),
-		TransactionsRoot:     head.TxHash(),
-		ReceiptsRoot:         head.ReceiptHash(),
-		OutgoingReceiptsRoot: head.OutgoingReceiptHash(),
-		IncomingReceiptsRoot: head.IncomingReceiptHash(),
-		LogsBloom:            head.Bloom(),
+	if blockArgs.InclStaking {
+		for _, stx := range b.StakingTransactions() {
+			fmtStx, err := NewStakingTransactionFromBlockHash(b, stx.Hash())
+			if err != nil {
+				return nil, err
+			}
+			blk.StakingTxs = append(blk.StakingTxs, fmtStx)
+		}
+	}
 
-		Number:    head.Number(),
-		GasLimit:  head.GasLimit(),
-		GasUsed:   head.GasUsed(),
-		Timestamp: head.Time(),
-		ExtraData: hexutil.Bytes(head.Extra()),
-		MixHash:   head.MixDigest(),
-
-		ViewID:  head.ViewID(),
-		Epoch:   head.Epoch(),
-		ShardID: head.ShardID(),
-
-		LastCommitSignature: hexutil.Bytes(lastSig[:]),
-		LastCommitBitmap:    head.LastCommitBitmap(),
-		Vrf:                 head.Vrf(),
-		Vdf:                 head.Vdf(),
-		ShardState:          head.ShardState(),
-		CrossLink:           head.CrossLinks(),
-		Slashes:             head.Slashes(),
+	if blockArgs.WithSigners {
+		blk.Signers = blockArgs.Signers
 	}
 	return blk, nil
 }
 
-// NewTransactionFromHash returns a transaction that will serialize to the RPC representation.
-func NewTransactionFromHash(b *types.Block, hash common.Hash) (*Transaction, error) {
+// NewTransactionFromBlockHash returns a transaction that will serialize to the RPC representation.
+func NewTransactionFromBlockHash(b *types.Block, hash common.Hash) (*Transaction, error) {
 	for idx, tx := range b.Transactions() {
 		if tx.Hash() == hash {
 			return NewTransactionFromBlockIndex(b, uint64(idx))
@@ -763,20 +707,6 @@ func NewTransactionFromBlockIndex(b *types.Block, index uint64) (*Transaction, e
 		)
 	}
 	return NewTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time().Uint64(), index)
-}
-
-// StakingTransactionsFromBlock return rpc staking transactions from a block
-func StakingTransactionsFromBlock(b *types.Block) ([]*StakingTransaction, error) {
-	rawStakings := b.StakingTransactions()
-	rpcStakings := make([]*StakingTransaction, 0, len(rawStakings))
-	for idx, raw := range rawStakings {
-		rpcStk, err := NewStakingTransaction(raw, b.Hash(), b.NumberU64(), b.Time().Uint64(), uint64(idx), true)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse staking transaction %v", raw.Hash())
-		}
-		rpcStakings = append(rpcStakings, rpcStk)
-	}
-	return rpcStakings, nil
 }
 
 // NewStakingTransactionFromBlockHash returns a staking transaction that will serialize to the RPC representation.
@@ -797,5 +727,5 @@ func NewStakingTransactionFromBlockIndex(b *types.Block, index uint64) (*Staking
 			"tx index %v greater than or equal to number of transactions on block %v", index, b.Hash().String(),
 		)
 	}
-	return NewStakingTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time().Uint64(), index, true)
+	return NewStakingTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time().Uint64(), index)
 }

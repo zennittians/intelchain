@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/zennittians/intelchain/eth/rpc"
+	"github.com/ethereum/go-ethereum/rpc"
 	nodeconfig "github.com/zennittians/intelchain/internal/configs/node"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/p2p"
@@ -45,8 +45,6 @@ func NewPublicNetAPI(net p2p.Host, chainID uint64, version Version) rpc.API {
 // PeerCount returns the number of connected peers
 // Note that the return type is an interface to account for the different versions
 func (s *PublicNetService) PeerCount(ctx context.Context) (interface{}, error) {
-	timer := DoMetricRPCRequest(PeerCount)
-	defer DoRPCRequestDuration(PeerCount, timer)
 	// Format response according to version
 	switch s.version {
 	case V1, Eth:
@@ -60,17 +58,10 @@ func (s *PublicNetService) PeerCount(ctx context.Context) (interface{}, error) {
 
 // Version returns the network version, i.e. ChainID identifying which network we are using
 func (s *PublicNetService) Version(ctx context.Context) interface{} {
-	timer := DoMetricRPCRequest(NetVersion)
-	defer DoRPCRequestDuration(NetVersion, timer)
 	switch s.version {
 	case Eth:
-		return nodeconfig.GetDefaultConfig().GetNetworkType().ChainConfig().EthCompatibleChainID.String()
+		return hexutil.Uint64(nodeconfig.GetDefaultConfig().GetNetworkType().ChainConfig().EthCompatibleChainID.Uint64())
 	default:
 		return fmt.Sprintf("%d", s.chainID)
 	}
-}
-
-// Listening returns an indication if the node is listening for network connections.
-func (s *PublicNetService) Listening() bool {
-	return true // always listening
 }

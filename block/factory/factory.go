@@ -40,7 +40,7 @@ func (f *factory) NewHeader(epoch *big.Int) *block.Header {
 		impl = v0.NewHeader()
 	}
 	impl.SetEpoch(epoch)
-	return &block.Header{Header: impl}
+	return &block.Header{impl}
 }
 
 // Factories corresponding to well-known chain configurations.

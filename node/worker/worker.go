@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/zennittians/intelchain/consensus"
-	"github.com/zennittians/intelchain/consensus/reward"
+
 	"github.com/zennittians/intelchain/crypto/bls"
 
 	"github.com/zennittians/intelchain/crypto/hash"
@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zennittians/intelchain/block"
 	blockfactory "github.com/zennittians/intelchain/block/factory"
+	consensus_engine "github.com/zennittians/intelchain/consensus/engine"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
@@ -40,16 +41,9 @@ type environment struct {
 	txs        []*types.Transaction
 	stakingTxs []*staking.StakingTransaction
 	receipts   []*types.Receipt
-	logs       []*types.Log
-	reward     reward.Reader
 	outcxs     []*types.CXReceipt       // cross shard transaction receipts (source shard)
 	incxs      []*types.CXReceiptsProof // cross shard receipts and its proof (desitinatin shard)
 	slashes    slash.Records
-	stakeMsgs  []staking.StakeMsg
-}
-
-func (env *environment) CurrentHeader() *block.Header {
-	return env.header
 }
 
 // Worker is the main object which takes care of submitting new work to consensus engine
@@ -57,45 +51,11 @@ func (env *environment) CurrentHeader() *block.Header {
 type Worker struct {
 	config   *params.ChainConfig
 	factory  blockfactory.Factory
-	chain    core.BlockChain
-	beacon   core.BlockChain
+	chain    *core.BlockChain
 	current  *environment // An environment for current running cycle.
+	engine   consensus_engine.Engine
 	gasFloor uint64
 	gasCeil  uint64
-}
-
-// New create a new worker object.
-func New(
-	chain core.BlockChain, beacon core.BlockChain,
-) *Worker {
-	worker := newWorker(chain.Config(), chain, beacon)
-
-	parent := chain.CurrentBlock().Header()
-	num := parent.Number()
-	timestamp := time.Now().Unix()
-
-	epoch := GetNewEpoch(chain)
-	header := blockfactory.NewFactory(chain.Config()).NewHeader(epoch).With().
-		ParentHash(parent.Hash()).
-		Number(num.Add(num, common.Big1)).
-		GasLimit(worker.GasFloor(epoch)). //core.CalcGasLimit(parent, worker.gasFloor, worker.gasCeil)).
-		Time(big.NewInt(timestamp)).
-		ShardID(chain.ShardID()).
-		Header()
-	worker.makeCurrent(parent, header)
-
-	return worker
-}
-
-func newWorker(config *params.ChainConfig, chain, beacon core.BlockChain) *Worker {
-	return &Worker{
-		config:   config,
-		factory:  blockfactory.NewFactory(config),
-		chain:    chain,
-		beacon:   beacon,
-		gasFloor: 80000000,
-		gasCeil:  120000000,
-	}
 }
 
 // CommitSortedTransactions commits transactions for new block.
@@ -124,7 +84,7 @@ func (w *Worker) CommitSortedTransactions(
 		from, _ := types.Sender(signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !w.chain.Config().IsEIP155(w.current.header.Epoch()) {
+		if tx.Protected() && !w.config.IsEIP155(w.current.header.Epoch()) {
 			utils.Logger().Info().Str("hash", tx.Hash().Hex()).Str("eip155Epoch", w.config.EIP155Epoch.String()).Msg("Ignoring reply protected transaction")
 			txs.Pop()
 			continue
@@ -137,7 +97,7 @@ func (w *Worker) CommitSortedTransactions(
 
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), common.Hash{}, len(w.current.txs))
-		err := w.commitTransaction(tx, coinbase)
+		_, err := w.commitTransaction(tx, coinbase)
 
 		sender, _ := common2.AddressToBech32(from)
 		switch err {
@@ -178,39 +138,7 @@ func (w *Worker) CommitTransactions(
 		w.current.gasPool = new(core.GasPool).AddGas(w.current.header.GasLimit())
 	}
 
-	// if this is epoch for balance migration, no txs (or stxs)
-	// will be included in the block
-	// it is technically feasible for some to end up in the pool
-	// say, from the last epoch, but those will not be executed
-	// and no balance will be lost
-	// any cross-shard transfers destined to a shard being shut down
-	// will execute (since they are already spent on the source shard)
-	// but the balance will immediately be returned to shard 1
-	cx, err := core.MayBalanceMigration(
-		w.current.gasPool,
-		w.GetCurrentHeader(),
-		w.current.state,
-		w.chain,
-	)
-	if err != nil {
-		if errors.Is(err, core.ErrNoMigrationPossible) {
-			// means we do not accept transactions from the network
-			return nil
-		}
-		if !errors.Is(err, core.ErrNoMigrationRequired) {
-
-			// this shard not migrating => ErrNoMigrationRequired
-			// any other error means exit this block
-			return err
-		}
-	} else {
-		if cx != nil {
-			w.current.outcxs = append(w.current.outcxs, cx)
-			return nil
-		}
-	}
-
-	// Intelchain TXNS
+	// INTELCHAIN TXNS
 	normalTxns := types.NewTransactionsByPriceAndNonce(w.current.signer, w.current.ethSigner, pendingNormal)
 
 	w.CommitSortedTransactions(normalTxns, coinbase)
@@ -233,7 +161,7 @@ func (w *Worker) CommitTransactions(
 			// Start executing the transaction
 			w.current.state.Prepare(tx.Hash(), common.Hash{}, len(w.current.txs)+len(w.current.stakingTxs))
 			// THESE CODE ARE DUPLICATED AS ABOVE>>
-			if err := w.commitStakingTransaction(tx, coinbase); err != nil {
+			if _, err := w.commitStakingTransaction(tx, coinbase); err != nil {
 				txID := tx.Hash().Hex()
 				utils.Logger().Error().Err(err).
 					Str("stakingTxID", txID).
@@ -258,11 +186,11 @@ func (w *Worker) CommitTransactions(
 
 func (w *Worker) commitStakingTransaction(
 	tx *staking.StakingTransaction, coinbase common.Address,
-) error {
+) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
 	gasUsed := w.current.header.GasUsed()
 	receipt, _, err := core.ApplyStakingTransaction(
-		w.chain, &coinbase, w.current.gasPool,
+		w.config, w.chain, &coinbase, w.current.gasPool,
 		w.current.state, w.current.header, tx, &gasUsed, vm.Config{},
 	)
 	w.current.header.SetGasUsed(gasUsed)
@@ -271,22 +199,15 @@ func (w *Worker) commitStakingTransaction(
 		utils.Logger().Error().
 			Err(err).Interface("stkTxn", tx).
 			Msg("Staking transaction failed commitment")
-		return err
+		return nil, err
 	}
 	if receipt == nil {
-		return fmt.Errorf("nil staking receipt")
+		return nil, fmt.Errorf("nil staking receipt")
 	}
 
 	w.current.stakingTxs = append(w.current.stakingTxs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
-	w.current.logs = append(w.current.logs, receipt.Logs...)
-
-	return nil
-}
-
-// ApplyShardReduction only used to reduce shards of Testnet
-func (w *Worker) ApplyShardReduction() {
-	core.MayShardReduction(w.chain, w.current.state, w.current.header)
+	return receipt.Logs, nil
 }
 
 var (
@@ -295,10 +216,11 @@ var (
 
 func (w *Worker) commitTransaction(
 	tx *types.Transaction, coinbase common.Address,
-) error {
+) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
 	gasUsed := w.current.header.GasUsed()
-	receipt, cx, stakeMsgs, _, err := core.ApplyTransaction(
+	receipt, cx, _, err := core.ApplyTransaction(
+		w.config,
 		w.chain,
 		&coinbase,
 		w.current.gasPool,
@@ -314,22 +236,20 @@ func (w *Worker) commitTransaction(
 		utils.Logger().Error().
 			Err(err).Interface("txn", tx).
 			Msg("Transaction failed commitment")
-		return errNilReceipt
+		return nil, errNilReceipt
 	}
 	if receipt == nil {
 		utils.Logger().Warn().Interface("tx", tx).Interface("cx", cx).Msg("Receipt is Nil!")
-		return errNilReceipt
+		return nil, errNilReceipt
 	}
 
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
-	w.current.logs = append(w.current.logs, receipt.Logs...)
-	w.current.stakeMsgs = append(w.current.stakeMsgs, stakeMsgs...)
 
 	if cx != nil {
 		w.current.outcxs = append(w.current.outcxs, cx)
 	}
-	return nil
+	return receipt.Logs, nil
 }
 
 // CommitReceipts commits a list of already verified incoming cross shard receipts
@@ -358,16 +278,16 @@ func (w *Worker) CommitReceipts(receiptsList []*types.CXReceiptsProof) error {
 }
 
 // UpdateCurrent updates the current environment with the current state and header.
-func (w *Worker) UpdateCurrent() (Environment, error) {
-	parent := w.chain.CurrentHeader()
+func (w *Worker) UpdateCurrent() error {
+	parent := w.chain.CurrentBlock()
 	num := parent.Number()
 	timestamp := time.Now().Unix()
 
-	epoch := GetNewEpoch(w.chain)
+	epoch := w.GetNewEpoch()
 	header := w.factory.NewHeader(epoch).With().
 		ParentHash(parent.Hash()).
 		Number(num.Add(num, common.Big1)).
-		GasLimit(core.CalcGasLimit(parent, w.GasFloor(epoch), w.GasCeil())).
+		GasLimit(core.CalcGasLimit(parent, w.gasFloor, w.gasCeil)).
 		Time(big.NewInt(timestamp)).
 		ShardID(w.chain.ShardID()).
 		Header()
@@ -380,41 +300,20 @@ func (w *Worker) GetCurrentHeader() *block.Header {
 }
 
 // makeCurrent creates a new environment for the current cycle.
-func (w *Worker) makeCurrent(parent *block.Header, header *block.Header) (*environment, error) {
-	env, err := makeEnvironment(w.chain, parent, header)
+func (w *Worker) makeCurrent(parent *types.Block, header *block.Header) error {
+	state, err := w.chain.StateAt(parent.Root())
 	if err != nil {
-		return nil, err
-	}
-
-	w.current = env
-	return w.current, nil
-}
-
-func makeEnvironment(chain core.BlockChain, parent *block.Header, header *block.Header) (*environment, error) {
-	state, err := chain.StateAt(parent.Root())
-	if err != nil {
-		return nil, err
+		return err
 	}
 	env := &environment{
-		signer:    types.NewEIP155Signer(chain.Config().ChainID),
-		ethSigner: types.NewEIP155Signer(chain.Config().EthCompatibleChainID),
+		signer:    types.NewEIP155Signer(w.config.ChainID),
+		ethSigner: types.NewEIP155Signer(w.config.EthCompatibleChainID),
 		state:     state,
 		header:    header,
 	}
-	return env, nil
-}
 
-// GetCurrentResult gets the current block processing result.
-func (w *Worker) GetCurrentResult() *core.ProcessorResult {
-	return &core.ProcessorResult{
-		Receipts:   w.current.receipts,
-		CxReceipts: w.current.outcxs,
-		Logs:       w.current.logs,
-		UsedGas:    w.current.header.GasUsed(),
-		Reward:     w.current.reward,
-		State:      w.current.state,
-		StakeMsgs:  w.current.stakeMsgs,
-	}
+	w.current = env
+	return nil
 }
 
 // GetCurrentState gets the current state.
@@ -423,14 +322,14 @@ func (w *Worker) GetCurrentState() *state.DB {
 }
 
 // GetNewEpoch gets the current epoch.
-func GetNewEpoch(chain core.BlockChain) *big.Int {
-	parent := chain.CurrentBlock()
+func (w *Worker) GetNewEpoch() *big.Int {
+	parent := w.chain.CurrentBlock()
 	epoch := new(big.Int).Set(parent.Header().Epoch())
 
 	shardState, err := parent.Header().GetShardState()
 	if err == nil &&
 		shardState.Epoch != nil &&
-		chain.Config().IsStaking(shardState.Epoch) {
+		w.config.IsStaking(shardState.Epoch) {
 		// For shard state of staking epochs, the shard state will
 		// have an epoch and it will decide the next epoch for following blocks
 		epoch = new(big.Int).Set(shardState.Epoch)
@@ -446,6 +345,16 @@ func GetNewEpoch(chain core.BlockChain) *big.Int {
 // GetCurrentReceipts get the receipts generated starting from the last state.
 func (w *Worker) GetCurrentReceipts() []*types.Receipt {
 	return w.current.receipts
+}
+
+// OutgoingReceipts get the receipts generated starting from the last state.
+func (w *Worker) OutgoingReceipts() []*types.CXReceipt {
+	return w.current.outcxs
+}
+
+// IncomingReceipts get incoming receipts in destination shard that is received from source shard
+func (w *Worker) IncomingReceipts() []*types.CXReceiptsProof {
+	return w.current.incxs
 }
 
 // CollectVerifiedSlashes sets w.current.slashes only to those that
@@ -588,7 +497,7 @@ func (w *Worker) FinalizeNewBlock(
 			return nil, err
 		}
 	}
-	state := w.current.state
+	state := w.current.state.Copy()
 	copyHeader := types.CopyHeader(w.current.header)
 
 	sigsReady := make(chan bool)
@@ -615,28 +524,43 @@ func (w *Worker) FinalizeNewBlock(
 		}
 	}()
 
-	block, payout, err := w.chain.Engine().Finalize(
-		w.chain,
-		w.beacon,
-		copyHeader, state, w.current.txs, w.current.receipts,
+	block, _, err := w.engine.Finalize(
+		w.chain, copyHeader, state, w.current.txs, w.current.receipts,
 		w.current.outcxs, w.current.incxs, w.current.stakingTxs,
 		w.current.slashes, sigsReady, viewID,
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot finalize block")
 	}
-	w.current.reward = payout
 	return block, nil
 }
 
-func (w *Worker) GasFloor(epoch *big.Int) uint64 {
-	if w.config.IsBlockGas30M(epoch) {
-		return 30_000_000
+// New create a new worker object.
+func New(
+	config *params.ChainConfig, chain *core.BlockChain, engine consensus_engine.Engine,
+) *Worker {
+	worker := &Worker{
+		config:  config,
+		factory: blockfactory.NewFactory(config),
+		chain:   chain,
+		engine:  engine,
 	}
+	worker.gasFloor = 80000000
+	worker.gasCeil = 120000000
 
-	return w.gasFloor
-}
+	parent := worker.chain.CurrentBlock()
+	num := parent.Number()
+	timestamp := time.Now().Unix()
 
-func (w *Worker) GasCeil() uint64 {
-	return w.gasCeil
+	epoch := worker.GetNewEpoch()
+	header := worker.factory.NewHeader(epoch).With().
+		ParentHash(parent.Hash()).
+		Number(num.Add(num, common.Big1)).
+		GasLimit(core.CalcGasLimit(parent, worker.gasFloor, worker.gasCeil)).
+		Time(big.NewInt(timestamp)).
+		ShardID(worker.chain.ShardID()).
+		Header()
+	worker.makeCurrent(parent, header)
+
+	return worker
 }

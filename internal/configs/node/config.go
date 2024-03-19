@@ -8,10 +8,9 @@ import (
 	"math/big"
 	"strings"
 	"sync"
-	"time"
 
-	p2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
+	p2p_crypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	bls_core "github.com/zennittians/bls/ffi/go/bls"
 	"github.com/zennittians/intelchain/crypto/bls"
@@ -58,31 +57,6 @@ const (
 	Localnet  = "localnet"
 )
 
-// ChainConfig returns the chain configuration for the network type.
-func (t NetworkType) ChainConfig() params.ChainConfig {
-	switch t {
-	case Mainnet:
-		return *params.MainnetChainConfig
-	case Pangaea:
-		return *params.PangaeaChainConfig
-	case Partner:
-		return *params.PartnerChainConfig
-	case Stressnet:
-		return *params.StressnetChainConfig
-	case Localnet:
-		return *params.LocalnetChainConfig
-	default:
-		return *params.TestnetChainConfig
-	}
-}
-
-func (n NetworkType) String() string {
-	if n == "" {
-		return Testnet // default to testnet
-	}
-	return string(n)
-}
-
 // Global is the index of the global node configuration
 const (
 	Global    = 0
@@ -95,34 +69,21 @@ var peerID peer.ID // PeerID of the node
 // ConfigType is the structure of all node related configuration variables
 type ConfigType struct {
 	// The three groupID design, please refer to https://github.com/zennittians/intelchain/blob/master/node/node.md#libp2p-integration
-	beacon                 GroupID             // the beacon group ID
-	group                  GroupID             // the group ID of the shard (note: for beacon chain node, the beacon and shard group are the same)
-	client                 GroupID             // the client group ID of the shard
-	isClient               bool                // whether this node is a client node, such as wallet
-	ShardID                uint32              // ShardID of this node; TODO ek – revisit when resharding
-	role                   Role                // Role of the node
-	Port                   string              // Port of the node.
-	IP                     string              // IP of the node.
-	RPCServer              RPCServerConfig     // RPC server port and ip
-	RosettaServer          RosettaServerConfig // rosetta server port and ip
-	IsOffline              bool
-	Downloader             bool // Whether stream downloader is running; TODO: remove this after sync up
-	StagedSync             bool // use staged sync
-	StagedSyncTurboMode    bool // use Turbo mode for staged sync
-	UseMemDB               bool // use mem db for staged sync
-	DoubleCheckBlockHashes bool
-	MaxBlocksPerSyncCycle  uint64 // Maximum number of blocks per each cycle. if set to zero, all blocks will be  downloaded and synced in one full cycle.
-	MaxMemSyncCycleSize    uint64 // max number of blocks to use a single transaction for staged sync
-	MaxBackgroundBlocks    uint64 // max number of background blocks in turbo mode
-	InsertChainBatchSize   int    // number of blocks to build a batch and insert to chain in staged sync
-	VerifyAllSig           bool   // verify signatures for all blocks regardless of height and batch size
-	VerifyHeaderBatchSize  uint64 // batch size to verify header before insert to chain
-	LogProgress            bool   // log the full sync progress in console
-	DebugMode              bool   // log every single process and error to help to debug the syncing issues
-	NtpServer              string
-	StringRole             string
-	P2PPriKey              p2p_crypto.PrivKey   `json:"-"`
-	ConsensusPriKey        multibls.PrivateKeys `json:"-"`
+	beacon          GroupID             // the beacon group ID
+	group           GroupID             // the group ID of the shard (note: for beacon chain node, the beacon and shard group are the same)
+	client          GroupID             // the client group ID of the shard
+	isClient        bool                // whether this node is a client node, such as wallet
+	ShardID         uint32              // ShardID of this node; TODO ek – revisit when resharding
+	role            Role                // Role of the node
+	Port            string              // Port of the node.
+	IP              string              // IP of the node.
+	RPCServer       RPCServerConfig     // RPC server port and ip
+	RosettaServer   RosettaServerConfig // rosetta server port and ip
+	IsOffline       bool
+	NtpServer       string
+	StringRole      string
+	P2PPriKey       p2p_crypto.PrivKey
+	ConsensusPriKey multibls.PrivateKeys
 	// Database directory
 	DBDir            string
 	networkType      NetworkType
@@ -132,38 +93,19 @@ type ConfigType struct {
 	WebHooks         struct {
 		Hooks *webhooks.Hooks
 	}
-	TraceEnable bool
 }
 
 // RPCServerConfig is the config for rpc listen addresses
 type RPCServerConfig struct {
-	HTTPEnabled  bool
-	HTTPIp       string
-	HTTPPort     int
-	HTTPAuthPort int
+	HTTPEnabled bool
+	HTTPIp      string
+	HTTPPort    int
 
-	HTTPTimeoutRead  time.Duration
-	HTTPTimeoutWrite time.Duration
-	HTTPTimeoutIdle  time.Duration
-
-	WSEnabled  bool
-	WSIp       string
-	WSPort     int
-	WSAuthPort int
+	WSEnabled bool
+	WSIp      string
+	WSPort    int
 
 	DebugEnabled bool
-
-	PreimagesEnabled   bool
-	EthRPCsEnabled     bool
-	StakingRPCsEnabled bool
-	LegacyRPCsEnabled  bool
-
-	RpcFilterFile string
-
-	RateLimiterEnabled bool
-	RequestsPerSecond  int
-
-	EvmCallTimeout time.Duration
 }
 
 // RosettaServerConfig is the config for the rosetta server
@@ -377,4 +319,22 @@ func (conf *ConfigType) ValidateConsensusKeysForSameShard(pubkeys multibls.Publi
 		return errors.Errorf("bls keys do not belong to same shard\n%s", strings.Join(keyShardStrs, "\n"))
 	}
 	return nil
+}
+
+// ChainConfig returns the chain configuration for the network type.
+func (t NetworkType) ChainConfig() params.ChainConfig {
+	switch t {
+	case Mainnet:
+		return *params.MainnetChainConfig
+	case Pangaea:
+		return *params.PangaeaChainConfig
+	case Partner:
+		return *params.PartnerChainConfig
+	case Stressnet:
+		return *params.StressnetChainConfig
+	case Localnet:
+		return *params.LocalnetChainConfig
+	default:
+		return *params.TestnetChainConfig
+	}
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/bitutil"
 	"github.com/ethereum/go-ethereum/core/bloombits"
+	ethRawDB "github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core"
@@ -48,6 +49,38 @@ const (
 	bloomRetrievalWait = time.Duration(0)
 )
 
+// startBloomHandlers starts a batch of goroutines to accept bloom bit database
+// retrievals from possibly a range of filters and serving the data to satisfy.
+func (itc *Intelchain) startBloomHandlers(sectionSize uint64) {
+	for i := 0; i < bloomServiceThreads; i++ {
+		go func() {
+			for {
+				select {
+				case <-itc.ShutdownChan:
+					return
+
+				case request := <-itc.BloomRequests:
+					task := <-request
+					task.Bitsets = make([][]byte, len(task.Sections))
+					for i, section := range task.Sections {
+						head := rawdb.ReadCanonicalHash(itc.chainDb, (section+1)*sectionSize-1)
+						if compVector, err := rawdb.ReadBloomBits(itc.chainDb, task.Bit, section, head); err == nil {
+							if blob, err := bitutil.DecompressBytes(compVector, int(sectionSize/8)); err == nil {
+								task.Bitsets[i] = blob
+							} else {
+								task.Error = err
+							}
+						} else {
+							task.Error = err
+						}
+					}
+					request <- task
+				}
+			}
+		}()
+	}
+}
+
 const (
 	// bloomThrottling is the time to wait between processing two consecutive index
 	// sections. It's useful during chain upgrades to prevent disk overload.
@@ -66,12 +99,12 @@ type BloomIndexer struct {
 
 // NewBloomIndexer returns a chain indexer that generates bloom bits data for the
 // canonical chain for fast logs filtering.
-func NewBloomIndexer(db core.Chain, size, confirms uint64) *core.ChainIndexer {
+func NewBloomIndexer(db ethdb.Database, size, confirms uint64) *core.ChainIndexer {
 	backend := &BloomIndexer{
-		db:   db.ChainDb(),
+		db:   db,
 		size: size,
 	}
-	table := rawdb.NewTable(db.ChainDb(), string(rawdb.BloomBitsIndexPrefix))
+	table := ethRawDB.NewTable(db, string(rawdb.BloomBitsIndexPrefix))
 
 	return core.NewChainIndexer(db, table, backend, size, confirms, bloomThrottling, "bloombits")
 }

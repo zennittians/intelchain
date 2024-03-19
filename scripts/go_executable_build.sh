@@ -18,15 +18,9 @@ FOLDER=${WHOAMI:-$USER}
 RACE=
 TRACEPTR=
 VERBOSE=
-if [ "$(uname -s)" == "Darwin" ]; then
-   GO_GCFLAGS=""
-else
-   GO_GCFLAGS=""
-fi
+GO_GCFLAGS="all=-c 2"
 DEBUG=false
 STATIC=true
-
-rm -rf .dht-127.0.0.1*
 
 unset -v progdir
 case "${0}" in
@@ -43,9 +37,9 @@ if [ "$(uname -s)" == "Darwin" ]; then
    GOOS=darwin
    LIB[libbls384_256.dylib]=${BLS_DIR}/lib/libbls384_256.dylib
    LIB[libmcl.dylib]=${MCL_DIR}/lib/libmcl.dylib
-   LIB[libgmp.10.dylib]=/opt/homebrew/opt/gmp/lib/libgmp.10.dylib
-   LIB[libgmpxx.4.dylib]=/opt/homebrew/opt/gmp/lib/libgmpxx.4.dylib
-   LIB[libcrypto.1.1.dylib]=/opt/homebrew/opt/openssl@1.1/lib/libcrypto.1.1.dylib
+   LIB[libgmp.10.dylib]=/usr/local/opt/gmp/lib/libgmp.10.dylib
+   LIB[libgmpxx.4.dylib]=/usr/local/opt/gmp/lib/libgmpxx.4.dylib
+   LIB[libcrypto.1.1.dylib]=/usr/local/opt/openssl/lib/libcrypto.1.1.dylib
 else
    MD5=md5sum
    LIB[libbls384_256.so]=${BLS_DIR}/lib/libbls384_256.so
@@ -267,7 +261,7 @@ while getopts "hp:a:o:b:f:rtvsdS" option; do
       p) PROFILE=$OPTARG ;;
       a) GOARCH=$OPTARG ;;
       o) GOOS=$OPTARG ;;
-      b) BUCKET=$OPTARG ;;
+      b) BUCKET=$OPTARG/ ;;
       f) FOLDER=$OPTARG ;;
       r) RACE=-race ;;
       t) TRACEPTR='-gcflags=all=-d=checkptr' ;;

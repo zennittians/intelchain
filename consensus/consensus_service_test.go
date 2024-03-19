@@ -3,10 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	"github.com/zennittians/intelchain/crypto/bls"
-	"github.com/zennittians/intelchain/internal/registry"
 
 	msg_pb "github.com/zennittians/intelchain/api/proto/message"
 	"github.com/zennittians/intelchain/consensus/quorum"
@@ -19,17 +16,15 @@ import (
 func TestSignAndMarshalConsensusMessage(t *testing.T) {
 	leader := p2p.Peer{IP: "127.0.0.1", Port: "9902"}
 	priKey, _, _ := utils.GenKeyP2P("127.0.0.1", "9902")
-	host, err := p2p.NewHost(p2p.HostConfig{
-		Self:   &leader,
-		BLSKey: priKey,
-	})
+	host, err := p2p.NewHost(&leader, priKey)
 	if err != nil {
 		t.Fatalf("newhost failure: %v", err)
 	}
 	decider := quorum.NewDecider(quorum.SuperMajorityVote, shard.BeaconChainShardID)
 	blsPriKey := bls.RandPrivateKey()
-	reg := registry.New()
-	consensus, err := New(host, shard.BeaconChainShardID, multibls.GetPrivateKeys(blsPriKey), reg, decider, 3, false)
+	consensus, err := New(
+		host, shard.BeaconChainShardID, leader, multibls.GetPrivateKeys(blsPriKey), decider,
+	)
 	if err != nil {
 		t.Fatalf("Cannot craeate consensus: %v", err)
 	}
@@ -50,10 +45,7 @@ func TestSignAndMarshalConsensusMessage(t *testing.T) {
 func TestSetViewID(t *testing.T) {
 	leader := p2p.Peer{IP: "127.0.0.1", Port: "9902"}
 	priKey, _, _ := utils.GenKeyP2P("127.0.0.1", "9902")
-	host, err := p2p.NewHost(p2p.HostConfig{
-		Self:   &leader,
-		BLSKey: priKey,
-	})
+	host, err := p2p.NewHost(&leader, priKey)
 	if err != nil {
 		t.Fatalf("newhost failure: %v", err)
 	}
@@ -61,9 +53,8 @@ func TestSetViewID(t *testing.T) {
 		quorum.SuperMajorityVote, shard.BeaconChainShardID,
 	)
 	blsPriKey := bls.RandPrivateKey()
-	reg := registry.New()
 	consensus, err := New(
-		host, shard.BeaconChainShardID, multibls.GetPrivateKeys(blsPriKey), reg, decider, 3, false,
+		host, shard.BeaconChainShardID, leader, multibls.GetPrivateKeys(blsPriKey), decider,
 	)
 	if err != nil {
 		t.Fatalf("Cannot craeate consensus: %v", err)
@@ -74,19 +65,4 @@ func TestSetViewID(t *testing.T) {
 	if consensus.GetCurBlockViewID() != height {
 		t.Errorf("Cannot set consensus ID. Got: %v, Expected: %v", consensus.GetCurBlockViewID(), height)
 	}
-}
-
-func TestErrors(t *testing.T) {
-	e1 := errors.New("e1")
-	require.True(t, errors.Is(e1, e1))
-
-	t.Run("wrap", func(t *testing.T) {
-		e2 := errors.Wrap(e1, "e2")
-		require.True(t, errors.Is(e2, e1))
-	})
-
-	t.Run("withMessage", func(t *testing.T) {
-		e2 := errors.WithMessage(e1, "e2")
-		require.True(t, errors.Is(e2, e1))
-	})
 }

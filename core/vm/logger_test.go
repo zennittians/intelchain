@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/internal/params"
 )
 
@@ -28,10 +29,10 @@ type dummyContractRef struct {
 	calledForEach bool
 }
 
-func (dummyContractRef) ReturnGas(*big.Int)                {}
-func (dummyContractRef) Address() common.Address           { return common.Address{} }
-func (dummyContractRef) Value() *big.Int                   { return new(big.Int) }
-func (dummyContractRef) SetCode(common.Hash, []byte, bool) {}
+func (dummyContractRef) ReturnGas(*big.Int)          {}
+func (dummyContractRef) Address() common.Address     { return common.Address{} }
+func (dummyContractRef) Value() *big.Int             { return new(big.Int) }
+func (dummyContractRef) SetCode(common.Hash, []byte) {}
 func (d *dummyContractRef) ForEachStorage(callback func(key, value common.Hash) bool) {
 	d.calledForEach = true
 }
@@ -42,7 +43,7 @@ func (d *dummyContractRef) SetNonce(uint64)            {}
 func (d *dummyContractRef) Balance() *big.Int          { return new(big.Int) }
 
 type dummyStatedb struct {
-	StateDB
+	state.DB
 }
 
 func (*dummyStatedb) GetRefund() uint64 { return 1337 }

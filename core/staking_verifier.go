@@ -2,13 +2,7 @@ package core
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
-	"sort"
-
-	"github.com/zennittians/intelchain/staking/availability"
-
-	"github.com/zennittians/intelchain/internal/params"
 
 	"github.com/zennittians/intelchain/crypto/bls"
 
@@ -30,9 +24,14 @@ var (
 )
 
 func checkDuplicateFields(
-	addrs []common.Address, state vm.StateDB,
+	bc ChainContext, state vm.StateDB,
 	validator common.Address, identity string, blsKeys []bls.SerializedPublicKey,
 ) error {
+	addrs, err := bc.ReadValidatorList()
+	if err != nil {
+		return err
+	}
+
 	checkIdentity := identity != ""
 	checkBlsKeys := len(blsKeys) != 0
 
@@ -43,7 +42,7 @@ func checkDuplicateFields(
 
 	for _, addr := range addrs {
 		if !bytes.Equal(validator.Bytes(), addr.Bytes()) {
-			wrapper, err := state.ValidatorWrapper(addr, true, false)
+			wrapper, err := state.ValidatorWrapperCopy(addr)
 
 			if err != nil {
 				return err
@@ -94,12 +93,8 @@ func VerifyAndCreateValidatorFromMsg(
 			errValidatorExist, common2.MustAddressToBech32(msg.ValidatorAddress),
 		)
 	}
-	addrs, err := chainContext.ReadValidatorList()
-	if err != nil {
-		return nil, err
-	}
 	if err := checkDuplicateFields(
-		addrs, stateDB,
+		chainContext, stateDB,
 		msg.ValidatorAddress,
 		msg.Identity,
 		msg.SlotPubKeys); err != nil {
@@ -150,19 +145,14 @@ func VerifyAndEditValidatorFromMsg(
 	if msg.SlotKeyToAdd != nil {
 		newBlsKeys = append(newBlsKeys, *msg.SlotKeyToAdd)
 	}
-	addrs, err := chainContext.ReadValidatorList()
-	if err != nil {
-		return nil, err
-	}
 	if err := checkDuplicateFields(
-		addrs, stateDB,
+		chainContext, stateDB,
 		msg.ValidatorAddress,
 		msg.Identity,
 		newBlsKeys); err != nil {
 		return nil, err
 	}
-	// request a copy, but delegations are not being changed so do not deep copy them
-	wrapper, err := stateDB.ValidatorWrapper(msg.ValidatorAddress, false, false)
+	wrapper, err := stateDB.ValidatorWrapperCopy(msg.ValidatorAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -172,23 +162,6 @@ func VerifyAndEditValidatorFromMsg(
 	newRate := wrapper.Validator.Rate
 	if newRate.GT(wrapper.Validator.MaxRate) {
 		return nil, errCommissionRateChangeTooHigh
-	}
-
-	minRate := availability.MinCommissionRate(
-		chainContext.Config().IsMinCommissionRate(epoch),
-		chainContext.Config().IsHIP30(epoch),
-	)
-	if newRate.LT(minRate) {
-		firstEpoch := stateDB.GetValidatorFirstElectionEpoch(msg.ValidatorAddress)
-		promoPeriod := chainContext.Config().MinCommissionPromoPeriod.Int64()
-		if firstEpoch.Uint64() != 0 && big.NewInt(0).Sub(epoch, firstEpoch).Int64() >= promoPeriod {
-			return nil,
-				errors.Errorf(
-					"%s %d%%",
-					errCommissionRateChangeTooLowT,
-					minRate.MulInt64(100).Int64(),
-				)
-		}
 	}
 
 	snapshotValidator, err := chainContext.ReadValidatorSnapshot(wrapper.Address)
@@ -214,14 +187,11 @@ func VerifyAndEditValidatorFromMsg(
 }
 
 const oneThousand = 1000
-const oneHundred = 100
 
 var (
-	oneAsBigInt             = big.NewInt(denominations.Itc)
-	minimumDelegation       = new(big.Int).Mul(oneAsBigInt, big.NewInt(oneThousand))
-	minimumDelegationV2     = new(big.Int).Mul(oneAsBigInt, big.NewInt(oneHundred))
-	errDelegationTooSmall   = errors.New("minimum delegation amount for a delegator has to be greater than or equal to 1000 ONE")
-	errDelegationTooSmallV2 = errors.New("minimum delegation amount for a delegator has to be greater than or equal to 100 ONE")
+	itcAsBigInt           = big.NewInt(denominations.Itc)
+	minimumDelegation     = new(big.Int).Mul(itcAsBigInt, big.NewInt(oneThousand))
+	errDelegationTooSmall = errors.New("minimum delegation amount for a delegator has to be greater than or equal to 1000 ONE")
 )
 
 // VerifyAndDelegateFromMsg verifies the delegate message using the stateDB
@@ -230,7 +200,7 @@ var (
 //
 // Note that this function never updates the stateDB, it only reads from stateDB.
 func VerifyAndDelegateFromMsg(
-	stateDB vm.StateDB, epoch *big.Int, msg *staking.Delegate, delegations []staking.DelegationIndex, chainConfig *params.ChainConfig,
+	stateDB vm.StateDB, epoch *big.Int, msg *staking.Delegate, delegations []staking.DelegationIndex, redelegation bool,
 ) ([]*staking.ValidatorWrapper, *big.Int, map[common.Address]*big.Int, error) {
 	if stateDB == nil {
 		return nil, nil, nil, errStateDBIsMissing
@@ -242,13 +212,7 @@ func VerifyAndDelegateFromMsg(
 		return nil, nil, nil, errNegativeAmount
 	}
 	if msg.Amount.Cmp(minimumDelegation) < 0 {
-		if chainConfig.IsMinDelegation100(epoch) {
-			if msg.Amount.Cmp(minimumDelegationV2) < 0 {
-				return nil, nil, nil, errDelegationTooSmallV2
-			}
-		} else {
-			return nil, nil, nil, errDelegationTooSmall
-		}
+		return nil, nil, nil, errDelegationTooSmall
 	}
 
 	updatedValidatorWrappers := []*staking.ValidatorWrapper{}
@@ -256,12 +220,11 @@ func VerifyAndDelegateFromMsg(
 	fromLockedTokens := map[common.Address]*big.Int{}
 
 	var delegateeWrapper *staking.ValidatorWrapper
-	if chainConfig.IsRedelegation(epoch) {
+	if redelegation {
 		// Check if we can use tokens in undelegation to delegate (redelegate)
 		for i := range delegations {
 			delegationIndex := &delegations[i]
-			// request a copy, and since delegations will be changed, copy them too
-			wrapper, err := stateDB.ValidatorWrapper(delegationIndex.ValidatorAddress, false, true)
+			wrapper, err := stateDB.ValidatorWrapperCopy(delegationIndex.ValidatorAddress)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -312,8 +275,7 @@ func VerifyAndDelegateFromMsg(
 
 	if delegateeWrapper == nil {
 		var err error
-		// request a copy, and since delegations will be changed, copy them too
-		delegateeWrapper, err = stateDB.ValidatorWrapper(msg.ValidatorAddress, false, true)
+		delegateeWrapper, err = stateDB.ValidatorWrapperCopy(msg.ValidatorAddress)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -384,7 +346,7 @@ func VerifyAndUndelegateFromMsg(
 		return nil, errValidatorNotExist
 	}
 
-	wrapper, err := stateDB.ValidatorWrapper(msg.ValidatorAddress, false, true)
+	wrapper, err := stateDB.ValidatorWrapperCopy(msg.ValidatorAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -410,121 +372,6 @@ func VerifyAndUndelegateFromMsg(
 	return nil, errNoDelegationToUndelegate
 }
 
-// VerifyAndMigrateFromMsg verifies and transfers all delegations of
-// msg.From to msg.To. Returns all modified validator wrappers and delegate msgs
-// for metadata
-// Note that this function never updates the stateDB, it only reads from stateDB.
-func VerifyAndMigrateFromMsg(
-	stateDB vm.StateDB,
-	msg *staking.MigrationMsg,
-	fromDelegations []staking.DelegationIndex,
-) ([]*staking.ValidatorWrapper,
-	[]interface{},
-	error) {
-	if bytes.Equal(msg.From.Bytes(), msg.To.Bytes()) {
-		return nil, nil, errors.New("From and To are the same address")
-	}
-	if len(fromDelegations) == 0 {
-		return nil, nil, errors.New("No delegations to migrate")
-	}
-	modifiedWrappers := make([]*staking.ValidatorWrapper, 0)
-	stakeMsgs := make([]interface{}, 0)
-	// iterate over all delegationIndexes by `From`
-	for i := range fromDelegations {
-		delegationIndex := &fromDelegations[i]
-		// find the wrapper for each delegationIndex
-		// request a copy, and since delegations will be changed, copy them too
-		wrapper, err := stateDB.ValidatorWrapper(delegationIndex.ValidatorAddress, false, true)
-		if err != nil {
-			return nil, nil, err
-		}
-		if uint64(len(wrapper.Delegations)) <= delegationIndex.Index {
-			utils.Logger().Warn().
-				Str("validator", delegationIndex.ValidatorAddress.String()).
-				Uint64("delegation index", delegationIndex.Index).
-				Int("delegations length", len(wrapper.Delegations)).
-				Msg("Delegation index out of bound")
-			return nil, nil, errors.New("Delegation index out of bound")
-		}
-		// and then find matching delegation to remove from wrapper
-		foundDelegation := &wrapper.Delegations[delegationIndex.Index] // note: pointer
-		if !bytes.Equal(foundDelegation.DelegatorAddress.Bytes(), msg.From.Bytes()) {
-			return nil, nil, errors.New(fmt.Sprintf("Expected %s but got %s",
-				msg.From.Hex(),
-				foundDelegation.DelegatorAddress.Hex()))
-		}
-		// Skip delegations with zero amount and empty undelegation
-		if foundDelegation.Amount.Cmp(common.Big0) == 0 && len(foundDelegation.Undelegations) == 0 {
-			continue
-		}
-		delegationAmountToMigrate := big.NewInt(0).Add(foundDelegation.Amount, big.NewInt(0))
-		undelegationsToMigrate := foundDelegation.Undelegations
-		// when undelegating we don't remove, just set the amount to zero
-		// to be coherent, do the same thing here (effective on wrapper since pointer)
-		foundDelegation.Amount = big.NewInt(0)
-		foundDelegation.Undelegations = make([]staking.Undelegation, 0)
-		// find `To` and give it to them
-		totalAmount := big.NewInt(0)
-		found := false
-		for i := range wrapper.Delegations {
-			delegation := &wrapper.Delegations[i]
-			if bytes.Equal(delegation.DelegatorAddress.Bytes(), msg.To.Bytes()) {
-				found = true
-				// add to existing delegation
-				totalAmount = delegation.Amount.Add(delegation.Amount, delegationAmountToMigrate)
-				// and the undelegations
-				for _, undelegationToMigrate := range undelegationsToMigrate {
-					exist := false
-					for _, entry := range delegation.Undelegations {
-						if entry.Epoch.Cmp(undelegationToMigrate.Epoch) == 0 {
-							exist = true
-							entry.Amount.Add(entry.Amount, undelegationToMigrate.Amount)
-							break
-						}
-					}
-					if !exist {
-						delegation.Undelegations = append(delegation.Undelegations,
-							undelegationToMigrate)
-					}
-				}
-				// Always sort the undelegate by epoch in increasing order
-				sort.SliceStable(
-					delegation.Undelegations,
-					func(i, j int) bool {
-						return delegation.Undelegations[i].Epoch.Cmp(delegation.Undelegations[j].Epoch) < 0
-					},
-				)
-				break
-			}
-		}
-		if !found { // add the delegation
-			wrapper.Delegations = append(
-				wrapper.Delegations, staking.NewDelegation(
-					msg.To, delegationAmountToMigrate,
-				),
-			)
-			totalAmount = delegationAmountToMigrate
-		}
-		if err := wrapper.SanityCheck(); err != nil {
-			// allow self delegation to go below min self delegation
-			// but set the status to inactive
-			if errors.Cause(err) == staking.ErrInvalidSelfDelegation {
-				wrapper.Status = effective.Inactive
-			} else {
-				return nil, nil, err
-			}
-		}
-		modifiedWrappers = append(modifiedWrappers, wrapper)
-		delegate := &staking.Delegate{
-			ValidatorAddress: wrapper.Address,
-			DelegatorAddress: msg.To,
-			Amount:           totalAmount,
-		}
-		stakeMsgs = append(stakeMsgs, delegate)
-	}
-	return modifiedWrappers, stakeMsgs, nil
-}
-
 // VerifyAndCollectRewardsFromDelegation verifies and collects rewards
 // from the given delegation slice using the stateDB. It returns all of the
 // edited validatorWrappers and the sum total of the rewards.
@@ -540,8 +387,7 @@ func VerifyAndCollectRewardsFromDelegation(
 	totalRewards := big.NewInt(0)
 	for i := range delegations {
 		delegation := &delegations[i]
-		// request a copy, and since delegations will be changed (.Reward.Set), copy them too
-		wrapper, err := stateDB.ValidatorWrapper(delegation.ValidatorAddress, false, true)
+		wrapper, err := stateDB.ValidatorWrapperCopy(delegation.ValidatorAddress)
 		if err != nil {
 			return nil, nil, err
 		}

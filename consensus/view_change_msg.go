@@ -23,8 +23,8 @@ func (consensus *Consensus) constructViewChangeMessage(priKey *bls.PrivateKeyWra
 		Type:        msg_pb.MessageType_VIEWCHANGE,
 		Request: &msg_pb.Message_Viewchange{
 			Viewchange: &msg_pb.ViewChangeRequest{
-				ViewId:       consensus.getViewChangingID(),
-				BlockNum:     consensus.getBlockNum(),
+				ViewId:       consensus.GetViewChangingID(),
+				BlockNum:     consensus.blockNum,
 				ShardId:      consensus.ShardID,
 				SenderPubkey: priKey.Pub.Bytes[:],
 				LeaderPubkey: consensus.LeaderPubKey.Bytes[:],
@@ -32,20 +32,20 @@ func (consensus *Consensus) constructViewChangeMessage(priKey *bls.PrivateKeyWra
 		},
 	}
 
-	preparedMsgs := consensus.fBFTLog.GetMessagesByTypeSeq(
-		msg_pb.MessageType_PREPARED, consensus.getBlockNum(),
+	preparedMsgs := consensus.FBFTLog.GetMessagesByTypeSeq(
+		msg_pb.MessageType_PREPARED, consensus.blockNum,
 	)
-	preparedMsg := consensus.fBFTLog.FindMessageByMaxViewID(preparedMsgs)
+	preparedMsg := consensus.FBFTLog.FindMessageByMaxViewID(preparedMsgs)
 
 	var encodedBlock []byte
 	if preparedMsg != nil {
-		block := consensus.fBFTLog.GetBlockByHash(preparedMsg.BlockHash)
+		block := consensus.FBFTLog.GetBlockByHash(preparedMsg.BlockHash)
 		consensus.getLogger().Info().
 			Interface("Block", block).
 			Interface("preparedMsg", preparedMsg).
 			Msg("[constructViewChangeMessage] found prepared msg")
 		if block != nil {
-			if err := consensus.verifyBlock(block); err == nil {
+			if err := consensus.BlockVerifier(block); err == nil {
 				tmpEncoded, err := rlp.EncodeToBytes(block)
 				if err != nil {
 					consensus.getLogger().Err(err).Msg("[constructViewChangeMessage] Failed encoding block")
@@ -83,7 +83,7 @@ func (consensus *Consensus) constructViewChangeMessage(priKey *bls.PrivateKeyWra
 	}
 
 	viewIDBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(viewIDBytes, consensus.getViewChangingID())
+	binary.LittleEndian.PutUint64(viewIDBytes, consensus.GetViewChangingID())
 	sign1 := priKey.Pri.SignHash(viewIDBytes)
 	if sign1 != nil {
 		vcMsg.ViewidSig = sign1.Serialize()
@@ -107,7 +107,7 @@ func (consensus *Consensus) constructNewViewMessage(viewID uint64, priKey *bls.P
 		Request: &msg_pb.Message_Viewchange{
 			Viewchange: &msg_pb.ViewChangeRequest{
 				ViewId:       viewID,
-				BlockNum:     consensus.getBlockNum(),
+				BlockNum:     consensus.blockNum,
 				ShardId:      consensus.ShardID,
 				SenderPubkey: priKey.Pub.Bytes[:],
 			},
@@ -115,7 +115,7 @@ func (consensus *Consensus) constructNewViewMessage(viewID uint64, priKey *bls.P
 	}
 
 	vcMsg := message.GetViewchange()
-	vcMsg.Payload, vcMsg.PreparedBlock = consensus.vc.GetPreparedBlock(consensus.fBFTLog)
+	vcMsg.Payload, vcMsg.PreparedBlock = consensus.vc.GetPreparedBlock(consensus.FBFTLog)
 	vcMsg.M2Aggsigs, vcMsg.M2Bitmap = consensus.vc.GetM2Bitmap(viewID)
 	vcMsg.M3Aggsigs, vcMsg.M3Bitmap = consensus.vc.GetM3Bitmap(viewID)
 	if vcMsg.M3Bitmap == nil || vcMsg.M3Aggsigs == nil {
@@ -222,7 +222,10 @@ func ParseNewViewMessage(msg *msg_pb.Message, members multibls.PublicKeys) (*FBF
 		if err != nil {
 			return nil, err
 		}
-		m3mask := bls_cosi.NewMask(members)
+		m3mask, err := bls_cosi.NewMask(members, nil)
+		if err != nil {
+			return nil, err
+		}
 		m3mask.SetMask(vcMsg.M3Bitmap)
 		FBFTMsg.M3AggSig = &m3Sig
 		FBFTMsg.M3Bitmap = m3mask
@@ -234,7 +237,10 @@ func ParseNewViewMessage(msg *msg_pb.Message, members multibls.PublicKeys) (*FBF
 		if err != nil {
 			return nil, err
 		}
-		m2mask := bls_cosi.NewMask(members)
+		m2mask, err := bls_cosi.NewMask(members, nil)
+		if err != nil {
+			return nil, err
+		}
 		m2mask.SetMask(vcMsg.M2Bitmap)
 		FBFTMsg.M2AggSig = &m2Sig
 		FBFTMsg.M2Bitmap = m2mask

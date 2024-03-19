@@ -17,7 +17,6 @@
 package core
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"math/big"
@@ -35,7 +34,6 @@ import (
 	"github.com/zennittians/intelchain/block"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
-	"github.com/zennittians/intelchain/core/vm"
 	itcCommon "github.com/zennittians/intelchain/internal/common"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/shard"
@@ -96,12 +94,10 @@ var (
 	ErrInvalidMsgForStakingDirective = errors.New("staking message does not match directive message")
 
 	// ErrBlacklistFrom is returned if a transaction's from/source address is blacklisted
-	ErrBlacklistFrom = errors.New("`from` address of transaction in blacklist and not in allowlist")
+	ErrBlacklistFrom = errors.New("`from` address of transaction in blacklist")
 
 	// ErrBlacklistTo is returned if a transaction's to/destination address is blacklisted
 	ErrBlacklistTo = errors.New("`to` address of transaction in blacklist")
-
-	ErrAllowedTxs = errors.New("transaction allowed whitelist check failed.")
 )
 
 var (
@@ -148,11 +144,6 @@ type blockChain interface {
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
 }
 
-type AllowedTxData struct {
-	To   common.Address
-	Data []byte
-}
-
 // TxPoolConfig are the configuration parameters of the transaction pool.
 type TxPoolConfig struct {
 	Locals    []common.Address // Addresses that should be treated by default as local
@@ -161,7 +152,7 @@ type TxPoolConfig struct {
 	Rejournal time.Duration    // Time interval to regenerate the local transaction journal
 
 	PriceLimit uint64 // Minimum gas price to enforce for acceptance into the pool
-	PriceBump  uint64 // Minimum price bump to replace an already existing transaction (nonce)
+	PriceBump  uint64 // Minimum price bump percentage to replace an already existing transaction (nonce)
 
 	AccountSlots uint64 // Number of executable transaction slots guaranteed per account
 	GlobalSlots  uint64 // Maximum number of executable transaction slots for all accounts
@@ -170,10 +161,7 @@ type TxPoolConfig struct {
 
 	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
 
-	AddEvent func(tx types.PoolTransaction, local bool) // Fire add event
-
-	Blacklist  map[common.Address]struct{}        // Set of accounts that cannot be a part of any transaction
-	AllowedTxs map[common.Address][]AllowedTxData // Set of allowed transactions can break the blocklist
+	Blacklist map[common.Address]struct{} // Set of accounts that cannot be a part of any transaction
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -182,18 +170,17 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	Journal:   "transactions.rlp",
 	Rejournal: time.Hour,
 
-	PriceLimit: 100e9, // 100 Gwei/Nano
-	PriceBump:  1,     // PriceBump is percent, 1% is enough
+	PriceLimit: 1,
+	PriceBump:  10,
 
-	AccountSlots: 16,   // --txpool.accountslots
-	GlobalSlots:  4096, // --txpool.globalslots
-	AccountQueue: 64,   // --txpool.accountqueue
-	GlobalQueue:  5120, // --txpool.globalqueue
+	AccountSlots: 16,
+	GlobalSlots:  4096,
+	AccountQueue: 64,
+	GlobalQueue:  1024,
 
-	Lifetime: 30 * time.Minute, // --txpool.lifetime
+	Lifetime: 30 * time.Minute,
 
-	Blacklist:  map[common.Address]struct{}{},
-	AllowedTxs: map[common.Address][]AllowedTxData{},
+	Blacklist: map[common.Address]struct{}{},
 }
 
 // sanitize checks the provided user configurations and changes anything that's
@@ -224,45 +211,6 @@ func (config *TxPoolConfig) sanitize() TxPoolConfig {
 	if conf.Blacklist == nil {
 		utils.Logger().Warn().Msg("Sanitizing nil blacklist set")
 		conf.Blacklist = DefaultTxPoolConfig.Blacklist
-	}
-	if conf.AllowedTxs == nil {
-		utils.Logger().Warn().Msg("Sanitizing nil allowedTxs set")
-		conf.AllowedTxs = DefaultTxPoolConfig.AllowedTxs
-	}
-	if conf.AccountSlots == 0 {
-		utils.Logger().Warn().
-			Uint64("provided", conf.AccountSlots).
-			Uint64("updated", DefaultTxPoolConfig.AccountSlots).
-			Msg("Sanitizing invalid txpool account slots")
-		conf.AccountSlots = DefaultTxPoolConfig.AccountSlots
-	}
-	if conf.GlobalSlots == 0 {
-		utils.Logger().Warn().
-			Uint64("provided", conf.GlobalSlots).
-			Uint64("updated", DefaultTxPoolConfig.GlobalSlots).
-			Msg("Sanitizing invalid txpool global slots")
-		conf.GlobalSlots = DefaultTxPoolConfig.GlobalSlots
-	}
-	if conf.AccountQueue == 0 {
-		utils.Logger().Warn().
-			Uint64("provided", conf.AccountQueue).
-			Uint64("updated", DefaultTxPoolConfig.AccountQueue).
-			Msg("Sanitizing invalid txpool account queue")
-		conf.AccountQueue = DefaultTxPoolConfig.AccountQueue
-	}
-	if conf.GlobalQueue == 0 {
-		utils.Logger().Warn().
-			Uint64("provided", conf.GlobalQueue).
-			Uint64("updated", DefaultTxPoolConfig.GlobalQueue).
-			Msg("Sanitizing invalid txpool account queue")
-		conf.GlobalQueue = DefaultTxPoolConfig.GlobalQueue
-	}
-	if conf.Lifetime == 0 {
-		utils.Logger().Warn().
-			Dur("provided", conf.Lifetime).
-			Dur("updated", DefaultTxPoolConfig.Lifetime).
-			Msg("Sanitizing invalid txpool lifetime")
-		conf.Lifetime = DefaultTxPoolConfig.Lifetime
 	}
 
 	return conf
@@ -563,7 +511,7 @@ func (pool *TxPool) reset(oldHead, newHead *block.Header) {
 	// any transactions that have been included in the block or
 	// have been invalidated because of another transaction (e.g.
 	// higher gas price)
-	pool.demoteUnexecutables(newHead.Number().Uint64())
+	pool.demoteUnexecutables()
 
 	// Update all accounts to the latest known pending nonce
 	for addr, list := range pool.pending {
@@ -751,41 +699,20 @@ func (pool *TxPool) validateTx(tx types.PoolTransaction, local bool) error {
 		}
 		return ErrInvalidSender
 	}
-
-	// do whitelist check first, if tx not in whitelist, do blacklist check
-	if allowedTxs, exists := pool.config.AllowedTxs[from]; exists {
-		txIsAllowed := false
-		to := tx.To()
-		toAddr := common.Address{}
-		if to != nil {
-			toAddr = *to
-			for _, allowedTx := range allowedTxs {
-				if toAddr == allowedTx.To && bytes.Equal(tx.Data(), allowedTx.Data) {
-					txIsAllowed = true
-					break
-				}
-			}
+	// Make sure transaction does not have blacklisted addresses
+	if _, exists := (pool.config.Blacklist)[from]; exists {
+		if b32, err := itcCommon.AddressToBech32(from); err == nil {
+			return errors.WithMessagef(ErrBlacklistFrom, "transaction sender is %s", b32)
 		}
-		if !txIsAllowed {
-			return errors.WithMessagef(ErrAllowedTxs, "transaction sender: %x, receiver: %x, input: %x", tx.From(), toAddr, tx.Data())
-		}
-	} else {
-		// do blacklist check
-		// Make sure transaction does not have blacklisted addresses
-		if _, exists := (pool.config.Blacklist)[from]; exists {
-			if b32, err := itcCommon.AddressToBech32(from); err == nil {
-				return errors.WithMessagef(ErrBlacklistFrom, "transaction sender is %s", b32)
+		return ErrBlacklistFrom
+	}
+	// Make sure transaction does not burn funds by sending funds to blacklisted address
+	if tx.To() != nil {
+		if _, exists := (pool.config.Blacklist)[*tx.To()]; exists {
+			if b32, err := itcCommon.AddressToBech32(*tx.To()); err == nil {
+				return errors.WithMessagef(ErrBlacklistTo, "transaction receiver is %s", b32)
 			}
-			return ErrBlacklistFrom
-		}
-		// Make sure transaction does not burn funds by sending funds to blacklisted address
-		if tx.To() != nil {
-			if _, exists := (pool.config.Blacklist)[*tx.To()]; exists {
-				if b32, err := itcCommon.AddressToBech32(*tx.To()); err == nil {
-					return errors.WithMessagef(ErrBlacklistTo, "transaction receiver is %s with data: %x", b32, tx.Data())
-				}
-				return ErrBlacklistTo
-			}
+			return ErrBlacklistTo
 		}
 	}
 	// Drop non-local transactions under our own minimal accepted gas price
@@ -793,10 +720,7 @@ func (pool *TxPool) validateTx(tx types.PoolTransaction, local bool) error {
 	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 		gasPrice := new(big.Float).SetInt64(tx.GasPrice().Int64())
 		gasPrice = gasPrice.Mul(gasPrice, new(big.Float).SetFloat64(1e-9)) // Gas-price is in Nano
-
-		minGasPrice := new(big.Float).SetInt64(pool.gasPrice.Int64())
-		minGasPrice = minGasPrice.Mul(minGasPrice, new(big.Float).SetFloat64(1e-9)) // Gas-price is in Nano
-		return errors.WithMessagef(ErrUnderpriced, "transaction gas-price is %.18f ONE; minimum gas price is %.18f ONE", gasPrice, minGasPrice)
+		return errors.WithMessagef(ErrUnderpriced, "transaction gas-price is %.18f ONE", gasPrice)
 	}
 	// Ensure the transaction adheres to nonce ordering
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
@@ -820,9 +744,9 @@ func (pool *TxPool) validateTx(tx types.PoolTransaction, local bool) error {
 	}
 	intrGas := uint64(0)
 	if isStakingTx {
-		intrGas, err = vm.IntrinsicGas(tx.Data(), false, pool.homestead, pool.istanbul, stakingTx.StakingType() == staking.DirectiveCreateValidator)
+		intrGas, err = IntrinsicGas(tx.Data(), false, pool.homestead, pool.istanbul, stakingTx.StakingType() == staking.DirectiveCreateValidator)
 	} else {
-		intrGas, err = vm.IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead, pool.istanbul, false)
+		intrGas, err = IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead, pool.istanbul, false)
 	}
 	if err != nil {
 		return err
@@ -858,11 +782,15 @@ func (pool *TxPool) validateStakingTx(tx *staking.StakingTransaction) error {
 		}
 		currentBlockNumber := pool.chain.CurrentBlock().Number()
 		pendingBlockNumber := new(big.Int).Add(currentBlockNumber, big.NewInt(1))
+		pendingEpoch := pool.chain.CurrentBlock().Epoch()
+		if shard.Schedule.IsLastBlock(currentBlockNumber.Uint64()) {
+			pendingEpoch = new(big.Int).Add(pendingEpoch, big.NewInt(1))
+		}
 		chainContext, ok := pool.chain.(ChainContext)
 		if !ok {
 			chainContext = nil // might use testing blockchain, set to nil for verifier to handle.
 		}
-		_, err = VerifyAndCreateValidatorFromMsg(pool.currentState, chainContext, pool.pendingEpoch(), pendingBlockNumber, stkMsg)
+		_, err = VerifyAndCreateValidatorFromMsg(pool.currentState, chainContext, pendingEpoch, pendingBlockNumber, stkMsg)
 		return err
 	case staking.DirectiveEditValidator:
 		msg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveEditValidator)
@@ -911,19 +839,9 @@ func (pool *TxPool) validateStakingTx(tx *staking.StakingTransaction) error {
 			return err
 		}
 		pendingEpoch := pool.pendingEpoch()
-		_, delegateAmt, _, err := VerifyAndDelegateFromMsg(
-			pool.currentState, pendingEpoch, stkMsg, delegations, pool.chainconfig)
-		if err != nil {
-			return err
-		}
-		// We need to deduct gas price and verify balance since txn.Cost() is not accurate for delegate
-		// staking transaction because of re-delegation.
-		gasAmt := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.GasLimit()))
-		totalAmt := new(big.Int).Add(delegateAmt, gasAmt)
-		if bal := pool.currentState.GetBalance(from); bal.Cmp(totalAmt) < 0 {
-			return fmt.Errorf("not enough balance for delegation: %v < %v", bal, delegateAmt)
-		}
-		return nil
+		_, _, _, err = VerifyAndDelegateFromMsg(
+			pool.currentState, pendingEpoch, stkMsg, delegations, pool.chainconfig.IsRedelegation(pendingEpoch))
+		return err
 	case staking.DirectiveUndelegate:
 		msg, err := staking.RLPDecodeStakeMsg(tx.Data(), staking.DirectiveUndelegate)
 		if err != nil {
@@ -936,6 +854,7 @@ func (pool *TxPool) validateStakingTx(tx *staking.StakingTransaction) error {
 		if from != stkMsg.DelegatorAddress {
 			return errors.WithMessagef(ErrInvalidSender, "staking transaction sender is %s", b32)
 		}
+
 		_, err = VerifyAndUndelegateFromMsg(pool.currentState, pool.pendingEpoch(), stkMsg)
 		return err
 	case staking.DirectiveCollectRewards:
@@ -967,12 +886,11 @@ func (pool *TxPool) validateStakingTx(tx *staking.StakingTransaction) error {
 	}
 }
 
-// pendingEpoch refers to the epoch of the pending block
 func (pool *TxPool) pendingEpoch() *big.Int {
 	currentBlock := pool.chain.CurrentBlock()
 	pendingEpoch := currentBlock.Epoch()
 	if shard.Schedule.IsLastBlock(currentBlock.Number().Uint64()) {
-		pendingEpoch = new(big.Int).Add(pendingEpoch, common.Big1)
+		pendingEpoch.Add(pendingEpoch, big.NewInt(1))
 	}
 	return pendingEpoch
 }
@@ -985,14 +903,7 @@ func (pool *TxPool) pendingEpoch() *big.Int {
 // If a newly added transaction is marked as local, its sending account will be
 // whitelisted, preventing any associated transaction from being dropped out of
 // the pool due to pricing constraints.
-func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, err error) {
-	defer func() {
-		if err == nil && pool.config.AddEvent != nil {
-			// used for tikv mode, writer will publish txpool change to all reader, this makes the state consistent
-			pool.config.AddEvent(tx, local)
-		}
-	}()
-
+func (pool *TxPool) add(tx types.PoolTransaction, local bool) (bool, error) {
 	logger := utils.Logger().With().Stack().Logger()
 	// If the transaction is in the error sink, remove it as it may succeed
 	if pool.txErrorSink.Contains(tx.Hash().String()) {
@@ -1001,12 +912,12 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 	// If the transaction is already known, discard it
 	hash := tx.Hash()
 	if pool.all.Get(hash) != nil {
-		logger.Debug().Str("hash", hash.Hex()).Msg("Discarding already known transaction")
+		logger.Info().Str("hash", hash.Hex()).Msg("Discarding already known transaction")
 		return false, errors.WithMessagef(ErrKnownTransaction, "transaction hash %x", hash)
 	}
 	// If the transaction fails basic validation, discard it
 	if err := pool.validateTx(tx, local); err != nil {
-		logger.Debug().Err(err).Str("hash", hash.Hex()).Msg("Discarding invalid transaction")
+		logger.Warn().Err(err).Str("hash", hash.Hex()).Msg("Discarding invalid transaction")
 		invalidTxCounter.Inc(1)
 		return false, err
 	}
@@ -1016,7 +927,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 		if !local && pool.priced.Underpriced(tx, pool.locals) {
 			gasPrice := new(big.Float).SetInt64(tx.GasPrice().Int64())
 			gasPrice = gasPrice.Mul(gasPrice, new(big.Float).SetFloat64(1e-9)) // Gas-price is in Nano
-			logger.Debug().
+			logger.Warn().
 				Str("hash", hash.Hex()).
 				Str("price", tx.GasPrice().String()).
 				Msg("Discarding underpriced transaction")
@@ -1032,7 +943,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 			underpricedTxCounter.Inc(1)
 			pool.txErrorSink.Add(tx,
 				errors.WithMessagef(ErrUnderpriced, "transaction gas-price is %.18f ONE in full transaction pool", gasPrice))
-			logger.Debug().
+			logger.Warn().
 				Str("hash", tx.Hash().Hex()).
 				Str("price", tx.GasPrice().String()).
 				Msg("Discarding freshly underpriced transaction")
@@ -1054,7 +965,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 			pendingReplaceCounter.Inc(1)
 			pool.txErrorSink.Add(old,
 				fmt.Errorf("replaced transaction, new transaction %v has same nonce & higher price", tx.Hash().String()))
-			logger.Debug().
+			logger.Info().
 				Str("hash", old.Hash().String()).
 				Str("new-tx-hash", tx.Hash().String()).
 				Str("price", old.GasPrice().String()).
@@ -1067,7 +978,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 		// Set or refresh beat for account timeout eviction
 		pool.beats[from] = time.Now()
 
-		logger.Debug().
+		logger.Info().
 			Str("hash", tx.Hash().Hex()).
 			Interface("from", from).
 			Interface("to", tx.To()).
@@ -1096,7 +1007,7 @@ func (pool *TxPool) add(tx types.PoolTransaction, local bool) (replaced bool, er
 	// Set or refresh beat for account timeout eviction
 	pool.beats[from] = time.Now()
 
-	logger.Debug().
+	logger.Info().
 		Str("hash", hash.Hex()).
 		Interface("from", from).
 		Interface("to", tx.To()).
@@ -1366,7 +1277,7 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 // invalidated transactions (low nonce, low balance) are deleted.
 func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	// Track the promoted transactions to broadcast them at once
-	var promoted []types.PoolTransaction
+	var promoted types.PoolTransactions
 	logger := utils.Logger().With().Stack().Logger()
 
 	// Gather all the accounts potentially needing updates
@@ -1390,25 +1301,24 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
 			pool.priced.Removed()
-			logger.Debug().Str("hash", hash.Hex()).Msg("Removed old queued transaction")
+			logger.Info().Str("hash", hash.Hex()).Msg("Removed old queued transaction")
 			// Do not report to error sink as old txs are on chain or meaningful error caught elsewhere.
 		}
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, errs, _ := list.FilterValid(pool, addr, 0)
-		for i, tx := range drops {
+		drops, _ := list.FilterValid(pool, addr)
+		for _, tx := range drops {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 			queuedNofundsCounter.Inc(1)
-			pool.txErrorSink.Add(tx, errs[i])
-			logger.Warn().Str("hash", hash.Hex()).Err(errs[i]).
-				Msg("Removed unpayable queued transaction")
+			pool.txErrorSink.Add(tx, fmt.Errorf("removed unpayable queued transaction"))
+			logger.Warn().Str("hash", hash.Hex()).Msg("Removed unpayable queued transaction")
 		}
 		// Gather all executable transactions and promote them
 		for _, tx := range list.Ready(pool.pendingState.GetNonce(addr)) {
 			hash := tx.Hash()
 			if pool.promoteTx(addr, tx) {
-				logger.Debug().Str("hash", hash.Hex()).Msg("Promoting queued transaction")
+				logger.Info().Str("hash", hash.Hex()).Msg("Promoting queued transaction")
 				promoted = append(promoted, tx)
 			}
 		}
@@ -1429,9 +1339,9 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		}
 	}
 	// Notify subsystem for new promoted transactions.
-	if len(promoted) > 0 {
-		go pool.txFeed.Send(NewTxsEvent{promoted})
-	}
+	//if len(promoted) > 0 {
+	//	go pool.txFeed.Send(NewTxsEvent{promoted})
+	//}
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)
 	for _, list := range pool.pending {
@@ -1440,7 +1350,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 	if pending > pool.config.GlobalSlots {
 		pendingBeforeCap := pending
 		// Assemble a spam order to penalize large transactors first
-		spammers := prque.New[int64, common.Address](nil)
+		spammers := prque.New(nil)
 		for addr, list := range pool.pending {
 			// Only evict transactions from high rollers
 			if !pool.locals.contains(addr) && uint64(list.Len()) > pool.config.AccountSlots {
@@ -1452,12 +1362,12 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		for pending > pool.config.GlobalSlots && !spammers.Empty() {
 			// Retrieve the next offender if not local address
 			offender, _ := spammers.Pop()
-			offenders = append(offenders, offender)
+			offenders = append(offenders, offender.(common.Address))
 
 			// Equalize balances until all the same or below threshold
 			if len(offenders) > 1 {
 				// Calculate the equalization threshold for all current offenders
-				threshold := pool.pending[offender].Len()
+				threshold := pool.pending[offender.(common.Address)].Len()
 
 				// Iteratively reduce all offenders until below limit or threshold reached
 				for pending > pool.config.GlobalSlots && pool.pending[offenders[len(offenders)-2]].Len() > threshold {
@@ -1552,7 +1462,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 // demoteUnexecutables removes invalid and processed transactions from the pools
 // executable/pending queue and any subsequent transactions that become unexecutable
 // are moved back into the future queue.
-func (pool *TxPool) demoteUnexecutables(bn uint64) {
+func (pool *TxPool) demoteUnexecutables() {
 	// Iterate over all accounts and demote any non-executable transactions
 	logger := utils.Logger().With().Stack().Logger()
 
@@ -1564,19 +1474,18 @@ func (pool *TxPool) demoteUnexecutables(bn uint64) {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
 			pool.priced.Removed()
-			logger.Debug().Str("hash", hash.Hex()).Msg("Removed old pending transaction")
+			logger.Info().Str("hash", hash.Hex()).Msg("Removed old pending transaction")
 			// Do not report to error sink as old txs are on chain or meaningful error caught elsewhere.
 		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
-		drops, errs, invalids := list.FilterValid(pool, addr, bn)
-		for i, tx := range drops {
+		drops, invalids := list.FilterValid(pool, addr)
+		for _, tx := range drops {
 			hash := tx.Hash()
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 			pendingNofundsCounter.Inc(1)
-			pool.txErrorSink.Add(tx, errs[i])
-			logger.Warn().Str("hash", hash.Hex()).Err(errs[i]).
-				Msg("Removed unexecutable pending transaction")
+			pool.txErrorSink.Add(tx, fmt.Errorf("removed unexecutable pending transaction"))
+			logger.Warn().Str("hash", hash.Hex()).Msg("Removed unexecutable pending transaction")
 		}
 		for _, tx := range invalids {
 			hash := tx.Hash()

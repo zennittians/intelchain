@@ -19,10 +19,9 @@ package itc
 import (
 	"bufio"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
+	"io/ioutil"
 	"os"
 	"runtime"
 	"sync"
@@ -31,12 +30,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/zennittians/intelchain/core"
 	"github.com/zennittians/intelchain/core/state"
 	"github.com/zennittians/intelchain/core/types"
 	"github.com/zennittians/intelchain/core/vm"
-	"github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/internal/utils"
 	"github.com/zennittians/intelchain/itc/tracers"
 )
@@ -121,7 +120,7 @@ func (itc *Intelchain) TraceChain(ctx context.Context, start, end *types.Block, 
 		}
 	}
 
-	statedb, err := state.New(start.Root(), database, nil)
+	statedb, err := state.New(start.Root(), database)
 	if err != nil {
 		// If the starting state is missing, allow some number of blocks to be executed
 		reexec := defaultTraceReexec
@@ -134,7 +133,7 @@ func (itc *Intelchain) TraceChain(ctx context.Context, start, end *types.Block, 
 			if start == nil {
 				break
 			}
-			if statedb, err = state.New(start.Root(), database, nil); err == nil {
+			if statedb, err = state.New(start.Root(), database); err == nil {
 				break
 			}
 		}
@@ -281,7 +280,7 @@ func (itc *Intelchain) TraceChain(ctx context.Context, start, end *types.Block, 
 				traced += uint64(len(txs))
 			}
 			// Generate the next state snapshot fast without tracing
-			_, _, _, _, _, _, _, err := itc.BlockChain.Processor().Process(block, statedb, vm.Config{}, false)
+			_, _, _, _, _, err := itc.BlockChain.Processor().Process(block, statedb, vm.Config{})
 			if err != nil {
 				failed = err
 				break
@@ -343,83 +342,10 @@ func (itc *Intelchain) TraceChain(ctx context.Context, start, end *types.Block, 
 	return sub, nil
 }
 
-// same as TraceBlock, but only use 1 thread
-func (itc *Intelchain) traceBlockNoThread(ctx context.Context, block *types.Block, config *TraceConfig) ([]*TxTraceResult, error) {
-	// Create the parent state database
-	if err := itc.BlockChain.Engine().VerifyHeader(itc.BlockChain, block.Header(), true); err != nil {
-		return nil, err
-	}
-	parent := itc.BlockChain.GetBlock(block.ParentHash(), block.NumberU64()-1)
-	if parent == nil {
-		return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
-	}
-	reexec := defaultTraceReexec
-	if config != nil && config.Reexec != nil {
-		reexec = *config.Reexec
-	}
-	statedb, err := itc.ComputeStateDB(parent, reexec)
-	if err != nil {
-		return nil, err
-	}
-	// Execute all the transaction contained within the block concurrently
-	var (
-		itcSigner = types.MakeSigner(itc.BlockChain.Config(), block.Number())
-		ethSigner = types.NewEIP155Signer(itc.BlockChain.Config().EthCompatibleChainID)
-		txs       = block.Transactions()
-		results   = make([]*TxTraceResult, len(txs))
-	)
-
-	blockHash := block.Hash()
-	// Feed the transactions into the tracers and return
-	var failed error
-traceLoop:
-	for i, tx := range txs {
-		signer := itcSigner
-		if tx.IsEthCompatible() {
-			signer = ethSigner
-		}
-		// Generate the next state snapshot fast without tracing
-		msg, _ := tx.AsMessage(signer)
-		statedb.Prepare(tx.Hash(), blockHash, i)
-		statedb.SetTxHashETH(tx.ConvertToEth().Hash())
-		vmctx := core.NewEVMContext(msg, block.Header(), itc.BlockChain, nil)
-		res, err := itc.TraceTx(ctx, msg, vmctx, statedb, config)
-		if err != nil {
-			results[i] = &TxTraceResult{Error: err.Error()}
-			failed = err
-			break
-		}
-		results[i] = &TxTraceResult{Result: res}
-		// Finalize the state so any modifications are written to the trie
-		statedb.Finalise(true)
-		select {
-		case <-ctx.Done():
-			failed = errors.New("trace task was canceled!")
-			break traceLoop
-		default:
-		}
-	}
-
-	// If execution failed in between, abort
-	if failed != nil {
-		return nil, failed
-	}
-	return results, nil
-}
-
 // TraceBlock configures a new tracer according to the provided configuration, and
 // executes all the transactions contained within. The return value will be one item
 // per transaction, dependent on the requested tracer.
 func (itc *Intelchain) TraceBlock(ctx context.Context, block *types.Block, config *TraceConfig) ([]*TxTraceResult, error) {
-	select {
-	case <-ctx.Done():
-		return nil, errors.New("canceled!")
-	default:
-	}
-
-	if config != nil && config.Tracer != nil && *config.Tracer == "ParityBlockTracer" {
-		return itc.traceBlockNoThread(ctx, block, config)
-	}
 	// Create the parent state database
 	if err := itc.BlockChain.Engine().VerifyHeader(itc.BlockChain, block.Header(), true); err != nil {
 		return nil, err
@@ -450,7 +376,6 @@ func (itc *Intelchain) TraceBlock(ctx context.Context, block *types.Block, confi
 	if threads > len(txs) {
 		threads = len(txs)
 	}
-	blockHash := block.Hash()
 	for th := 0; th < threads; th++ {
 		pend.Add(1)
 		go func() {
@@ -465,9 +390,7 @@ func (itc *Intelchain) TraceBlock(ctx context.Context, block *types.Block, confi
 
 				msg, _ := txs[task.index].AsMessage(signer)
 				vmctx := core.NewEVMContext(msg, block.Header(), itc.BlockChain, nil)
-				tx := txs[task.index]
-				task.statedb.Prepare(tx.Hash(), blockHash, task.index)
-				task.statedb.SetTxHashETH(tx.ConvertToEth().Hash())
+
 				res, err := itc.TraceTx(ctx, msg, vmctx, task.statedb, config)
 				if err != nil {
 					results[task.index] = &TxTraceResult{Error: err.Error()}
@@ -489,8 +412,6 @@ func (itc *Intelchain) TraceBlock(ctx context.Context, block *types.Block, confi
 		}
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(signer)
-		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		statedb.SetTxHashETH(tx.ConvertToEth().Hash())
 		vmctx := core.NewEVMContext(msg, block.Header(), itc.BlockChain, nil)
 
 		vmenv := vm.NewEVM(vmctx, statedb, itc.BlockChain.Config(), vm.Config{})
@@ -576,7 +497,7 @@ func (itc *Intelchain) standardTraceBlockToFile(ctx context.Context, block *type
 			// Generate a unique temporary file to dump it into
 			prefix := fmt.Sprintf("block_%#x-%d-%#x-", block.Hash().Bytes()[:4], i, tx.Hash().Bytes()[:4])
 
-			dump, err = os.CreateTemp(os.TempDir(), prefix)
+			dump, err = ioutil.TempFile(os.TempDir(), prefix)
 			if err != nil {
 				return nil, err
 			}
@@ -643,7 +564,7 @@ func (itc *Intelchain) ComputeStateDB(block *types.Block, reexec uint64) (*state
 		if block == nil {
 			break
 		}
-		if statedb, err = state.New(block.Root(), database, nil); err == nil {
+		if statedb, err = state.New(block.Root(), database); err == nil {
 			break
 		}
 	}
@@ -676,7 +597,7 @@ func (itc *Intelchain) ComputeStateDB(block *types.Block, reexec uint64) (*state
 		if block = itc.BlockChain.GetBlockByNumber(block.NumberU64() + 1); block == nil {
 			return nil, fmt.Errorf("block #%d not found", block.NumberU64()+1)
 		}
-		_, _, _, _, _, _, _, err := itc.BlockChain.Processor().Process(block, statedb, vm.Config{}, false)
+		_, _, _, _, _, err := itc.BlockChain.Processor().Process(block, statedb, vm.Config{})
 		if err != nil {
 			return nil, fmt.Errorf("processing block %d failed: %v", block.NumberU64(), err)
 		}
@@ -716,13 +637,6 @@ func (itc *Intelchain) TraceTx(ctx context.Context, message core.Message, vmctx 
 	)
 	switch {
 	case config != nil && config.Tracer != nil:
-		if *config.Tracer == "ParityBlockTracer" {
-			tracer = &tracers.ParityBlockTracer{}
-			break
-		} else if *config.Tracer == "RosettaBlockTracer" {
-			tracer = &tracers.RosettaBlockTracer{ParityBlockTracer: &tracers.ParityBlockTracer{}}
-			break
-		}
 		// Define a meaningful timeout of a single transaction trace
 		timeout := defaultTraceTimeout
 		if config.Timeout != nil {
@@ -762,14 +676,10 @@ func (itc *Intelchain) TraceTx(ctx context.Context, message core.Message, vmctx 
 			Gas:         result.UsedGas,
 			Failed:      result.VMErr != nil,
 			ReturnValue: fmt.Sprintf("%x", result.ReturnData),
-			StructLogs:  FormatLogs(tracer.StructLogs(), config),
+			StructLogs:  FormatLogs(tracer.StructLogs()),
 		}, nil
 
 	case *tracers.Tracer:
-		return tracer.GetResult()
-	case *tracers.ParityBlockTracer:
-		return tracer.GetResult()
-	case *tracers.RosettaBlockTracer:
 		return tracer.GetResult()
 
 	default:
@@ -820,40 +730,6 @@ func (itc *Intelchain) ComputeTxEnv(block *types.Block, txIndex int, reexec uint
 	return nil, vm.Context{}, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash())
 }
 
-// ComputeTxEnvEachBlockWithoutApply returns the execution environment of a certain transaction.
-func (itc *Intelchain) ComputeTxEnvEachBlockWithoutApply(block *types.Block, reexec uint64, cb func(int, *types.Transaction, core.Message, vm.Context, *state.DB) bool) error {
-	// Create the parent state database
-	parent := itc.BlockChain.GetBlock(block.ParentHash(), block.NumberU64()-1)
-	if parent == nil {
-		return fmt.Errorf("parent %#x not found", block.ParentHash())
-	}
-	statedb, err := itc.ComputeStateDB(parent, reexec)
-	if err != nil {
-		return err
-	}
-
-	// Recompute transactions up to the target index.
-	itcSigner := types.MakeSigner(itc.BlockChain.Config(), block.Number())
-	ethSigner := types.NewEIP155Signer(itc.BlockChain.Config().EthCompatibleChainID)
-
-	for idx, tx := range block.Transactions() {
-		signer := itcSigner
-		if tx.IsEthCompatible() {
-			signer = ethSigner
-		}
-
-		// Assemble the transaction call message and return if the requested offset
-		msg, _ := tx.AsMessage(signer)
-		context := core.NewEVMContext(msg, block.Header(), itc.BlockChain, nil)
-		if !cb(idx, tx, msg, context, statedb) {
-			return nil
-		}
-		// Ensure any modifications are committed to the state
-		statedb.Finalise(true)
-	}
-	return nil
-}
-
 // ExecutionResult groups all structured logs emitted by the EVM
 // while replaying a transaction in debug mode as well as transaction
 // execution status, the amount of gas used and the return value
@@ -877,93 +753,12 @@ type StructLogRes struct {
 	Depth           int               `json:"depth"`
 	Error           error             `json:"error,omitempty"`
 	Stack           []string          `json:"stack,omitempty"`
-	AfterStack      []string          `json:"afterStack,omitempty"`
 	Memory          []string          `json:"memory,omitempty"`
 	Storage         map[string]string `json:"storage,omitempty"`
-
-	rawStack         []*big.Int
-	rawAfterStack    []*big.Int
-	rawMemory        []byte
-	rawStorage       map[common.Hash]common.Hash
-	rawOperatorEvent map[string]string
-}
-
-func (r *StructLogRes) FormatStack() []string {
-	if r.Stack != nil {
-		return r.Stack
-	}
-
-	if r.rawStack != nil {
-		stack := make([]string, len(r.rawStack))
-		for i, stackValue := range r.rawStack {
-			stack[i] = hex.EncodeToString(math.PaddedBigBytes(stackValue, 32))
-		}
-		r.Stack = stack
-	}
-
-	return r.Stack
-}
-
-func (r *StructLogRes) FormatAfterStack() []string {
-	if r.AfterStack != nil {
-		return r.AfterStack
-	}
-
-	if r.rawAfterStack != nil {
-		stack := make([]string, len(r.rawAfterStack))
-		for i, stackValue := range r.rawAfterStack {
-			stack[i] = hex.EncodeToString(math.PaddedBigBytes(stackValue, 32))
-		}
-		r.AfterStack = stack
-	}
-
-	return r.AfterStack
-}
-
-func (r *StructLogRes) FormatMemory() []string {
-	if r.Memory != nil {
-		return r.Memory
-	}
-
-	if r.rawMemory != nil {
-		memory := make([]string, 0, (len(r.rawMemory)+31)/32)
-		for i := 0; i+32 <= len(r.rawMemory); i += 32 {
-			memory = append(memory, fmt.Sprintf("%x", r.rawMemory[i:i+32]))
-		}
-		r.Memory = memory
-	}
-
-	return r.Memory
-}
-
-func (r *StructLogRes) FormatStorage() map[string]string {
-	if r.Storage != nil {
-		return r.Storage
-	}
-
-	if r.rawStorage != nil {
-		storage := make(map[string]string)
-		for i, storageValue := range r.rawStorage {
-			storage[hex.EncodeToString(i.Bytes())] = hex.EncodeToString(storageValue.Bytes())
-		}
-		r.Storage = storage
-	}
-
-	return r.Storage
-}
-
-func (r *StructLogRes) GetOperatorEvent(key string) string {
-	if r.rawOperatorEvent == nil {
-		return ""
-	} else if val, ok := r.rawOperatorEvent[key]; ok {
-		return val
-	} else {
-		return ""
-	}
 }
 
 // FormatLogs formats EVM returned structured logs for json output
-func FormatLogs(logs []*vm.StructLog, conf *TraceConfig) []StructLogRes {
+func FormatLogs(logs []vm.StructLog) []StructLogRes {
 	formatted := make([]StructLogRes, len(logs))
 	for index, trace := range logs {
 		formatted[index] = StructLogRes{
@@ -975,12 +770,27 @@ func FormatLogs(logs []*vm.StructLog, conf *TraceConfig) []StructLogRes {
 			GasCost:         trace.GasCost,
 			Depth:           trace.Depth,
 			Error:           trace.Err,
-
-			rawStack:         trace.Stack,
-			rawAfterStack:    trace.AfterStack,
-			rawMemory:        trace.Memory,
-			rawStorage:       trace.Storage,
-			rawOperatorEvent: trace.OperatorEvent,
+		}
+		if trace.Stack != nil {
+			stack := make([]string, len(trace.Stack))
+			for i, stackValue := range trace.Stack {
+				stack[i] = fmt.Sprintf("%x", math.PaddedBigBytes(stackValue, 32))
+			}
+			formatted[index].Stack = stack
+		}
+		if trace.Memory != nil {
+			memory := make([]string, 0, (len(trace.Memory)+31)/32)
+			for i := 0; i+32 <= len(trace.Memory); i += 32 {
+				memory = append(memory, fmt.Sprintf("%x", trace.Memory[i:i+32]))
+			}
+			formatted[index].Memory = memory
+		}
+		if trace.Storage != nil {
+			storage := make(map[string]string)
+			for i, storageValue := range trace.Storage {
+				storage[fmt.Sprintf("%x", i)] = fmt.Sprintf("%x", storageValue)
+			}
+			formatted[index].Storage = storage
 		}
 	}
 	return formatted

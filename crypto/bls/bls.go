@@ -45,29 +45,11 @@ func WrapperFromPrivateKey(pri *bls.SecretKey) PrivateKeyWrapper {
 	}
 }
 
-// WrapperPublicKeyFromString makes a PublicKeyWrapper from public key hex string
-func WrapperPublicKeyFromString(pubkey string) (*PublicKeyWrapper, error) {
-	pub := &bls.PublicKey{}
-	if err := pub.DeserializeHexStr(pubkey); err != nil {
-		return nil, err
-	}
-	pubBytes := FromLibBLSPublicKeyUnsafe(pub)
-	return &PublicKeyWrapper{
-		Bytes:  *pubBytes,
-		Object: pub,
-	}, nil
-}
-
 // SerializedPublicKey defines the serialized bls public key
 type SerializedPublicKey [PublicKeySizeInBytes]byte
 
 // SerializedSignature defines the bls signature
 type SerializedSignature [BLSSignatureSizeInBytes]byte
-
-// Bytes returns the byte array of bls signature
-func (pk SerializedPublicKey) Bytes() []byte {
-	return pk[:]
-}
 
 // Big ..
 func (pk SerializedPublicKey) Big() *big.Int {

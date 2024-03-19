@@ -3,7 +3,6 @@ package shardingconfig
 import (
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/numeric"
 
 	"github.com/zennittians/intelchain/internal/genesis"
@@ -14,21 +13,11 @@ import (
 // configuration schedule.
 var PartnerSchedule partnerSchedule
 
-var feeCollectorsDevnet = []FeeCollectors{
-	FeeCollectors{
-		mustAddress("0xb728AEaBF60fD01816ee9e756c18bc01dC91ba5D"): numeric.OneDec(),
-	},
-	FeeCollectors{
-		mustAddress("0xb728AEaBF60fD01816ee9e756c18bc01dC91ba5D"): numeric.MustNewDecFromStr("0.5"),
-		mustAddress("0xb41B6B8d9e68fD44caC8342BC2EEf4D59531d7d7"): numeric.MustNewDecFromStr("0.5"),
-	},
-}
-
 type partnerSchedule struct{}
 
 const (
-	// 30 min per epoch (at 2s/block)
-	partnerBlocksPerEpoch = 900
+	// 10 minutes per epoch (at 8s/block)
+	partnerBlocksPerEpoch = 75
 
 	partnerVdfDifficulty = 10000 // This takes about 20s to finish the vdf
 
@@ -40,10 +29,6 @@ const (
 
 func (ps partnerSchedule) InstanceForEpoch(epoch *big.Int) Instance {
 	switch {
-	case params.PartnerChainConfig.IsDevnetExternalEpoch(epoch):
-		return partnerV3
-	case params.PartnerChainConfig.IsHIP30(epoch):
-		return partnerV2
 	case epoch.Cmp(params.PartnerChainConfig.StakingEpoch) >= 0:
 		return partnerV1
 	default: // genesis
@@ -72,6 +57,12 @@ func (ps partnerSchedule) VdfDifficulty() int {
 	return partnerVdfDifficulty
 }
 
+// TODO: remove it after randomness feature turned on mainnet
+// RandonnessStartingEpoch returns starting epoch of randonness generation
+func (ps partnerSchedule) RandomnessStartingEpoch() uint64 {
+	return mainnetRandomnessStartingEpoch
+}
+
 func (ps partnerSchedule) GetNetworkID() NetworkID {
 	return Partner
 }
@@ -88,36 +79,8 @@ func (ps partnerSchedule) IsSkippedEpoch(shardID uint32, epoch *big.Int) bool {
 
 var partnerReshardingEpoch = []*big.Int{
 	big.NewInt(0),
-	params.PartnerChainConfig.StakingEpoch,
+	params.TestnetChainConfig.StakingEpoch,
 }
 
-var partnerV0 = MustNewInstance(
-	2, 5, 5, 0,
-	numeric.OneDec(), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch(),
-)
-var partnerV1 = MustNewInstance(
-	2, 15, 4, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch(),
-)
-var partnerV2 = MustNewInstance(
-	2, 20, 4, 0,
-	numeric.MustNewDecFromStr("0.9"), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist,
-	feeCollectorsDevnet[1], numeric.MustNewDecFromStr("0.25"),
-	hip30CollectionAddressTestnet, partnerReshardingEpoch,
-	PartnerSchedule.BlocksPerEpoch(),
-)
-var partnerV3 = MustNewInstance(
-	2, 20, 0, 0,
-	numeric.MustNewDecFromStr("0.0"), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist,
-	feeCollectorsDevnet[1], numeric.MustNewDecFromStr("0.25"),
-	hip30CollectionAddressTestnet, partnerReshardingEpoch,
-	PartnerSchedule.BlocksPerEpoch(),
-)
+var partnerV0 = MustNewInstance(2, 15, 15, numeric.OneDec(), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch())
+var partnerV1 = MustNewInstance(2, 30, 15, numeric.MustNewDecFromStr("0.68"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, partnerReshardingEpoch, PartnerSchedule.BlocksPerEpoch())

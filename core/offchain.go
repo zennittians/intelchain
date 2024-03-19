@@ -22,12 +22,12 @@ import (
 	staking "github.com/zennittians/intelchain/staking/types"
 )
 
-func (bc *BlockChainImpl) CommitOffChainData(
+// CommitOffChainData write off chain data of a block onto db writer.
+func (bc *BlockChain) CommitOffChainData(
 	batch rawdb.DatabaseWriter,
 	block *types.Block,
 	receipts []*types.Receipt,
 	cxReceipts []*types.CXReceipt,
-	stakeMsgs []staking.StakeMsg,
 	payout reward.Reader,
 	state *state.DB,
 ) (status WriteStatus, err error) {
@@ -118,7 +118,7 @@ func (bc *BlockChainImpl) CommitOffChainData(
 
 	// Do bookkeeping for new staking txns
 	newVals, err := bc.UpdateStakingMetaData(
-		batch, block, stakeMsgs, state, epoch, nextBlockEpoch,
+		batch, block, state, epoch, nextBlockEpoch,
 	)
 	if err != nil {
 		utils.Logger().Err(err).Msg("UpdateStakingMetaData failed")
@@ -167,8 +167,6 @@ func (bc *BlockChainImpl) CommitOffChainData(
 
 			cl0, _ := bc.ReadShardLastCrossLink(crossLink.ShardID())
 			if cl0 == nil {
-				// make sure it is written at least once, so that it is overwritten below
-				// under "Roll up latest crosslinks"
 				rawdb.WriteShardLastCrossLink(batch, crossLink.ShardID(), crossLink.Serialize())
 			}
 		}
@@ -205,8 +203,8 @@ func (bc *BlockChainImpl) CommitOffChainData(
 		if shardState, err := shard.DecodeWrapper(
 			header.ShardState(),
 		); err == nil {
-			if stats, err := UpdateValidatorVotingPower(
-				bc, block, shardState, currentSuperCommittee, state,
+			if stats, err := bc.UpdateValidatorVotingPower(
+				batch, block, shardState, currentSuperCommittee, state,
 			); err != nil {
 				utils.Logger().
 					Err(err).
@@ -230,26 +228,31 @@ func (bc *BlockChainImpl) CommitOffChainData(
 			); err != nil {
 				return NonStatTy, err
 			}
-			for _, paid := range roundResult.Payouts {
-				stats, ok := tempValidatorStats[paid.Addr]
-				if !ok {
-					stats, err = bc.ReadValidatorStats(paid.Addr)
-					if err != nil {
-						utils.Logger().Info().Err(err).
-							Str("addr", paid.Addr.Hex()).
-							Str("bls-earning-key", paid.EarningKey.Hex()).
-							Msg("could not read validator stats to update for earning per key")
-						continue
+			for _, paid := range [...][]reward.Payout{
+				roundResult.BeaconchainAward, roundResult.ShardChainAward,
+			} {
+				for i := range paid {
+					stats, ok := tempValidatorStats[paid[i].Addr]
+					if !ok {
+						stats, err = bc.ReadValidatorStats(paid[i].Addr)
+						if err != nil {
+							utils.Logger().Info().Err(err).
+								Str("addr", paid[i].Addr.Hex()).
+								Str("bls-earning-key", paid[i].EarningKey.Hex()).
+								Msg("could not read validator stats to update for earning per key")
+							continue
+						}
+						tempValidatorStats[paid[i].Addr] = stats
 					}
-					tempValidatorStats[paid.Addr] = stats
-				}
-				for j := range stats.MetricsPerShard {
-					if stats.MetricsPerShard[j].Vote.Identity == paid.EarningKey {
-						stats.MetricsPerShard[j].Earned.Add(
-							stats.MetricsPerShard[j].Earned,
-							paid.NewlyEarned,
-						)
+					for j := range stats.MetricsPerShard {
+						if stats.MetricsPerShard[j].Vote.Identity == paid[i].EarningKey {
+							stats.MetricsPerShard[j].Earned.Add(
+								stats.MetricsPerShard[j].Earned,
+								paid[i].NewlyEarned,
+							)
+						}
 					}
+
 				}
 			}
 
@@ -278,7 +281,7 @@ func (bc *BlockChainImpl) CommitOffChainData(
 	return CanonStatTy, nil
 }
 
-func (bc *BlockChainImpl) writeValidatorStats(
+func (bc *BlockChain) writeValidatorStats(
 	tempValidatorStats map[common.Address]*staking.ValidatorStats,
 	batch rawdb.DatabaseWriter,
 ) {
@@ -312,7 +315,7 @@ func (bc *BlockChainImpl) writeValidatorStats(
 	}
 }
 
-func (bc *BlockChainImpl) getNextBlockEpoch(header *block.Header) (*big.Int, error) {
+func (bc *BlockChain) getNextBlockEpoch(header *block.Header) (*big.Int, error) {
 	nextBlockEpoch := header.Epoch()
 	if header.IsLastBlockInEpoch() {
 		nextBlockEpoch = new(big.Int).Add(header.Epoch(), common.Big1)

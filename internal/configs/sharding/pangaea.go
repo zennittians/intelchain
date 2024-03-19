@@ -3,7 +3,6 @@ package shardingconfig
 import (
 	"math/big"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/zennittians/intelchain/numeric"
 
 	"github.com/zennittians/intelchain/internal/genesis"
@@ -57,6 +56,12 @@ func (ps pangaeaSchedule) VdfDifficulty() int {
 	return pangaeaVdfDifficulty
 }
 
+// TODO: remove it after randomness feature turned on mainnet
+// RandonnessStartingEpoch returns starting epoch of randonness generation
+func (ps pangaeaSchedule) RandomnessStartingEpoch() uint64 {
+	return mainnetRandomnessStartingEpoch
+}
+
 func (ps pangaeaSchedule) GetNetworkID() NetworkID {
 	return Pangaea
 }
@@ -76,15 +81,5 @@ var pangaeaReshardingEpoch = []*big.Int{
 	params.PangaeaChainConfig.StakingEpoch,
 }
 
-var pangaeaV0 = MustNewInstance(
-	4, 30, 30, 0, numeric.OneDec(), genesis.TNIntelchainAccounts,
-	genesis.TNFoundationalAccounts, emptyAllowlist, nil,
-	numeric.ZeroDec(), ethCommon.Address{},
-	pangaeaReshardingEpoch, PangaeaSchedule.BlocksPerEpoch(),
-)
-var pangaeaV1 = MustNewInstance(
-	4, 110, 30, 0, numeric.MustNewDecFromStr("0.68"),
-	genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts,
-	emptyAllowlist, nil, numeric.ZeroDec(), ethCommon.Address{},
-	pangaeaReshardingEpoch, PangaeaSchedule.BlocksPerEpoch(),
-)
+var pangaeaV0 = MustNewInstance(4, 30, 30, numeric.OneDec(), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, pangaeaReshardingEpoch, PangaeaSchedule.BlocksPerEpoch())
+var pangaeaV1 = MustNewInstance(4, 110, 30, numeric.MustNewDecFromStr("0.68"), genesis.TNIntelchainAccounts, genesis.TNFoundationalAccounts, pangaeaReshardingEpoch, PangaeaSchedule.BlocksPerEpoch())

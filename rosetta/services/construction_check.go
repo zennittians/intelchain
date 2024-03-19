@@ -9,10 +9,9 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 
-	"github.com/zennittians/intelchain/core/vm"
-	ethRpc "github.com/zennittians/intelchain/eth/rpc"
 	"github.com/zennittians/intelchain/internal/params"
 	"github.com/zennittians/intelchain/rosetta/common"
 	"github.com/zennittians/intelchain/rpc"
@@ -74,22 +73,6 @@ func (s *ConstructAPI) ConstructionPreprocess(
 	if components.From == nil {
 		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
 			"message": "sender address is not found for given operations",
-		})
-	}
-	if request.Operations[0].Type == common.CreateValidatorOperation && len(txMetadata.SlotPubKeys) == 0 {
-		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
-			"message": "invalid slot public keys",
-		})
-	}
-	if request.Operations[0].Type == common.CreateValidatorOperation && len(txMetadata.SlotKeySigs) == 0 {
-		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
-			"message": "invalid slot key signatures",
-		})
-	}
-	if request.Operations[0].Type == common.EditValidatorOperation && (txMetadata.SlotPubKeyToAdd == "" ||
-		txMetadata.SlotPubKeyToRemove == "" || txMetadata.SlotKeyToAddSig == "") {
-		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
-			"message": "slot pub key to add/remove or sig to add error",
 		})
 	}
 	if txMetadata.ToShardID != nil && txMetadata.FromShardID != nil &&
@@ -228,22 +211,20 @@ func (s *ConstructAPI) ConstructionMetadata(
 		})
 	}
 
-	latest := ethRpc.BlockNumberOrHashWithNumber(ethRpc.LatestBlockNumber)
 	var estGasUsed uint64
 	if !isStakingOperation(options.OperationType) {
 		if options.OperationType == common.ContractCreationOperation {
-			estGasUsed, err = rpc.EstimateGas(ctx, s.itc, rpc.CallArgs{From: senderAddr, Data: &data}, latest, nil)
+			estGasUsed, err = rpc.EstimateGas(ctx, s.itc, rpc.CallArgs{From: senderAddr, Data: &data}, nil)
 			estGasUsed *= 2 // HACK to account for imperfect contract creation estimation
 		} else {
 			estGasUsed, err = rpc.EstimateGas(
-				ctx, s.itc, rpc.CallArgs{From: senderAddr, To: &contractAddress, Data: &data}, latest, nil,
+				ctx, s.itc, rpc.CallArgs{From: senderAddr, To: &contractAddress, Data: &data}, nil,
 			)
 		}
 	} else {
-		estGasUsed, err = vm.IntrinsicGas(data, false, false,
-			false, options.OperationType == common.CreateValidatorOperation)
-		estGasUsed *= 2
-
+		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
+			"message": "staking operations are not supported",
+		})
 	}
 	if err != nil {
 		return nil, common.NewError(common.InvalidTransactionConstructionError, map[string]interface{}{
@@ -270,7 +251,7 @@ func (s *ConstructAPI) ConstructionMetadata(
 			callArgs.To = &contractAddress
 		}
 		evmExe, err := rpc.DoEVMCall(
-			ctx, s.itc, callArgs, latest, s.evmCallTimeout,
+			ctx, s.itc, callArgs, ethRpc.LatestBlockNumber, rpc.CallTimeout,
 		)
 		if err != nil {
 			return nil, common.NewError(common.CatchAllError, map[string]interface{}{
